@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addRelationship, emptyPerson, exportTree, importTree, layoutTree, newTree } from "./model";
+import { createJokowiDemoTree } from "./demoData";
 
 describe("family model", () => {
   it("rejects ancestry cycles", () => {
@@ -17,5 +18,12 @@ describe("family model", () => {
     const tree = addRelationship({ ...newTree(), people: [a, b] }, "parent-child", a.id, b.id);
     const nodes = layoutTree(tree);
     expect(nodes.find(n => n.id === b.id)!.y).toBeGreaterThan(nodes.find(n => n.id === a.id)!.y);
+  });
+  it("keeps partners together across the Jokowi demo generations", () => {
+    const nodes = layoutTree(createJokowiDemoTree());
+    const y = (id: string) => nodes.find(node => node.id === id)!.y;
+    expect(y("jokowi")).toBe(y("iriana"));
+    expect(y("gibran")).toBe(y("selvi"));
+    expect(y("jan-ethes")).toBeGreaterThan(y("gibran"));
   });
 });

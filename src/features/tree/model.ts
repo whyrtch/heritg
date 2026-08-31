@@ -50,10 +50,11 @@ export type NodeLayout = { id: string; x: number; y: number };
 export function layoutTree(tree: FamilyTree): NodeLayout[] {
   if (!tree.people.length) return [];
   const levels = new Map<string, number>();
-  const roots = tree.people.filter(p => parentsOf(tree, p.id).length === 0);
-  const queue = roots.map(p => ({ id: p.id, level: 0 }));
-  while (queue.length) { const item = queue.shift()!; if ((levels.get(item.id) ?? -1) >= item.level) continue; levels.set(item.id, item.level); childrenOf(tree, item.id).forEach(id => queue.push({ id, level: item.level + 1 })); }
-  tree.people.forEach(p => { if (!levels.has(p.id)) levels.set(p.id, 0); });
+  tree.people.forEach(p => levels.set(p.id, 0));
+  for (let pass = 0; pass < tree.people.length; pass += 1) {
+    tree.relationships.filter(r => r.type === "partner").forEach(r => { const level = Math.max(levels.get(r.from) ?? 0, levels.get(r.to) ?? 0); levels.set(r.from, level); levels.set(r.to, level); });
+    tree.relationships.filter(r => r.type === "parent-child").forEach(r => levels.set(r.to, Math.max(levels.get(r.to) ?? 0, (levels.get(r.from) ?? 0) + 1)));
+  }
   const rows = new Map<number, string[]>();
   tree.people.forEach(p => { const level = levels.get(p.id)!; rows.set(level, [...(rows.get(level) ?? []), p.id]); });
   const nodes: NodeLayout[] = [];

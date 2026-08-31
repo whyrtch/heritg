@@ -1,5 +1,5 @@
 "use client";
-import { ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, CircleHelp, Eye, EyeOff, FileUp, Folder, GitBranch, Menu, Minus, MoreHorizontal, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn } from "lucide-react";
 import { addRelationship, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, newTree, Person, removePerson } from "./model";
 import { useWorkspaceData } from "./useWorkspace";
@@ -25,6 +25,14 @@ export function Workspace() {
   const importRef = useRef<HTMLInputElement>(null);
   const nodes = useMemo(() => active ? layoutTree(active) : [], [active]);
   const selectedPerson = active?.people.find(p => p.id === selected) ?? null;
+  const activeTreeId = active?.id;
+  const activePeopleCount = active?.people.length ?? 0;
+
+  useEffect(() => {
+    if (!activeTreeId) return;
+    setZoom(activePeopleCount > 12 ? .62 : 1);
+    setPan(activePeopleCount > 12 ? { x: 0, y: -300 } : { x: 0, y: 0 });
+  }, [activePeopleCount, activeTreeId]);
 
   if (!data || !active) return <div className={styles.loading}><Brand /><span>Opening your archive…</span></div>;
 

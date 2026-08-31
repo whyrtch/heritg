@@ -1,13 +1,21 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FamilyTree, initialData, WorkspaceData } from "./model";
+import { createJokowiDemoTree, JOKOWI_DEMO_TREE_ID } from "./demoData";
 
 const KEY = "heritg-workspace-v1";
 export function useWorkspaceData() {
   const [data, setData] = useState<WorkspaceData | null>(null);
   useEffect(() => {
-    try { const stored = localStorage.getItem(KEY); setData(stored ? JSON.parse(stored) as WorkspaceData : initialData()); }
-    catch { setData(initialData()); }
+    try {
+      const stored = localStorage.getItem(KEY);
+      const current = stored ? JSON.parse(stored) as WorkspaceData : initialData();
+      if (current.trees.some(tree => tree.id === JOKOWI_DEMO_TREE_ID)) { setData(current); return; }
+      const active = current.trees.find(tree => tree.id === current.activeTreeId);
+      const demo = createJokowiDemoTree();
+      setData({ ...current, trees: [demo, ...current.trees], activeTreeId: !active || active.people.length === 0 ? demo.id : current.activeTreeId });
+    }
+    catch { const demo = createJokowiDemoTree(); setData({ version: 1, activeTreeId: demo.id, trees: [demo] }); }
   }, []);
   useEffect(() => { if (data) localStorage.setItem(KEY, JSON.stringify(data)); }, [data]);
   const active = useMemo(() => data?.trees.find(t => t.id === data.activeTreeId) ?? null, [data]);
