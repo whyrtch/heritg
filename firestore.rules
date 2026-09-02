@@ -13,6 +13,8 @@ service cloud.firestore {
     //   birthDate, deathDate, notes, photoUrl, sortOrder, updatedAt
     // trees/{treeId}/relationships/{relationshipId}: type,
     //   fromPersonId, toPersonId, updatedAt
+    // trees/{treeId}/operations/{operationId}: status, totalWrites,
+    //   completedWrites, createdAt (short-lived resumable chunk progress)
     // publicTrees/{publicId}: sourceTreeId (immutable), name, enabled,
     //   schemaVersion, publishedRevision, publishedAt
     // publicTrees/{publicId}/{people|relationships}/{documentId}: the same
@@ -185,6 +187,24 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
+    function isValidOperation(data) {
+      return data.keys().hasAll([
+          'status', 'totalWrites', 'completedWrites', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'status', 'totalWrites', 'completedWrites', 'createdAt'
+        ]) &&
+        data.status == 'pending' &&
+        data.totalWrites is int &&
+        data.totalWrites >= 451 && data.totalWrites <= 100000 &&
+        data.completedWrites is int &&
+        data.completedWrites >= 0 &&
+        data.completedWrites <= data.totalWrites &&
+        data.createdAt is timestamp &&
+        data.createdAt <= request.time &&
+        data.createdAt > request.time - duration.value(10, 'm');
+    }
+
     function isValidPublicTree(data, publicId) {
       return data.keys().hasAll([
           'sourceTreeId', 'name', 'enabled', 'schemaVersion',
@@ -265,6 +285,23 @@ service cloud.firestore {
           existsAfter(/databases/$(database)/documents/trees/$(treeId)/people/$(request.resource.data.toPersonId)) &&
           isValidRelationship(request.resource.data);
         allow delete: if ownsExistingTree(treeId);
+      }
+
+      match /operations/{operationId} {
+        allow read: if exists(/databases/$(database)/documents/trees/$(treeId)) &&
+          ownsExistingTree(treeId);
+        allow create: if validBoundedString(operationId, 1, 128) &&
+          existsAfter(/databases/$(database)/documents/trees/$(treeId)) &&
+          ownsTreeAfter(treeId) &&
+          isValidOperation(request.resource.data);
+        allow update: if validBoundedString(operationId, 1, 128) &&
+          existsAfter(/databases/$(database)/documents/trees/$(treeId)) &&
+          ownsTreeAfter(treeId) &&
+          request.resource.data.totalWrites == resource.data.totalWrites &&
+          request.resource.data.completedWrites >= resource.data.completedWrites &&
+          isValidOperation(request.resource.data);
+        allow delete: if exists(/databases/$(database)/documents/trees/$(treeId)) &&
+          ownsExistingTree(treeId);
       }
     }
 

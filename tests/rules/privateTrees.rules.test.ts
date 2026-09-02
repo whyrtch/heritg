@@ -1,8 +1,9 @@
 // @vitest-environment node
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, it } from "vitest";
 import { assertFails, assertSucceeds, RulesTestEnvironment } from "@firebase/rules-unit-testing";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -92,5 +93,48 @@ describe("private tree rules", () => {
     await assertFails(updateDoc(ref, { ownerId: ATTACKER_UID, revision: 1, updatedAt: serverTimestamp() }));
     await assertFails(updateDoc(ref, { name: "No revision", updatedAt: serverTimestamp() }));
     await assertSucceeds(updateDoc(ref, { name: "Valid update", revision: 1, updatedAt: serverTimestamp() }));
+  });
+
+  it("allows only the owner to manage valid chunk-operation progress", async () => {
+    await seedTree(env, { publicId: null });
+    const ownerDb = ownerContext(env).firestore();
+    const attackerDb = attackerContext(env).firestore();
+    const anonymousDb = env.unauthenticatedContext().firestore();
+    const ownerRef = doc(ownerDb, `trees/${TREE_ID}/operations/large-write`);
+
+    await assertSucceeds(setDoc(ownerRef, {
+      status: "pending",
+      totalWrites: 901,
+      completedWrites: 0,
+      createdAt: serverTimestamp(),
+    }));
+    await assertSucceeds(getDoc(ownerRef));
+    await assertSucceeds(updateDoc(ownerRef, {
+      completedWrites: 450,
+      createdAt: serverTimestamp(),
+    }));
+
+    await assertFails(getDoc(doc(attackerDb, `trees/${TREE_ID}/operations/large-write`)));
+    await assertFails(getDoc(doc(anonymousDb, `trees/${TREE_ID}/operations/large-write`)));
+    await assertFails(setDoc(doc(attackerDb, `trees/${TREE_ID}/operations/injected`), {
+      status: "pending",
+      totalWrites: 901,
+      completedWrites: 0,
+      createdAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(ownerDb, `trees/${TREE_ID}/operations/invalid`), {
+      status: "pending",
+      totalWrites: 901,
+      completedWrites: 902,
+      createdAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(ownerDb, `trees/${TREE_ID}/operations/polluted`), {
+      status: "pending",
+      totalWrites: 901,
+      completedWrites: 0,
+      createdAt: serverTimestamp(),
+      ownerId: OWNER_UID,
+    }));
+    await assertSucceeds(deleteDoc(ownerRef));
   });
 });
