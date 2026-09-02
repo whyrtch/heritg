@@ -1,14 +1,16 @@
 export type Gender = "female" | "male" | "nonbinary" | "unspecified";
 export type Person = {
   id: string; firstName: string; lastName: string; gender: Gender;
-  birthDate: string; deathDate: string; notes: string; photo: string;
+  birthDate: string; deathDate: string; notes: string; photoUrl: string;
+  /** @deprecated Legacy MVP data-URL field. Kept readable until migration completes. */
+  photo?: string;
 };
 export type Relationship = { id: string; type: "parent-child" | "partner"; from: string; to: string };
 export type FamilyTree = { id: string; name: string; people: Person[]; relationships: Relationship[]; updatedAt: string };
 export type WorkspaceData = { version: 1; activeTreeId: string; trees: FamilyTree[] };
 
 export const uid = () => crypto.randomUUID();
-export const emptyPerson = (): Person => ({ id: uid(), firstName: "", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photo: "" });
+export const emptyPerson = (): Person => ({ id: uid(), firstName: "", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photoUrl: "", photo: "" });
 export const newTree = (name = "My Family Tree"): FamilyTree => ({ id: uid(), name, people: [], relationships: [], updatedAt: new Date().toISOString() });
 export const initialData = (): WorkspaceData => { const tree = newTree(); return { version: 1, activeTreeId: tree.id, trees: [tree] }; };
 
@@ -43,7 +45,12 @@ export function importTree(raw: string): FamilyTree {
   if (typeof tree.id !== "string" || typeof tree.name !== "string" || !Array.isArray(tree.people) || !Array.isArray(tree.relationships)) throw new Error("The family tree file is incomplete.");
   const ids = new Set(tree.people.map(p => p?.id));
   if (ids.size !== tree.people.length || tree.relationships.some(r => !r || !ids.has(r.from) || !ids.has(r.to))) throw new Error("The family tree contains broken relationships.");
-  return { ...tree, id: uid(), name: `${tree.name} (Imported)`, updatedAt: new Date().toISOString() } as FamilyTree;
+  const people = tree.people.map(person => ({
+    ...person,
+    photoUrl: typeof person.photoUrl === "string" ? person.photoUrl : "",
+    photo: typeof person.photo === "string" ? person.photo : "",
+  }));
+  return { ...tree, people, id: uid(), name: `${tree.name} (Imported)`, updatedAt: new Date().toISOString() } as FamilyTree;
 }
 
 export type NodeLayout = { id: string; x: number; y: number };

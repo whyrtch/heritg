@@ -3,7 +3,7 @@ import type { FamilyTree, Gender, Person, Relationship } from "./model";
 export const JOKOWI_DEMO_TREE_ID = "demo-jokowi-family-v1";
 
 const person = (id: string, firstName: string, lastName = "", gender: Gender = "unspecified", birthDate = "", deathDate = "", notes = ""): Person => ({
-  id, firstName, lastName, gender, birthDate, deathDate, notes, photo: ""
+  id, firstName, lastName, gender, birthDate, deathDate, notes, photoUrl: "", photo: ""
 });
 const partner = (from: string, to: string): Relationship => ({ id: `partner-${from}-${to}`, type: "partner", from, to });
 const child = (from: string, to: string): Relationship => ({ id: `child-${from}-${to}`, type: "parent-child", from, to });
