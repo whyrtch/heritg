@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest"
+    "test": "vitest",
+    "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\""
   },
   "dependencies": {
     "firebase": "^12.18.0",

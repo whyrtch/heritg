@@ -1,23 +1,24 @@
-# Heritg — Family Tree MVP
+# Heritg
 
-A responsive, local-first family-tree workspace inspired by Heritg. Build multiple family trees, add relatives in any direction, navigate an interactive canvas, search people, protect visible details, and move trees between browsers with `.heritg` files.
+Heritg is a personal, online family-tree workspace. The owner signs in with Firebase Email/Password, edits normalized family data in Cloud Firestore, keeps an offline browser cache, and can publish an independently revocable unlisted link. Anyone with that link can view the published snapshot; only the owner can edit the private tree.
 
-The project includes a ready-to-explore `Keluarga Joko Widodo` demo tree spanning grandparents through grandchildren. The seed uses public biographical information and can be edited like any other local tree.
+The app includes an editable `Keluarga Joko Widodo` demo spanning grandparents through grandchildren.
 
-## Features
+## Phase 2 features
 
-- Multiple editable family trees with automatic local persistence.
-- Parent, partner, and child relationships with cycle prevention.
-- Interactive canvas with pan, zoom, fit, selection, and relationship lines.
-- Person profiles with dates, notes, gender, and locally stored photos.
-- Searchable people directory and privacy masking.
-- Validated `.heritg` import and export.
-- Responsive desktop, tablet, and mobile layouts.
-- Honest placeholders for the future Share and Family+ collaboration release.
+- Owner-only email/password login; there is no public registration.
+- Multiple family trees with relationships, cycle prevention, pan/zoom, search, import, and export.
+- Firestore source of truth with optimistic saves, an offline queue, revision conflicts, and local `.heritg` backup recovery.
+- Safe, resumable migration of legacy browser trees. Local source data is never deleted automatically.
+- Photo URL input accepting only HTTPS links; no Firebase Storage or file upload is used.
+- Per-tree unlisted publication, link copy/update, unpublish, and link regeneration.
+- Anonymous public pages are read-only and marked `noindex, nofollow`.
+- Firestore Rules deny global public listing and all anonymous writes.
+- The schema reserves future member roles, but Phase 2 authorizes writes only for the owner.
 
-## Run locally
+## Local setup
 
-Requires Node.js 20 or newer and npm.
+Requirements: Node.js 20 or newer, Java 21 or newer for Firebase emulators, and npm.
 
 ```bash
 cp .env.example .env.local
@@ -25,45 +26,62 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Next.js, normally [http://localhost:3000](http://localhost:3000). If that port is occupied, Next.js selects another available port.
+Open the URL printed by Next.js, normally [http://localhost:3000](http://localhost:3000).
 
-## Environment variables
+The checked-in `.env.example` contains Firebase's public Web SDK identifiers for project `projects-8f743`. They are not server secrets; access control is enforced by Authentication and Firestore Security Rules. Keep actual secrets and local overrides out of Git.
 
-| Variable | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `NEXT_PUBLIC_APP_URL` | No | `http://localhost:3000` | Public base URL for canonical and Open Graph metadata. |
+To use local Firebase emulators, set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` in `.env.local`, then run:
 
-There are no API keys or server-side secrets in the MVP. Never commit `.env.local` or production credentials.
+```bash
+npx -y firebase-tools@latest emulators:start --only auth,firestore
+```
 
-## Quality checks
+## Firebase Console setup
+
+Before signing in against the real project:
+
+1. Open Firebase Console → Authentication → Sign-in method.
+2. Enable Email/Password.
+3. Create the one owner account under Authentication → Users.
+4. Do not add public sign-up; future editors will use owner-issued invitations.
+
+Deploy reviewed Firestore configuration with:
+
+```bash
+npx -y firebase-tools@latest deploy --only firestore
+```
+
+This repository does not deploy automatically. Review `firestore.rules` before production deployment. The current Next.js public route is dynamically rendered, so choose a Next.js-compatible free host or adapt the app to static export before using the `hosting.public: out` Firebase Hosting configuration.
+
+## Verification
 
 ```bash
 npm test -- --run
+npm run test:rules
 npm run lint
 npm run build
-npm start
 ```
 
-`npm start` serves the production build after `npm run build`.
+`npm run test:rules` starts the Firestore emulator for isolated authorization tests. It verifies owner access, attacker and anonymous denial, strict schemas, disabled public snapshots, prevention of global listing, and scoped known-link reads.
+
+## Data layout
+
+- `trees/{treeId}` — private owner metadata.
+- `trees/{treeId}/people/{personId}` — private people.
+- `trees/{treeId}/relationships/{relationshipId}` — private relationships.
+- `trees/{treeId}/members/{uid}` — future role records; not authorized for editing yet.
+- `publicTrees/{publicId}` with `people` and `relationships` — separate enabled public snapshots.
+
+The public URL is `/tree/{publicId}`. Treat it as a bearer link: anyone who obtains it can view every published name, date, note, and photo URL. Unpublish or regenerate the link to revoke access.
 
 ## Project structure
 
-- `src/app/` — Next.js shell, metadata, and global design tokens.
-- `src/features/tree/model.ts` — family types, relationship rules, import/export validation, and deterministic layout.
-- `src/features/tree/demoData.ts` — public demo family-tree seed.
-- `src/features/tree/useWorkspace.ts` — hydration, autosave, and local persistence.
-- `src/features/tree/Workspace.tsx` — workspace composition and accessible editing flows.
-- `src/features/tree/workspace.module.css` — desktop, tablet, mobile, and reduced-motion presentation.
+- `src/features/auth/` — Firebase auth state, guard, login actions, and safe errors.
+- `src/features/tree/domain/` — validated online model, serialization, photo URLs, and revisions.
+- `src/features/tree/repository/` — Firestore, in-memory, and local-cache boundaries.
+- `src/features/tree/sync/` — optimistic/offline synchronization and conflict recovery.
+- `src/features/tree/migration/` — resumable local-to-Firestore migration.
+- `src/features/tree/publishing/` — unlisted snapshot lifecycle.
+- `src/app/tree/[publicId]/` — anonymous read-only viewer.
+- `tests/rules/` — Firestore Emulator Rules tests.
 - `docs/superpowers/` — approved design specification and implementation plan.
-
-## Local data and backups
-
-Family data is automatically stored in the current browser profile. It is not uploaded, encrypted, synchronized, or recoverable from another device. Use **Family trees → Export current tree** to create a `.heritg` backup. Import validates the file before adding it as a separate tree.
-
-Uploaded photos are stored as browser data URLs and are limited to 3 MB per source image. Browser storage limits still apply.
-
-To reset everything, open **Settings → Reset local archive**. This only affects the current browser profile.
-
-## MVP boundary
-
-The purple Family+ action and Share action intentionally explain that collaboration, accounts, permissions, and cross-device synchronization belong to the next release. They do not perform fake sharing or upload local family information.
