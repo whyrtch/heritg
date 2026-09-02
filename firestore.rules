@@ -1,0 +1,316 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // users/{uid}: email, displayName, createdAt
+    // trees/{treeId}: ownerId (immutable), name, visibility, publicId,
+    //   revision, schemaVersion, createdAt (immutable), updatedAt,
+    //   publishedRevision
+    // trees/{treeId}/members/{uid}: role, invitedAt, acceptedAt
+    // trees/{treeId}/people/{personId}: firstName, lastName, gender,
+    //   birthDate, deathDate, notes, photoUrl, sortOrder, updatedAt
+    // trees/{treeId}/relationships/{relationshipId}: type,
+    //   fromPersonId, toPersonId, updatedAt
+    // publicTrees/{publicId}: sourceTreeId (immutable), name, enabled,
+    //   schemaVersion, publishedRevision, publishedAt
+    // publicTrees/{publicId}/{people|relationships}/{documentId}: the same
+    //   public person/relationship fields, with no owner identity or email.
+    //
+    // Limits are deliberately below Firestore's document limit. Dates use
+    // YYYY-MM-DD strings for compatibility with the current domain model;
+    // the regex validates shape/range bounds, not calendar semantics.
+    // ===============================================================
+
+    // ===============================================================
+    // Shared identity and ownership helpers
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function uidUnchanged(uid) {
+      return isAuthenticated() && uid == request.auth.uid;
+    }
+
+    function uidNotModified(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    function treeAfter(treeId) {
+      return getAfter(/databases/$(database)/documents/trees/$(treeId));
+    }
+
+    function ownsTreeAfter(treeId) {
+      return isAuthenticated() &&
+        treeAfter(treeId).data.ownerId == request.auth.uid;
+    }
+
+    function ownsExistingTree(treeId) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/trees/$(treeId)).data.ownerId == request.auth.uid;
+    }
+
+    function publicTreeAfter(publicId) {
+      return getAfter(/databases/$(database)/documents/publicTrees/$(publicId));
+    }
+
+    function publicTreeCurrent(publicId) {
+      return get(/databases/$(database)/documents/publicTrees/$(publicId));
+    }
+
+    function ownsPublicTreeAfter(publicId) {
+      return isAuthenticated() &&
+        ownsTreeAfter(publicTreeAfter(publicId).data.sourceTreeId);
+    }
+
+    function ownsExistingPublicTree(publicId) {
+      return isAuthenticated() &&
+        ownsExistingTree(publicTreeCurrent(publicId).data.sourceTreeId);
+    }
+
+    function publicTreeIsEnabled(publicId) {
+      return publicTreeCurrent(publicId).data.enabled == true;
+    }
+
+    // ===============================================================
+    // Primitive and domain validators (used on create and update)
+    // ===============================================================
+    function validBoundedString(value, minSize, maxSize) {
+      return value is string &&
+        value.size() >= minSize && value.size() <= maxSize;
+    }
+
+    function validNullableTimestamp(value) {
+      return value == null || value is timestamp;
+    }
+
+    function validDate(value) {
+      return value is string && value.size() <= 10 &&
+        (value == '' || value.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'));
+    }
+
+    function validPhotoUrl(value) {
+      return value is string && value.size() <= 2048 &&
+        (value == '' || value.matches('^https://[^\\s]+$'));
+    }
+
+    function validPublicId(value) {
+      return value is string && value.size() >= 20 && value.size() <= 128 &&
+        value.matches('^[A-Za-z0-9_-]+$');
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'displayName', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'displayName', 'createdAt']) &&
+        validBoundedString(data.email, 3, 254) &&
+        data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+        validBoundedString(data.displayName, 0, 120) &&
+        data.createdAt is timestamp;
+    }
+
+    function validTreePublication(data) {
+      return (data.visibility == 'private' &&
+          data.publicId == null && data.publishedRevision == null) ||
+        (data.visibility == 'unlisted' &&
+          validPublicId(data.publicId) &&
+          data.publishedRevision is int &&
+          data.publishedRevision >= 0 &&
+          data.publishedRevision <= data.revision);
+    }
+
+    function isValidTree(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'visibility', 'publicId', 'revision',
+          'schemaVersion', 'createdAt', 'updatedAt', 'publishedRevision'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'name', 'visibility', 'publicId', 'revision',
+          'schemaVersion', 'createdAt', 'updatedAt', 'publishedRevision'
+        ]) &&
+        validBoundedString(data.ownerId, 1, 128) &&
+        validBoundedString(data.name, 1, 120) &&
+        data.visibility in ['private', 'unlisted'] &&
+        data.revision is int && data.revision >= 0 && data.revision <= 2147483647 &&
+        data.schemaVersion is int && data.schemaVersion >= 1 && data.schemaVersion <= 10 &&
+        data.createdAt is timestamp && data.updatedAt is timestamp &&
+        validTreePublication(data);
+    }
+
+    function isValidMember(data, memberId, ownerId) {
+      return data.keys().hasAll(['role', 'invitedAt', 'acceptedAt']) &&
+        data.keys().hasOnly(['role', 'invitedAt', 'acceptedAt']) &&
+        data.role in ['owner', 'editor', 'viewer'] &&
+        validNullableTimestamp(data.invitedAt) &&
+        validNullableTimestamp(data.acceptedAt) &&
+        ((memberId == ownerId && data.role == 'owner') ||
+          (memberId != ownerId && data.role in ['editor', 'viewer']));
+    }
+
+    function isValidPerson(data) {
+      return data.keys().hasAll([
+          'firstName', 'lastName', 'gender', 'birthDate', 'deathDate',
+          'notes', 'photoUrl', 'sortOrder', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'firstName', 'lastName', 'gender', 'birthDate', 'deathDate',
+          'notes', 'photoUrl', 'sortOrder', 'updatedAt'
+        ]) &&
+        validBoundedString(data.firstName, 1, 120) &&
+        validBoundedString(data.lastName, 0, 120) &&
+        data.gender in ['female', 'male', 'nonbinary', 'unspecified'] &&
+        validDate(data.birthDate) && validDate(data.deathDate) &&
+        validBoundedString(data.notes, 0, 10000) &&
+        validPhotoUrl(data.photoUrl) &&
+        data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 1000000 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidRelationship(data) {
+      return data.keys().hasAll([
+          'type', 'fromPersonId', 'toPersonId', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'type', 'fromPersonId', 'toPersonId', 'updatedAt'
+        ]) &&
+        data.type in ['parent-child', 'partner'] &&
+        validBoundedString(data.fromPersonId, 1, 128) &&
+        validBoundedString(data.toPersonId, 1, 128) &&
+        data.fromPersonId != data.toPersonId &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPublicTree(data, publicId) {
+      return data.keys().hasAll([
+          'sourceTreeId', 'name', 'enabled', 'schemaVersion',
+          'publishedRevision', 'publishedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'sourceTreeId', 'name', 'enabled', 'schemaVersion',
+          'publishedRevision', 'publishedAt'
+        ]) &&
+        validBoundedString(data.sourceTreeId, 1, 128) &&
+        validBoundedString(data.name, 1, 120) &&
+        data.enabled is bool &&
+        data.schemaVersion is int && data.schemaVersion >= 1 && data.schemaVersion <= 10 &&
+        data.publishedRevision is int &&
+        data.publishedRevision >= 0 && data.publishedRevision <= 2147483647 &&
+        data.publishedAt is timestamp &&
+        (!data.enabled || (
+          treeAfter(data.sourceTreeId).data.visibility == 'unlisted' &&
+          treeAfter(data.sourceTreeId).data.publicId == publicId &&
+          treeAfter(data.sourceTreeId).data.publishedRevision == data.publishedRevision
+        ));
+    }
+
+    // ===============================================================
+    // Private owner workspace
+    // ===============================================================
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) &&
+        request.auth.token.email is string &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.createdAt == request.time &&
+        isValidUser(request.resource.data);
+      allow update: if isOwner(userId) &&
+        uidNotModified('email') && uidNotModified('createdAt') &&
+        isValidUser(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    match /trees/{treeId} {
+      allow get: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      // Firestore will allow this only for queries constrained by ownerId.
+      allow list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if uidUnchanged(request.resource.data.ownerId) &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time &&
+        isValidTree(request.resource.data);
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        uidNotModified('ownerId') && uidNotModified('createdAt') &&
+        request.resource.data.revision == resource.data.revision + 1 &&
+        request.resource.data.updatedAt == request.time &&
+        isValidTree(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+
+      match /members/{memberId} {
+        allow read: if ownsExistingTree(treeId);
+        allow create, update: if ownsTreeAfter(treeId) &&
+          isValidMember(request.resource.data, memberId, treeAfter(treeId).data.ownerId);
+        allow delete: if ownsExistingTree(treeId) &&
+          memberId != get(/databases/$(database)/documents/trees/$(treeId)).data.ownerId;
+      }
+
+      match /people/{personId} {
+        allow read: if ownsExistingTree(treeId);
+        allow create, update: if ownsTreeAfter(treeId) &&
+          request.resource.data.updatedAt == request.time &&
+          isValidPerson(request.resource.data);
+        allow delete: if ownsExistingTree(treeId);
+      }
+
+      match /relationships/{relationshipId} {
+        allow read: if ownsExistingTree(treeId);
+        allow create, update: if ownsTreeAfter(treeId) &&
+          request.resource.data.updatedAt == request.time &&
+          existsAfter(/databases/$(database)/documents/trees/$(treeId)/people/$(request.resource.data.fromPersonId)) &&
+          existsAfter(/databases/$(database)/documents/trees/$(treeId)/people/$(request.resource.data.toPersonId)) &&
+          isValidRelationship(request.resource.data);
+        allow delete: if ownsExistingTree(treeId);
+      }
+    }
+
+    // ===============================================================
+    // Unlisted snapshots
+    // ===============================================================
+    match /publicTrees/{publicId} {
+      // A bearer-link visitor can fetch one known, enabled document, but can
+      // never enumerate the top-level publicTrees collection.
+      allow get: if resource.data.enabled == true ||
+        ownsExistingTree(resource.data.sourceTreeId);
+      allow list: if false;
+      allow create: if ownsPublicTreeAfter(publicId) &&
+        request.resource.data.publishedAt == request.time &&
+        isValidPublicTree(request.resource.data, publicId);
+      allow update: if ownsExistingPublicTree(publicId) &&
+        request.resource.data.sourceTreeId == resource.data.sourceTreeId &&
+        request.resource.data.publishedAt == request.time &&
+        isValidPublicTree(request.resource.data, publicId);
+      allow delete: if ownsExistingPublicTree(publicId);
+
+      match /people/{personId} {
+        allow get, list: if publicTreeIsEnabled(publicId) ||
+          ownsExistingPublicTree(publicId);
+        allow create, update: if ownsPublicTreeAfter(publicId) &&
+          publicTreeAfter(publicId).data.enabled == true &&
+          request.resource.data.updatedAt == request.time &&
+          isValidPerson(request.resource.data);
+        allow delete: if ownsExistingPublicTree(publicId);
+      }
+
+      match /relationships/{relationshipId} {
+        allow get, list: if publicTreeIsEnabled(publicId) ||
+          ownsExistingPublicTree(publicId);
+        allow create, update: if ownsPublicTreeAfter(publicId) &&
+          publicTreeAfter(publicId).data.enabled == true &&
+          request.resource.data.updatedAt == request.time &&
+          existsAfter(/databases/$(database)/documents/publicTrees/$(publicId)/people/$(request.resource.data.fromPersonId)) &&
+          existsAfter(/databases/$(database)/documents/publicTrees/$(publicId)/people/$(request.resource.data.toPersonId)) &&
+          isValidRelationship(request.resource.data);
+        allow delete: if ownsExistingPublicTree(publicId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
