@@ -421,15 +421,15 @@ return <main className={styles.page}>
 
 ### Task 9: Clean-up
 
-- [ ] **Step 1:** Remove the legacy aliases (`--plum`, `--brand`, `--font-serif`) after confirming no references remain:
+- [x] **Step 1:** Remove the legacy aliases (`--plum`, `--brand`, `--font-serif`) after confirming no references remain:
 
 ```bash
 grep -rn "var(--plum)\|var(--brand)\|var(--font-serif)" src
 ```
 
-- [ ] **Step 2:** Remove unused lucide imports flagged by `npm run lint`.
-- [ ] **Step 3:** Update `README.md` only if it describes UI elements that changed. It currently does not, so no change is expected.
-- [ ] **Step 4: Commit** `chore: remove legacy design aliases`.
+- [x] **Step 2:** Remove unused lucide imports flagged by `npm run lint`.
+- [x] **Step 3:** Update `README.md` only if it describes UI elements that changed. It currently does not, so no change is expected.
+- [x] **Step 4: Commit** `chore: remove legacy design aliases`.
 
 ### Task 10: Verification
 
