@@ -291,7 +291,7 @@ const summary = active.people.length === 0 ? "No one added yet"
 
 **Files:** Create `src/app/login/SilsilahIllustration.tsx`, `src/app/login/SilsilahIllustration.test.tsx`; modify `src/app/login/page.tsx`, `login.module.css`
 
-- [ ] **Step 1: Illustration component.** It is decorative, so it uses `aria-hidden`. There are two geometry presets matching Figma frames `16:5291` (panel) and `16:5374` / `16:5454` (band).
+- [x] **Step 1: Illustration component.** It is decorative, so it uses `aria-hidden`. There are two geometry presets matching Figma frames `16:5291` (panel) and `16:5374` / `16:5454` (band).
 
 ```tsx
 const ROWS = [4, 2, 2, 6, 6];
@@ -328,7 +328,7 @@ export function SilsilahIllustration({ variant, className }: { variant: keyof ty
 ```
 
   Test: it renders with `aria-hidden="true"`, draws exactly 4 lineage paths, and has 20 person circles plus 1 ring.
-- [ ] **Step 2: Page markup.** Behavior and accessible names stay unchanged.
+- [x] **Step 2: Page markup.** Behavior and accessible names stay unchanged.
   - Remove the eyebrow and the key circle, and drop the `KeyRound` import.
   - Keep the field label "Email address", because the test uses it (Figma shows "Email" for brevity).
 
@@ -349,15 +349,17 @@ return <main className={styles.page}>
 </main>;
 ```
 
-- [ ] **Step 3: CSS.**
+- [x] **Step 3: CSS.**
   - **Desktop (≥ 768px):** `.page{display:grid;grid-template-columns:1fr 1fr;min-height:100%;background:var(--canvas)}`. `.story` is `background:var(--primary);color:#fff;position:relative;overflow:hidden;padding:52px 56px`, with the brand at the top, the panel illustration absolutely filling it, and `.storyLine` at the bottom (22px/28px, weight 700, max-width 460px). `.card` is a 360px column centered in the right half: no card border, no shadow, no radius. `.illustrationBand{display:none}`.
   - **Brand mark:** a 32px soga square with 9px radius and a white `Leaf`. Wordmark 22px weight 800, `letter-spacing:-.02em`.
   - **Headline and inputs:** h1 30px/36px, weight 800, `letter-spacing:-.02em`. Inputs: 10px radius, `var(--line)` border, white background, 12px/14px padding. `.submit`: `var(--primary)`, 10px radius, 46px height. `.mode`: left-aligned, `color:var(--primary)`. `.note`: no border-top, 12px muted.
   - **`@media(max-width:767px)`:** `.page{grid-template-columns:1fr;grid-template-rows:auto 1fr}`. `.story` gets `min-height:380px;padding:32px 40px`. Swap the illustration visibility (`.illustrationPanel{display:none}`, `.illustrationBand{display:block;position:absolute;inset:0;width:100%;height:100%}`) and hide `.storyLine`. `.card` becomes `max-width:400px;margin:0 auto;padding:40px 0`.
   - **`@media(max-width:520px)`:** `.story{min-height:220px;padding:20px 24px}` and `.card{padding:36px 24px}`.
   - Keep the `.error` and `.success` colors, mapped to `var(--danger)` and `var(--green)`.
-- [ ] **Step 4: Verify.** `npm test -- --run src/app/login` passes unchanged. Visually compare against Figma row 01 at all three widths.
-- [ ] **Step 5: Commit** `feat: redesign login with silsilah illustration`.
+- [x] **Step 4: Verify.** `npm test -- --run src/app/login` passes unchanged. Visually compare against Figma row 01 at all three widths.
+- [x] **Step 5: Commit** `feat: redesign login with silsilah illustration`.
+
+> **As built:** the login stacks the panel above the form below **1024px** (not 768px), matching the Figma tablet frame, and a third `compact` illustration preset (390×220, s=54) is used below 520px so the wordmark does not overlap the first generation.
 
 ### Task 7: Dialogs
 
