@@ -250,11 +250,11 @@ const summary = active.people.length === 0 ? "No one added yet"
 
 **Files:** Modify `Workspace.tsx`, `workspace.module.css`
 
-- [ ] **Step 1: PersonPanel.**
+- [x] **Step 1: PersonPanel.**
   - Replace the dates paragraph with `lifeDatesLong(person)`. Below it, if `person.notes` is set, show the notes as a muted 12px line.
   - Change the label `Grow this branch` → `Add a relative`, and remove `text-transform:uppercase` and `letter-spacing` from `.panelLabel`.
   - Give the "Edit details" button a leading `Pencil` icon.
-- [ ] **Step 2: Hardcoded colors in `workspace.module.css`.** Replace every literal with a token:
+- [x] **Step 2: Hardcoded colors in `workspace.module.css`.** Replace every literal with a token:
 
 | Literal | Token |
 |---|---|
@@ -278,14 +278,14 @@ const summary = active.people.length === 0 ? "No one added yet"
 | `#33271844` | `var(--shadow-modal)` |
 | `rgba(67,51,35,.08)`, `rgba(71,54,37,…)`, `rgba(69,52,36,…)`, `rgba(39,32,25,.48)`, `rgba(51,39,24,.28)` | the matching `--shadow-*` / `--backdrop` |
 
-- [ ] **Step 3: Radii.** Modal 20, panel and sidebar no radius, buttons and inputs 10, chips 999.
-- [ ] **Step 4: Empty state.**
+- [x] **Step 3: Radii.** Modal 20, panel and sidebar no radius, buttons and inputs 10, chips 999.
+- [x] **Step 4: Empty state.**
   - `.emptyState h1` at 24px, weight 800, `letter-spacing:-.02em`.
   - Hover row `background:var(--info)`.
   - Drag-hint copy `☝ Drag or scroll to move the canvas` → `Drag or scroll to move the canvas`.
-- [ ] **Step 5: Conflict card.** Set `.conflictCard` to `background:var(--panel)` and `border-radius:20px`. Restyle `.conflictCard button:nth-of-type(2)` as primary indigo, and the first button as a surface outline. Update `.conflictBackdrop` to `var(--backdrop)`.
-- [ ] **Step 6: Check.** Run `grep -nE "#[0-9a-fA-F]{3,8}" src/features/tree/workspace.module.css`. The only literals left should be `#fff` / `white`.
-- [ ] **Step 7: Commit** `style: tokenise workspace surfaces and refresh panel copy`.
+- [x] **Step 5: Conflict card.** Set `.conflictCard` to `background:var(--panel)` and `border-radius:20px`. Restyle `.conflictCard button:nth-of-type(2)` as primary indigo, and the first button as a surface outline. Update `.conflictBackdrop` to `var(--backdrop)`.
+- [x] **Step 6: Check.** Run `grep -nE "#[0-9a-fA-F]{3,8}" src/features/tree/workspace.module.css`. The only literals left should be `#fff` / `white`.
+- [x] **Step 7: Commit** `style: tokenise workspace surfaces and refresh panel copy`.
 
 ### Task 6: Login redesign
 
