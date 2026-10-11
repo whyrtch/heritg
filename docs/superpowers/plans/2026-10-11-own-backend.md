@@ -32,12 +32,14 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - `package.json` scripts
 
 **Tasks**
-- [ ] Add `drizzle-orm`, `postgres`, `drizzle-kit`, `@electric-sql/pglite` and `zod`.
-- [ ] Write the schema from the spec: tables, FKs with cascade, CHECK constraints mirroring the v2 Rules, and indexes on `trees(owner_id)` and `sessions(expires_at)`. Generate the first migration.
-- [ ] `client.ts`: a lazy singleton reading `DATABASE_URL`, server-only (`import "server-only"`).
-- [ ] Test harness: `createTestDb()` spins up a PGlite instance with the migrations applied. Add `npm run test:api` (Vitest config `vitest.api.config.ts`, node environment).
-- [ ] Add `npm run db:migrate` and `npm run db:generate`, plus `docker-compose.yml` with Postgres 16 for local dev.
-- [ ] Tests: the schema rejects invalid rows (gender, birth order, a partner with a kind, a relationship into another tree, a photo over 48 KB).
+- [x] Add `drizzle-orm`, `postgres`, `drizzle-kit`, `@electric-sql/pglite` and `zod`.
+- [x] Write the schema from the spec: tables, FKs with cascade, CHECK constraints mirroring the v2 Rules, and indexes on `trees(owner_id)` and `sessions(expires_at)`. Generate the first migration.
+- [x] `client.ts`: a lazy singleton reading `DATABASE_URL`, server-only (`import "server-only"`).
+- [x] Test harness: `createTestDb()` spins up a PGlite instance with the migrations applied. Add `npm run test:api` (Vitest config `vitest.api.config.ts`, node environment).
+- [x] Add `npm run db:migrate` and `npm run db:generate`, plus `docker-compose.yml` with Postgres 16 for local dev.
+- [x] Tests: the schema rejects invalid rows (gender, birth order, a partner with a kind, a relationship into another tree, a photo over 48 KB).
+
+- _Notes: CHECKs say `is not null` explicitly, because `NULL in (...)` would pass a CHECK. Emails are stored lowercase with a unique index (no citext extension). `.env.example` was not changed, per the owner's earlier instruction; `DATABASE_URL` is documented in docker-compose.yml and goes into the README in B7. The migration was verified on PGlite (Postgres 17 WASM); Docker Desktop was not running, so it was not run against Postgres 16._
 
 ## B2 — Auth (replaces Firebase Auth)
 

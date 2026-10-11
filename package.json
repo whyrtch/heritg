@@ -8,16 +8,24 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest",
-    "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\""
+    "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
+    "test:api": "vitest run --config vitest.api.config.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.4",
     "firebase": "^12.18.0",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",
+    "postgres": "^3.4.9",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.16",
     "@firebase/rules-unit-testing": "^5.0.2",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
@@ -25,6 +33,7 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.0",
     "firebase-tools": "^15.28.2",

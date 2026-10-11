@@ -1,0 +1,17 @@
+# Local PostgreSQL for development: `docker compose up -d`, then
+# DATABASE_URL=postgres://heritg:heritg@localhost:5432/heritg in .env.local and `npm run db:migrate`.
+# These credentials are for a local container only; never reuse them in a deployment.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: heritg
+      POSTGRES_PASSWORD: heritg
+      POSTGRES_DB: heritg
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - heritg-postgres:/var/lib/postgresql/data
+volumes:
+  heritg-postgres:
