@@ -33,6 +33,8 @@ export const id = {
   "shell.addMember": "Tambah anggota keluarga",
   "shell.loading": "Lagi buka arsipmu…",
 
+  "tree.newName": "Silsilah Keluarga {number}",
+
   // Status chips
   "status.localOnly": "Tersimpan di perangkat ini aja",
   "status.example": "Contoh silsilah, cuma bisa dilihat",

@@ -11,7 +11,7 @@ export type WorkspaceData = { version: 1; activeTreeId: string; trees: FamilyTre
 
 export const uid = () => crypto.randomUUID();
 export const emptyPerson = (): Person => ({ id: uid(), firstName: "", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photoUrl: "", photo: "" });
-export const newTree = (name = "My Family Tree"): FamilyTree => ({ id: uid(), name, people: [], relationships: [], updatedAt: new Date().toISOString() });
+export const newTree = (name = "Silsilah Keluarga Saya"): FamilyTree => ({ id: uid(), name, people: [], relationships: [], updatedAt: new Date().toISOString() });
 export const initialData = (): WorkspaceData => { const tree = newTree(); return { version: 1, activeTreeId: tree.id, trees: [tree] }; };
 
 export function displayName(person: Person) { return `${person.firstName} ${person.lastName}`.trim() || "Unnamed person"; }

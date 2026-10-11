@@ -54,7 +54,7 @@ describe("Workspace shell (heritg.us parity)", () => {
     render(<Workspace />);
     await screen.findByText("Keluarga Joko Widodo");
     fireEvent.click(screen.getByRole("button", { name: "Lihat kumpulan silsilah" }));
-    fireEvent.click(screen.getAllByRole("button").find(button => button.textContent?.trim().startsWith("My Family Tree"))!);
+    fireEvent.click(screen.getAllByRole("button").find(button => button.textContent?.trim().startsWith("Silsilah Keluarga Saya"))!);
     await screen.findByText("Mulai dari siapa aja bebas");
   };
 

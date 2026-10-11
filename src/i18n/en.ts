@@ -29,6 +29,7 @@ export const en: Partial<Messages> = {
   "shell.viewSoon": "Coming soon",
   "shell.addMember": "Add family member",
   "shell.loading": "Opening your archive…",
+  "tree.newName": "Family Tree {number}",
   "status.localOnly": "Saved on this device only",
   "status.example": "Example tree, view only",
   "sync.loading": "Loading",

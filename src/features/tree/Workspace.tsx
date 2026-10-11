@@ -1,6 +1,6 @@
 "use client";
 import React, { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, CircleHelp, CirclePlus, Expand, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, ListFilter, Lock, Menu, Pencil, Plus, Search, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
 import { useT } from "@/i18n";
@@ -92,7 +92,7 @@ export function Workspace() {
     setData(next);
     if (user && treeRepository && cache) void uploadNewTree(next, tree.id, user.uid, treeRepository, new LocalCacheMigrationStateStore(cache)).catch(() => undefined).finally(() => setMigrationVersion(value => value + 1));
   };
-  const createTree = () => { addTree(newTree(`Family Tree ${data.trees.length + 1}`)); setSelected(null); setSidebar(false); };
+  const createTree = () => { addTree(newTree(t("tree.newName", { number: data.trees.length + 1 }))); setSelected(null); setSidebar(false); };
   const openEditor = (intent: EditorIntent) => setEditor(intent);
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest("button")) return; drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }; e.currentTarget.setPointerCapture(e.pointerId); };
   const moveDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if (drag.current) setPan({ x: drag.current.px + e.clientX - drag.current.x, y: drag.current.py + e.clientY - drag.current.y }); };
@@ -118,7 +118,7 @@ export function Workspace() {
         <div className={styles.topActions}>
           <button className={styles.familyPlusButton} aria-label={t("shell.familyPlus")} onClick={() => setDeferred("Family+")}><CirclePlus size={20} aria-hidden="true" /><span>{t("shell.familyPlus")}</span></button>
           <button className={styles.shareButton} aria-label={t("shell.shareTree")} disabled={!activeOnlineTree || !publicationRepository} onClick={() => setPublishOpen(true)}><Share2 size={17} aria-hidden="true" /><span>{t("shell.share")}</span></button>
-          <IconButton label={t("shell.settings")} onClick={() => setSettings(true)}><SlidersHorizontal size={19} /></IconButton>
+          <IconButton label={t("shell.settings")} onClick={() => setSettings(true)}><Settings2 size={19} /></IconButton>
         </div>
       </header>
     </>}
@@ -139,10 +139,10 @@ export function Workspace() {
     {isEmpty && !readOnly && !controlsHidden && <CoachMarks />}
     {!controlsHidden && <div className={styles.rightControls} role="group" aria-label={t("shell.controls")}>
       <IconButton label={t("shell.allPeople")} onClick={() => setDirectory(true)}><Users size={19} /></IconButton>
-      <IconButton label={t("shell.branchCount")} disabled><ListFilter size={18} /></IconButton>
+      <IconButton label={t("shell.branchCount")} disabled><SlidersHorizontal size={18} /></IconButton>
       <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => Math.min(1.6, z + .12))}><ZoomIn size={18} /></IconButton>
       <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => Math.max(.45, z - .12))}><ZoomOut size={18} /></IconButton>
-      <IconButton label={t("shell.fit")} onClick={fit} disabled={isEmpty}><Expand size={18} /></IconButton>
+      <IconButton label={t("shell.fit")} onClick={fit} disabled={isEmpty}><Maximize2 size={18} /></IconButton>
     </div>}
     {!controlsHidden && <div className={styles.bottomRight} role="group" aria-label={t("shell.privacyGroup")}>
       <button className={styles.privacyChip} aria-label={t("shell.privacy", { state: t("shell.privacyProtected") })} onClick={() => setPrivacyPanel(true)}><ShieldCheck size={18} aria-hidden="true" /><span>{t("shell.privacyProtected")}</span></button>

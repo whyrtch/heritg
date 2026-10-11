@@ -96,8 +96,8 @@
 .emptyState{top:48%}
 .emptyState>p{margin:0 4px 18px}
 .emptyOptions{margin:0}
-.coachTrees{top:120px;left:12px}
-.coachShare{top:120px;right:12px}
+.coachTrees{top:120px;left:12px;width:150px}
+.coachShare{top:120px;right:12px;width:132px}
 .coachView{bottom:64px;left:58px}
 .coachControls{display:none}
 }

@@ -29,6 +29,7 @@ export const ms: Partial<Messages> = {
   "shell.viewSoon": "Akan datang",
   "shell.addMember": "Tambah ahli keluarga",
   "shell.loading": "Sedang membuka arkib anda…",
+  "tree.newName": "Salasilah Keluarga {number}",
   "status.localOnly": "Disimpan pada peranti ini sahaja",
   "status.example": "Contoh salasilah, lihat sahaja",
   "sync.loading": "Memuatkan",
