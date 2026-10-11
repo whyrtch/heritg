@@ -4,6 +4,8 @@
 
 Make this app look, read and behave like https://heritg.us across the whole product (owner decision 2026-10-11: "klon penuh"), while **keeping the existing Firebase owner login and Firestore online sync** (owner decision, same day). This supersedes the Mori & Tarum visual direction (`2026-10-11-mori-tarum-visual-redesign-design.md`). Its functional fixes (Firestore Rules compatibility, read-only example tree, direct upload of new trees, public canvas sizing) stay.
 
+> **Changed 2026-10-11 (owner):** "jangan pakai firebase, tapi buat backend saja". The Firebase/Firestore decisions in this document are superseded by `2026-10-11-own-backend-design.md` (Next.js API + PostgreSQL + own auth). The UI parity goals are unchanged.
+
 Measured reference: `docs/superpowers/specs/2026-10-11-heritg-us-reference.md`. Re-implement from those measurements; do not copy heritg.us source code or assets (logo artwork included — draw our own flower mark in the same spirit).
 
 ## What heritg.us is (summary of the reference)

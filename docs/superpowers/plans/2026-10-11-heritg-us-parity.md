@@ -4,6 +4,8 @@
 
 **Goal:** Reproduce heritg.us look, copy and behaviour on top of our Firebase owner-login + Firestore architecture.
 
+> **Changed 2026-10-11 (owner):** Firebase is being replaced by our own backend (Next.js API + PostgreSQL + own email/password auth). See `docs/superpowers/specs/2026-10-11-own-backend-design.md` and `docs/superpowers/plans/2026-10-11-own-backend.md`, which run before phases 4–7 here. Wherever this plan says Firestore, Rules or `test:rules`, read: the API, DB constraints and `test:api`. The Phase 3 photo upload moved to backend phase B5.
+
 **Spec:** `docs/superpowers/specs/2026-10-11-heritg-us-parity-design.md`
 **Measurements:** `docs/superpowers/specs/2026-10-11-heritg-us-reference.md`
 **Branch:** `feat/heritg-us-parity`, based on `feat/mori-tarum-ui` so it keeps the Firestore and example-tree fixes.

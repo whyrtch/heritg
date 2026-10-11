@@ -30,6 +30,9 @@ Next.js 15 (App Router) · React 19 · TypeScript · CSS Modules · Firebase Web
 
 ## Hard rules
 
+> **Backend change in progress (owner, 2026-10-11):** Firebase is being replaced by a Next.js API + PostgreSQL backend with our own email/password auth — spec `docs/superpowers/specs/2026-10-11-own-backend-design.md`, plan `docs/superpowers/plans/2026-10-11-own-backend.md`. Until phase B7 removes Firebase, the Firestore rules below still apply to the Firebase code; new server code follows the spec's security model (owner-scoped queries, API tests, reviewer). The owner also approved uploaded photo thumbnails (≤ 48 KB JPEG/WebP), implemented in phase B5.
+
+
 - **Security boundary is Firestore Rules.** Any change to `firestore.rules`, repositories, publishing, or auth needs matching `tests/rules/` or unit coverage and a review (see Multi-agent workflow). Never weaken owner-only writes or allow anonymous listing of `publicTrees`.
 - **No deploys.** Never run `firebase deploy` or touch production without explicit owner approval in chat.
 - **Never delete local user data** in migration/sync code paths.
