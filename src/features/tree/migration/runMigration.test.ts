@@ -3,7 +3,7 @@ import type { WorkspaceData } from "../model";
 import { InMemoryTreeRepository } from "../repository/InMemoryTreeRepository";
 import { TreeRepositoryError, type TreeRepository } from "../repository/TreeRepository";
 import { planMigration } from "./planMigration";
-import { runMigration } from "./runMigration";
+import { runMigration, uploadNewTree } from "./runMigration";
 import type { MigrationMappings, MigrationStateStore } from "./types";
 
 const source: WorkspaceData = { version: 1, activeTreeId: "local-a", trees: [{
@@ -62,5 +62,22 @@ describe("runMigration", () => {
     expect(result.completedTreeIds).not.toContain("local-a");
     expect(JSON.stringify(source)).toBe(original);
     expect(state.value.remoteIdsByLocalId["local-a"]).toBe("remote-a");
+  });
+});
+
+describe("uploadNewTree", () => {
+  it("uploads only the new tree and leaves older local trees pending", async () => {
+    const repository = new InMemoryTreeRepository();
+    const state = new MemoryState();
+    const fresh = { id: "local-new", name: "Family Tree 2", updatedAt: "2026-01-02T00:00:00.000Z", people: [], relationships: [] };
+    const workspace: WorkspaceData = { ...source, trees: [...source.trees, fresh] };
+
+    const result = await uploadNewTree(workspace, "local-new", "owner", repository, state, () => "remote-new");
+
+    expect(result.failed).toEqual([]);
+    expect((await repository.load("remote-new")).name).toBe("Family Tree 2");
+    expect(state.value.completedTreeIds).toEqual(["local-new"]);
+    const pending = planMigration(workspace, state.load(), { ownerId: "owner", idFactory: () => "x" }).items.filter(item => !item.alreadyCompleted);
+    expect(pending.map(item => item.localTreeId)).toEqual(["local-a"]);
   });
 });

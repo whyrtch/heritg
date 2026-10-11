@@ -17,7 +17,7 @@ import { ConflictDialog } from "./components/ConflictDialog";
 import { MigrationDialog } from "./components/MigrationDialog";
 import { PublishDialog } from "./components/PublishDialog";
 import { planMigration } from "./migration/planMigration";
-import { LocalCacheMigrationStateStore, runMigration } from "./migration/runMigration";
+import { LocalCacheMigrationStateStore, runMigration, uploadNewTree } from "./migration/runMigration";
 import type { MigrationProgress, MigrationRunResult } from "./migration/types";
 import { useTreeSync } from "./sync/useTreeSync";
 import { useWorkspaceData } from "./useWorkspace";
@@ -78,14 +78,20 @@ export function Workspace() {
   if (!data || !active) return <div className={styles.loading}><Brand /><span>Opening your archive…</span></div>;
 
   const setTree = (tree: FamilyTree) => { if (readOnly) return; updateActive(() => tree); syncApi.current?.mutate(tree); };
-  const createTree = () => { const tree = newTree(`Family Tree ${data.trees.length + 1}`); setData({ ...data, trees: [...data.trees, tree], activeTreeId: tree.id }); setMigrationVisible(true); setSelected(null); setSidebar(false); };
+  // Signed in: a new or imported tree goes online immediately. If that fails (e.g. offline) it stays on this device and is offered by the migration prompt next time the app opens.
+  const addTree = (tree: FamilyTree) => {
+    const next = { ...data, trees: [...data.trees, tree], activeTreeId: tree.id };
+    setData(next);
+    if (user && treeRepository && cache) void uploadNewTree(next, tree.id, user.uid, treeRepository, new LocalCacheMigrationStateStore(cache)).catch(() => undefined).finally(() => setMigrationVersion(value => value + 1));
+  };
+  const createTree = () => { addTree(newTree(`Family Tree ${data.trees.length + 1}`)); setSelected(null); setSidebar(false); };
   const openEditor = (intent: EditorIntent) => setEditor(intent);
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest("button")) return; drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }; e.currentTarget.setPointerCapture(e.pointerId); };
   const moveDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if (drag.current) setPan({ x: drag.current.px + e.clientX - drag.current.x, y: drag.current.py + e.clientY - drag.current.y }); };
   const fit = () => { setPan({ x: 0, y: active.people.length > 4 ? -40 : 0 }); setZoom(active.people.length > 8 ? .72 : active.people.length > 4 ? .86 : 1); };
   const focusPerson = (id: string) => { const node = nodes.find(n => n.id === id); if (node) { setPan({ x: -node.x * zoom, y: -node.y * zoom }); setSelected(id); setDirectory(false); } };
   const download = () => { const blob = new Blob([exportTree(active)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
-  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { const tree = importTree(await file.text()); setData({ ...data, trees: [...data.trees, tree], activeTreeId: tree.id }); setMigrationVisible(true); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
+  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { addTree(importTree(await file.text())); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
   const generations = generationCount(active);
   const summary = active.people.length === 0 ? "No one added yet" : `${active.people.length} ${active.people.length === 1 ? "person" : "people"} across ${generations} ${generations === 1 ? "generation" : "generations"}`;
 
@@ -133,7 +139,7 @@ export function Workspace() {
     {settings && <Panel title="Settings" onClose={() => setSettings(false)}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></Panel>}
     {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
     {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => ({ ...fromOnlineTree(tree), id: active.id })); setOnlineEpoch(value => value + 1); }} />}
-    {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
+    {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
   </div>;
 }
 
