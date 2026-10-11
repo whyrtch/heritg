@@ -196,7 +196,7 @@ The `·` in `lifeDatesLong` is the only middle dot left in the UI. It separates 
 
 **Files:** Modify `Workspace.tsx`, `workspace.module.css`, `src/app/page.tsx`, `src/features/auth/OwnerSession.tsx`, `src/features/auth/auth.module.css`
 
-- [ ] **Step 1: Top bar.**
+- [x] **Step 1: Top bar.**
   - Delete the `familyButton` button from `topActions`. Keep Share and Settings.
   - Replace the tree-title meta with:
 
@@ -206,7 +206,7 @@ const summary = active.people.length === 0 ? "No one added yet"
   : `${active.people.length} ${active.people.length === 1 ? "person" : "people"} across ${generations} ${generations === 1 ? "generation" : "generations"}`;
 ```
 
-- [ ] **Step 2: Control capsule.**
+- [x] **Step 2: Control capsule.**
   - In `<aside className={styles.rightControls}>`, delete the "Branch depth" `IconButton`: it has no handler, so it does nothing today.
   - Keep "All people", "Zoom in", "Zoom out", and "Fit tree".
   - Give `IconButton` an optional `quiet` flag that adds `styles.quiet` (no border, shadow, or fill), and use it for the four capsule buttons.
@@ -217,7 +217,7 @@ const summary = active.people.length === 0 ? "No one added yet"
 .iconButton{width:42px;height:42px}
 ```
 
-- [ ] **Step 3: Single privacy toggle.**
+- [x] **Step 3: Single privacy toggle.**
   - Delete the `bottomLeft` eye button. The bottom-right chip becomes the only toggle:
 
 ```tsx
@@ -226,12 +226,12 @@ const summary = active.people.length === 0 ? "No one added yet"
 
   - Remove the now-unused `Eye`, `EyeOff`, and `GitBranch` imports, but only if nothing else uses them.
   - Rename the `.protected` class to `.privacyChip` at the same time.
-- [ ] **Step 4: Status chips.** Change `Local only` to `Saved on this device only`. In `.syncStatus,.localStatus`, set `border:0; box-shadow:var(--shadow-soft); background:rgba(255,255,255,.92)`.
-- [ ] **Step 5: Mobile.** Inside `@media(max-width:767px)`:
+- [x] **Step 4: Status chips.** Change `Local only` to `Saved on this device only`. In `.syncStatus,.localStatus`, set `border:0; box-shadow:var(--shadow-soft); background:rgba(255,255,255,.92)`.
+- [x] **Step 5: Mobile.** Inside `@media(max-width:767px)`:
   - Make `.rightControls` a horizontal capsule at `right:12px; bottom:32px; top:auto; transform:none; flex-direction:row`. Change the `nth-child` hide rule so it hides only "Fit tree", because "Branch depth" no longer exists.
   - Make `.mobileAdd` 52px, `bottom:32px`, `background:var(--primary)`.
   - Delete the `.bottomLeft` and `.bottomRight` hide rules, and hide `.bottomRight` explicitly on mobile, as today.
-- [ ] **Step 6: Sidebar.**
+- [x] **Step 6: Sidebar.**
   - Pass `onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }}` into `TreeSidebar` and wire it to the `sidebarFamily` button, which currently has no `onClick`. This keeps the "coming later" explanation reachable now that the top-bar button is gone.
   - Copy changes:
     - `A PRIVATE FAMILY<br />ARCHIVE` → `Your private family archive`
@@ -239,12 +239,12 @@ const summary = active.people.length === 0 ? "No one added yet"
     - tree meta `{n} people · {date}` → `{n} {person|people}, edited {date}`
   - `.sidebarFamily`: `background:var(--primary-soft); color:var(--ink)`. The small text uses `var(--muted)` at opacity 1, and the icon uses `color:var(--primary)`.
   - Set `.sidebarHead p` to `font-size:12px; letter-spacing:0; text-transform:none`.
-- [ ] **Step 7: Sign out moves into Settings.** It is currently a fixed-position button at `right:184px` that overlaps the new top bar.
+- [x] **Step 7: Sign out moves into Settings.** It is currently a fixed-position button at `right:184px` that overlaps the new top bar.
   - Remove `<OwnerSession />` from `src/app/page.tsx`.
   - In the Settings `Panel` in `Workspace.tsx`, after the privacy row, add `<div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email}</p></div><OwnerSession /></div>`.
   - In `auth.module.css`, replace `.session`'s fixed positioning with an inline button style: `position:static; height:38px; border-radius:10px`. Remove the 700px media rule.
   - Run `npm test -- --run src/features/auth`. `RequireOwner.test.tsx` does not render `OwnerSession`, so no test update is expected.
-- [ ] **Step 8: Verify** at 1440, 768, and 390 against Figma rows 02 and 03. Then **commit** `refactor: consolidate canvas controls and move sign out into settings`.
+- [x] **Step 8: Verify** at 1440, 768, and 390 against Figma rows 02 and 03. Then **commit** `refactor: consolidate canvas controls and move sign out into settings`.
 
 ### Task 5: Person panel, editor and remaining workspace surfaces
 
