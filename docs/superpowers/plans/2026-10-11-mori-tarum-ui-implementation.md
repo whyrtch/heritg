@@ -365,7 +365,7 @@ return <main className={styles.page}>
 
 **Files:** Modify `src/features/tree/components/PublishDialog.tsx`, `MigrationDialog.tsx`, `SyncStatus.tsx`
 
-- [ ] **Step 1: PublishDialog.**
+- [x] **Step 1: PublishDialog.**
   - Remove the `UNLISTED SHARING` eyebrow `<small>`.
   - Replace the meta line with:
 
@@ -383,7 +383,7 @@ return <main className={styles.page}>
     - `dangerButtonStyle`: `border:"1px solid var(--danger)", color:"var(--danger)"`.
     - Labels and meta: `var(--muted)`.
   - Swap the close `×` for the lucide `X` icon, keeping `aria-label="Close sharing dialog"`.
-- [ ] **Step 2: MigrationDialog.**
+- [x] **Step 2: MigrationDialog.**
   - Remove the `MOVE YOUR ARCHIVE ONLINE` eyebrow.
   - Row meta: `{n} people · {m} relationships · Imported` → `{n} people, {m} relationships` when not completed, and `{n} people, {m} relationships. Already imported` when completed.
   - Tokens:
@@ -397,8 +397,8 @@ return <main className={styles.page}>
   - Keep the amber `warning` colors (warning semantics), but set the background to `var(--warning)`.
   - Add `accentColor:"var(--primary)"` to the checkboxes.
   - Leave the summary text `{personCount} people` as is, because `MigrationDialog.test.tsx` matches `"1 people"`. A pluralization fix is a separate change.
-- [ ] **Step 3: SyncStatus.** Labels are unchanged. Add a leading status dot via CSS in `workspace.module.css`: `.syncStatus :global(.syncStatus)::before`, 6px circle in `var(--green)` for saved, `var(--muted)` for saving and loading, `var(--danger)` for conflict, and `var(--soga)` for public-stale and offline.
-- [ ] **Step 4:** `npm test -- --run src/features/tree/components` passes. **Commit** `style: restyle sharing, migration and sync status`.
+- [x] **Step 3: SyncStatus.** Labels are unchanged. Add a leading status dot via CSS in `workspace.module.css`: `.syncStatus :global(.syncStatus)::before`, 6px circle in `var(--green)` for saved, `var(--muted)` for saving and loading, `var(--danger)` for conflict, and `var(--soga)` for public-stale and offline.
+- [x] **Step 4:** `npm test -- --run src/features/tree/components` passes. **Commit** `style: restyle sharing, migration and sync status`.
 
 ### Task 8: Public read-only page
 
