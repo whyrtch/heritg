@@ -8,7 +8,7 @@ import type { MigrationMappings, MigrationStateStore } from "./types";
 
 const source: WorkspaceData = { version: 1, activeTreeId: "local-a", trees: [{
   id: "local-a", name: "Local family", updatedAt: "2026-01-01T00:00:00.000Z",
-  people: [{ id: "person-a", firstName: "A", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photoUrl: "", photo: "data:image/png;base64,old" }], relationships: [],
+  people: [{ id: "person-a", name: "A", gender: "unspecified", birthDate: "", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "", photo: "data:image/png;base64,old" }], relationships: [],
 }] };
 
 class MemoryState implements MigrationStateStore {

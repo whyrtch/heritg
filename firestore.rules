@@ -9,10 +9,14 @@ service cloud.firestore {
     //   revision, schemaVersion, createdAt (immutable), updatedAt,
     //   publishedRevision
     // trees/{treeId}/members/{uid}: role, invitedAt, acceptedAt
-    // trees/{treeId}/people/{personId}: firstName, lastName, gender,
-    //   birthDate, deathDate, notes, photoUrl, sortOrder, updatedAt
-    // trees/{treeId}/relationships/{relationshipId}: type,
-    //   fromPersonId, toPersonId, updatedAt
+    // trees/{treeId}/people/{personId} (schema v2): name, gender,
+    //   birthDate, deathDate, birthOrder, residence, notes, photoUrl,
+    //   sortOrder, updatedAt
+    // trees/{treeId}/relationships/{relationshipId} (schema v2): type,
+    //   fromPersonId, toPersonId, kind, status, marriedOn, updatedAt
+    //   (parent-child carries kind; partner carries status + marriedOn)
+    // Schema v1 documents (firstName/lastName, no kind/status) stay readable
+    // but every write must be v2; the client rewrites whole documents.
     // trees/{treeId}/operations/{operationId}: status, totalWrites,
     //   completedWrites, createdAt (short-lived resumable chunk progress)
     // publicTrees/{publicId}: sourceTreeId (immutable), name, enabled,
@@ -156,17 +160,19 @@ service cloud.firestore {
 
     function isValidPerson(data) {
       return data.keys().hasAll([
-          'firstName', 'lastName', 'gender', 'birthDate', 'deathDate',
-          'notes', 'photoUrl', 'sortOrder', 'updatedAt'
+          'name', 'gender', 'birthDate', 'deathDate', 'birthOrder',
+          'residence', 'notes', 'photoUrl', 'sortOrder', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'firstName', 'lastName', 'gender', 'birthDate', 'deathDate',
-          'notes', 'photoUrl', 'sortOrder', 'updatedAt'
+          'name', 'gender', 'birthDate', 'deathDate', 'birthOrder',
+          'residence', 'notes', 'photoUrl', 'sortOrder', 'updatedAt'
         ]) &&
-        validBoundedString(data.firstName, 1, 120) &&
-        validBoundedString(data.lastName, 0, 120) &&
-        data.gender in ['female', 'male', 'nonbinary', 'unspecified'] &&
+        validBoundedString(data.name, 1, 120) &&
+        data.gender in ['female', 'male', 'unspecified'] &&
         validDate(data.birthDate) && validDate(data.deathDate) &&
+        (data.birthOrder == null ||
+          (data.birthOrder is int && data.birthOrder >= 1 && data.birthOrder <= 99)) &&
+        validBoundedString(data.residence, 0, 120) &&
         validBoundedString(data.notes, 0, 10000) &&
         validPhotoUrl(data.photoUrl) &&
         data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 1000000 &&
@@ -175,12 +181,19 @@ service cloud.firestore {
 
     function isValidRelationship(data) {
       return data.keys().hasAll([
-          'type', 'fromPersonId', 'toPersonId', 'updatedAt'
+          'type', 'fromPersonId', 'toPersonId', 'kind', 'status',
+          'marriedOn', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'type', 'fromPersonId', 'toPersonId', 'updatedAt'
+          'type', 'fromPersonId', 'toPersonId', 'kind', 'status',
+          'marriedOn', 'updatedAt'
         ]) &&
-        data.type in ['parent-child', 'partner'] &&
+        ((data.type == 'parent-child' &&
+            data.kind in ['biological', 'step', 'adoptive', 'foster', 'guardian'] &&
+            data.status == null && data.marriedOn == '') ||
+          (data.type == 'partner' && data.kind == null &&
+            data.status in ['married', 'partner', 'ex'] &&
+            validDate(data.marriedOn))) &&
         validBoundedString(data.fromPersonId, 1, 128) &&
         validBoundedString(data.toPersonId, 1, 128) &&
         data.fromPersonId != data.toPersonId &&

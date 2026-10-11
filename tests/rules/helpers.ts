@@ -44,7 +44,7 @@ export function validTree(overrides: Record<string, unknown> = {}) {
     visibility: "private",
     publicId: null,
     revision: 0,
-    schemaVersion: 1,
+    schemaVersion: 2,
     createdAt: timestamp,
     updatedAt: timestamp,
     publishedRevision: null,
@@ -54,11 +54,12 @@ export function validTree(overrides: Record<string, unknown> = {}) {
 
 export function validPerson(overrides: Record<string, unknown> = {}) {
   return {
-    firstName: "Budi",
-    lastName: "Uji",
+    name: "Budi Uji",
     gender: "male",
     birthDate: "1980-01-02",
     deathDate: "",
+    birthOrder: null,
+    residence: "",
     notes: "",
     photoUrl: "https://example.com/photo.jpg",
     sortOrder: 0,
@@ -72,6 +73,9 @@ export function validRelationship(overrides: Record<string, unknown> = {}) {
     type: "parent-child",
     fromPersonId: "person-one",
     toPersonId: "person-two",
+    kind: "biological",
+    status: null,
+    marriedOn: "",
     updatedAt: now(),
     ...overrides,
   };
@@ -101,7 +105,7 @@ export async function seedTree(
     await setDoc(doc(db, `trees/${TREE_ID}/people/person-one`), validPerson());
     await setDoc(
       doc(db, `trees/${TREE_ID}/people/person-two`),
-      validPerson({ firstName: "Ani", sortOrder: 1 }),
+      validPerson({ name: "Ani", sortOrder: 1 }),
     );
 
     if (publicId) {
@@ -109,7 +113,7 @@ export async function seedTree(
         sourceTreeId: TREE_ID,
         name: "Keluarga Uji",
         enabled,
-        schemaVersion: 1,
+        schemaVersion: 2,
         publishedRevision: 2,
         publishedAt: now(),
       });
@@ -119,7 +123,7 @@ export async function seedTree(
       );
       await setDoc(
         doc(db, `publicTrees/${publicId}/people/person-two`),
-        validPerson({ firstName: "Ani", sortOrder: 1 }),
+        validPerson({ name: "Ani", sortOrder: 1 }),
       );
       await setDoc(
         doc(db, `publicTrees/${publicId}/relationships/relationship-one`),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRelationship, connectorPath, emptyPerson, exportTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, relativesOf } from "./model";
+import { addRelationship, connectorPath, displayName, normalizePerson, normalizeRelationship, emptyPerson, exportTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, relativesOf } from "./model";
 import { createJokowiDemoTree } from "./demoData";
 
 describe("family model", () => {
@@ -12,6 +12,38 @@ describe("family model", () => {
   it("round trips exports", () => {
     const tree = { ...newTree("Oak"), people: [emptyPerson()] };
     expect(importTree(exportTree(tree)).people).toHaveLength(1);
+  });
+  it("imports v1 .heritg files and upgrades them to v2", () => {
+    const v1 = { version: 1, tree: { id: "x", name: "Lama", updatedAt: "2026-01-01T00:00:00.000Z", people: [{ id: "a", firstName: "Ani", lastName: "Sari", gender: "nonbinary", birthDate: "", deathDate: "", notes: "", photoUrl: "" }, { id: "b", firstName: "Bayu", lastName: "", gender: "male", birthDate: "", deathDate: "", notes: "", photoUrl: "" }], relationships: [{ id: "r", type: "partner", from: "a", to: "b" }] } };
+    const tree = importTree(JSON.stringify(v1));
+    expect(tree.name).toBe("Lama (Impor)");
+    expect(tree.people[0]).toMatchObject({ name: "Ani Sari", gender: "unspecified", birthOrder: null, residence: "" });
+    expect(tree.relationships[0]).toMatchObject({ kind: null, status: "married", marriedOn: "" });
+    expect(JSON.parse(exportTree(tree)).version).toBe(2);
+  });
+  it("normalizes people and relationships idempotently", () => {
+    const person = normalizePerson({ id: "p", name: "Rina", gender: "female", birthOrder: 3, residence: "Solo" });
+    expect(normalizePerson(person as unknown as Record<string, unknown>)).toEqual(person);
+    expect(normalizePerson({ id: "p", name: "X", birthOrder: 0 }).birthOrder).toBeNull();
+    expect(normalizePerson({ id: "p", name: "X", birthOrder: 2.5 }).birthOrder).toBeNull();
+    expect(normalizeRelationship({ id: "r", type: "parent-child", from: "a", to: "b", kind: "foster", status: "married", marriedOn: "2000-01-01" })).toEqual({ id: "r", type: "parent-child", from: "a", to: "b", kind: "foster", status: null, marriedOn: "" });
+    expect(normalizeRelationship({ id: "r", type: "partner", from: "a", to: "b", kind: "step", status: "ex", marriedOn: "1990-01-01" })).toEqual({ id: "r", type: "partner", from: "a", to: "b", kind: null, status: "ex", marriedOn: "1990-01-01" });
+    expect(displayName({ name: "  " })).toBe("Tanpa nama");
+  });
+  it("keeps upgraded and imported values inside the Firestore Rules limits", () => {
+    expect(normalizePerson({ id: "p", firstName: "a".repeat(100), lastName: "b".repeat(30) }).name).toHaveLength(120);
+    expect(normalizePerson({ id: "p", firstName: "   ", lastName: "" }).name).toBe("Tanpa nama");
+    expect(normalizePerson({ id: "p", name: "X", birthOrder: 150 }).birthOrder).toBeNull();
+    expect(normalizePerson({ id: "p", name: "X", residence: "r".repeat(200) }).residence).toHaveLength(120);
+    expect(normalizeRelationship({ id: "r", type: "partner", from: "a", to: "b", marriedOn: "1990" }).marriedOn).toBe("");
+    const file = { version: 2, tree: { id: "x", name: "Aneh", updatedAt: "2026-01-01T00:00:00.000Z", people: [{ id: "a", name: "A" }, { id: "b", name: "B" }], relationships: [{ id: "r", type: "sibling", from: "a", to: "b" }] } };
+    expect(() => importTree(JSON.stringify(file))).toThrow(/unknown relationship type/i);
+  });
+  it("stores relationship details by type", () => {
+    const base = { ...newTree(), people: [{ ...emptyPerson(), id: "a" }, { ...emptyPerson(), id: "b" }] };
+    expect(addRelationship(base, "parent-child", "a", "b", { kind: "step" }).relationships[0]).toMatchObject({ kind: "step", status: null, marriedOn: "" });
+    expect(addRelationship(base, "partner", "a", "b", { status: "ex", marriedOn: "1980-02-02" }).relationships[0]).toMatchObject({ kind: null, status: "ex", marriedOn: "1980-02-02" });
+    expect(addRelationship(base, "parent-child", "a", "b").relationships[0].kind).toBe("biological");
   });
   it("places children below parents", () => {
     const a = emptyPerson(), b = emptyPerson();

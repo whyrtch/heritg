@@ -1,20 +1,61 @@
-export type Gender = "female" | "male" | "nonbinary" | "unspecified";
+export type Gender = "female" | "male" | "unspecified";
 export type Person = {
-  id: string; firstName: string; lastName: string; gender: Gender;
-  birthDate: string; deathDate: string; notes: string; photoUrl: string;
+  id: string; name: string; gender: Gender;
+  birthDate: string; deathDate: string;
+  /** 1 = first child, 2 = second… null = unknown (ordering then follows birth dates). */
+  birthOrder: number | null;
+  residence: string; notes: string; photoUrl: string;
   /** @deprecated Legacy MVP data-URL field. Kept readable until migration completes. */
   photo?: string;
 };
-export type Relationship = { id: string; type: "parent-child" | "partner"; from: string; to: string };
+export type ParentKind = "biological" | "step" | "adoptive" | "foster" | "guardian";
+export type PartnerStatus = "married" | "partner" | "ex";
+/** parent-child uses `kind` (status null, marriedOn ""); partner uses `status` + `marriedOn` (kind null). */
+export type Relationship = { id: string; type: "parent-child" | "partner"; from: string; to: string; kind: ParentKind | null; status: PartnerStatus | null; marriedOn: string };
 export type FamilyTree = { id: string; name: string; people: Person[]; relationships: Relationship[]; updatedAt: string };
 export type WorkspaceData = { version: 1; activeTreeId: string; trees: FamilyTree[] };
 
+export const PARENT_KINDS: readonly ParentKind[] = ["biological", "step", "adoptive", "foster", "guardian"];
+export const PARTNER_STATUSES: readonly PartnerStatus[] = ["married", "partner", "ex"];
+
 export const uid = () => crypto.randomUUID();
-export const emptyPerson = (): Person => ({ id: uid(), firstName: "", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photoUrl: "", photo: "" });
+export const emptyPerson = (): Person => ({ id: uid(), name: "", gender: "unspecified", birthDate: "", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "", photo: "" });
 export const newTree = (name = "Silsilah Keluarga Saya"): FamilyTree => ({ id: uid(), name, people: [], relationships: [], updatedAt: new Date().toISOString() });
 export const initialData = (): WorkspaceData => { const tree = newTree(); return { version: 1, activeTreeId: tree.id, trees: [tree] }; };
 
-export function displayName(person: Person) { return `${person.firstName} ${person.lastName}`.trim() || "Unnamed person"; }
+export const UNNAMED = "Tanpa nama";
+export function displayName(person: Pick<Person, "name">) { return person.name.trim() || UNNAMED; }
+/** Limits shared with firestore.rules (isValidPerson / isValidRelationship). */
+export const NAME_MAX = 120, RESIDENCE_MAX = 120, BIRTH_ORDER_MAX = 99;
+const ISO_DATE = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
+
+// ---- Schema v1 → v2 upgrade (pure; safe to run on data that is already v2) ----
+const str = (value: unknown) => (typeof value === "string" ? value : "");
+/** Accepts a v1 person (firstName/lastName, nonbinary gender) or a v2 person and returns a v2 person. */
+export function normalizePerson(raw: Record<string, unknown>): Person {
+  // v1 allowed 120 + 120 characters; the joined v2 name must stay within the Rules limit and never be empty.
+  const name = (typeof raw.name === "string" ? raw.name : `${str(raw.firstName)} ${str(raw.lastName)}`).trim().slice(0, NAME_MAX).trim() || UNNAMED;
+  const gender: Gender = raw.gender === "male" || raw.gender === "female" ? raw.gender : "unspecified";
+  const birthOrder = Number.isSafeInteger(raw.birthOrder) && (raw.birthOrder as number) >= 1 && (raw.birthOrder as number) <= BIRTH_ORDER_MAX ? raw.birthOrder as number : null;
+  return { id: str(raw.id), name, gender, birthDate: str(raw.birthDate), deathDate: str(raw.deathDate), birthOrder, residence: str(raw.residence).slice(0, RESIDENCE_MAX), notes: str(raw.notes), photoUrl: str(raw.photoUrl), photo: str(raw.photo) };
+}
+/** Accepts a v1 relationship ({id,type,from,to}) or a v2 one and fills the v2 defaults (biological / married). */
+export function normalizeRelationship(raw: Record<string, unknown>): Relationship {
+  const type = raw.type === "partner" ? "partner" : "parent-child";
+  if (type === "partner") {
+    const status = PARTNER_STATUSES.includes(raw.status as PartnerStatus) ? raw.status as PartnerStatus : "married";
+    const marriedOn = ISO_DATE.test(str(raw.marriedOn)) ? str(raw.marriedOn) : "";
+    return { id: str(raw.id), type, from: str(raw.from), to: str(raw.to), kind: null, status, marriedOn };
+  }
+  const kind = PARENT_KINDS.includes(raw.kind as ParentKind) ? raw.kind as ParentKind : "biological";
+  return { id: str(raw.id), type, from: str(raw.from), to: str(raw.to), kind, status: null, marriedOn: "" };
+}
+export function normalizeTree(tree: FamilyTree): FamilyTree {
+  return { ...tree, people: tree.people.map(person => normalizePerson(person as unknown as Record<string, unknown>)), relationships: tree.relationships.map(relationship => normalizeRelationship(relationship as unknown as Record<string, unknown>)) };
+}
+export function normalizeWorkspace(workspace: WorkspaceData): WorkspaceData {
+  return { ...workspace, trees: workspace.trees.map(normalizeTree) };
+}
 
 const year = (iso: string) => iso.slice(0, 4);
 export function lifespanLabel(person: Person): string {
@@ -39,34 +80,39 @@ function ancestors(tree: FamilyTree, id: string, seen = new Set<string>()): Set<
   return seen;
 }
 
-export function addRelationship(tree: FamilyTree, type: Relationship["type"], from: string, to: string): FamilyTree {
+export type RelationshipDetails = { kind?: ParentKind; status?: PartnerStatus; marriedOn?: string };
+export function makeRelationship(type: Relationship["type"], from: string, to: string, details: RelationshipDetails = {}): Relationship {
+  return type === "partner"
+    ? { id: uid(), type, from, to, kind: null, status: details.status ?? "married", marriedOn: details.marriedOn ?? "" }
+    : { id: uid(), type, from, to, kind: details.kind ?? "biological", status: null, marriedOn: "" };
+}
+
+export function addRelationship(tree: FamilyTree, type: Relationship["type"], from: string, to: string, details: RelationshipDetails = {}): FamilyTree {
   if (from === to) throw new Error("A person cannot be related to themselves.");
   const duplicate = tree.relationships.some(r => r.type === type && ((r.from === from && r.to === to) || (type === "partner" && r.from === to && r.to === from)));
   if (duplicate) throw new Error("This relationship already exists.");
   if (type === "parent-child" && ancestors(tree, from).has(to)) throw new Error("This relationship would create a family cycle.");
-  return { ...tree, relationships: [...tree.relationships, { id: uid(), type, from, to }], updatedAt: new Date().toISOString() };
+  return { ...tree, relationships: [...tree.relationships, makeRelationship(type, from, to, details)], updatedAt: new Date().toISOString() };
 }
 
 export function removePerson(tree: FamilyTree, id: string): FamilyTree {
   return { ...tree, people: tree.people.filter(p => p.id !== id), relationships: tree.relationships.filter(r => r.from !== id && r.to !== id), updatedAt: new Date().toISOString() };
 }
 
-export function exportTree(tree: FamilyTree) { return JSON.stringify({ version: 1, tree }, null, 2); }
+export function exportTree(tree: FamilyTree) { return JSON.stringify({ version: 2, tree }, null, 2); }
 export function importTree(raw: string): FamilyTree {
   const value: unknown = JSON.parse(raw);
   if (!value || typeof value !== "object" || !("version" in value) || !("tree" in value)) throw new Error("Not a valid .heritg file.");
   const envelope = value as { version: unknown; tree: unknown };
-  if (envelope.version !== 1 || !envelope.tree || typeof envelope.tree !== "object") throw new Error("Unsupported .heritg file version.");
+  if ((envelope.version !== 1 && envelope.version !== 2) || !envelope.tree || typeof envelope.tree !== "object") throw new Error("Unsupported .heritg file version.");
   const tree = envelope.tree as Partial<FamilyTree>;
   if (typeof tree.id !== "string" || typeof tree.name !== "string" || !Array.isArray(tree.people) || !Array.isArray(tree.relationships)) throw new Error("The family tree file is incomplete.");
   const ids = new Set(tree.people.map(p => p?.id));
   if (ids.size !== tree.people.length || tree.relationships.some(r => !r || !ids.has(r.from) || !ids.has(r.to))) throw new Error("The family tree contains broken relationships.");
-  const people = tree.people.map(person => ({
-    ...person,
-    photoUrl: typeof person.photoUrl === "string" ? person.photoUrl : "",
-    photo: typeof person.photo === "string" ? person.photo : "",
-  }));
-  return { ...tree, people, id: uid(), name: `${tree.name} (Imported)`, updatedAt: new Date().toISOString() } as FamilyTree;
+  if (tree.relationships.some(r => r.type !== "parent-child" && r.type !== "partner")) throw new Error("The family tree contains an unknown relationship type.");
+  const people = tree.people.map(person => normalizePerson(person as unknown as Record<string, unknown>));
+  const relationships = tree.relationships.map(relationship => normalizeRelationship(relationship as unknown as Record<string, unknown>));
+  return { id: uid(), name: `${tree.name} (Impor)`, people, relationships, updatedAt: new Date().toISOString() };
 }
 
 export type NodeLayout = { id: string; x: number; y: number };

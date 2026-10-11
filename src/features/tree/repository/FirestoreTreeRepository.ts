@@ -65,11 +65,12 @@ function newTreeMetadata(tree: OnlineTree) {
 
 function personDocument(person: OnlineTree["people"][number]) {
   return {
-    firstName: person.firstName,
-    lastName: person.lastName,
+    name: person.name,
     gender: person.gender,
     birthDate: person.birthDate,
     deathDate: person.deathDate,
+    birthOrder: person.birthOrder,
+    residence: person.residence,
     notes: person.notes,
     photoUrl: person.photoUrl,
     sortOrder: person.sortOrder,
@@ -82,6 +83,9 @@ function relationshipDocument(relationship: OnlineTree["relationships"][number])
     type: relationship.type,
     fromPersonId: relationship.fromPersonId,
     toPersonId: relationship.toPersonId,
+    kind: relationship.kind,
+    status: relationship.status,
+    marriedOn: relationship.marriedOn,
     updatedAt: serverTimestamp(),
   };
 }

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { planMigration } from "../migration/planMigration";
 import { MigrationDialog } from "./MigrationDialog";
 
-const plan = planMigration({ version: 1, activeTreeId: "tree", trees: [{ id: "tree", name: "My family", updatedAt: "2026-01-01T00:00:00.000Z", people: [{ id: "person", firstName: "A", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photoUrl: "", photo: "data:image/png;base64,a" }], relationships: [] }] }, { remoteIdsByLocalId: {}, completedTreeIds: [] }, { ownerId: "owner", idFactory: () => "remote" });
+const plan = planMigration({ version: 1, activeTreeId: "tree", trees: [{ id: "tree", name: "My family", updatedAt: "2026-01-01T00:00:00.000Z", people: [{ id: "person", name: "A", gender: "unspecified", birthDate: "", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "", photo: "data:image/png;base64,a" }], relationships: [] }] }, { remoteIdsByLocalId: {}, completedTreeIds: [] }, { ownerId: "owner", idFactory: () => "remote" });
 
 describe("MigrationDialog", () => {
   afterEach(cleanup);

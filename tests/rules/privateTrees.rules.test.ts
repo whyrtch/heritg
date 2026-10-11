@@ -75,11 +75,12 @@ describe("private tree rules", () => {
     const attackerDb = attackerContext(env).firestore();
     await assertFails(getDoc(doc(attackerDb, `trees/${TREE_ID}`)));
     await assertFails(setDoc(doc(attackerDb, `trees/${TREE_ID}/people/injected`), {
-      firstName: "Evil",
-      lastName: "Editor",
+      name: "Evil Editor",
       gender: "unspecified",
       birthDate: "",
       deathDate: "",
+      birthOrder: null,
+      residence: "",
       notes: "",
       photoUrl: "",
       sortOrder: 2,

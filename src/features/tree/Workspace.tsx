@@ -1,7 +1,7 @@
 "use client";
 import React, { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
-import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
+import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, lifeDatesLong, lifespanLabel, NAME_MAX, newTree, Person, RESIDENCE_MAX, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
 import { useT } from "@/i18n";
 import { FlowerMark } from "./components/BrandMark";
@@ -253,19 +253,20 @@ function PhotoUrlPreview({ person }: { person: Person }) {
   const [failed, setFailed] = useState(false);
   const url = person.photoUrl.trim();
   useEffect(() => setFailed(false), [url]);
-  const initials = `${person.firstName.charAt(0)}${person.lastName.charAt(0)}`.toUpperCase() || "?";
+  const initials = person.name.trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase() || "?";
   return <div className={styles.photoPreview} aria-label="Photo preview">{url && !failed ? <img src={url} alt="Photo preview" onError={() => setFailed(true)} /> : <span>{initials}</span>}</div>;
 }
 
 function PersonEditor({ intent, onClose, onSave }: { intent: EditorIntent; onClose: () => void; onSave: (person: Person) => void }) {
+  const t = useT();
   const [person, setPerson] = useState<Person>(intent.person ? { ...intent.person } : emptyPerson());
   const [photoError, setPhotoError] = useState("");
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!person.firstName.trim()) return;
+    if (!person.name.trim()) return;
     const validation = validatePhotoUrl(person.photoUrl);
     if (!validation.ok) { setPhotoError(validation.error); return; }
-    onSave({ ...person, firstName: person.firstName.trim(), lastName: person.lastName.trim(), photoUrl: person.photoUrl.trim() });
+    onSave({ ...person, name: person.name.trim(), residence: person.residence.trim(), photoUrl: person.photoUrl.trim() });
   };
   const updatePhotoUrl = (value: string) => {
     setPerson(current => ({ ...current, photoUrl: value }));
@@ -274,7 +275,7 @@ function PersonEditor({ intent, onClose, onSave }: { intent: EditorIntent; onClo
   };
   return <Modal title={intent.mode === "edit" ? "Edit family member" : "Add family member"} onClose={onClose}><form className={styles.form} onSubmit={submit}>
     <div className={styles.photoUrlRow}><PhotoUrlPreview person={person} /><label>Photo link (optional)<div className={styles.photoInputRow}><input type="url" inputMode="url" placeholder="https://example.com/photo.jpg" aria-invalid={Boolean(photoError)} aria-describedby={photoError ? "photo-url-error" : "photo-url-help"} value={person.photoUrl} onChange={e => updatePhotoUrl(e.target.value)} /><button type="button" disabled={!person.photoUrl} onClick={() => updatePhotoUrl("")}>Remove</button></div><small id="photo-url-help">Use a direct HTTPS image link.</small>{photoError && <small id="photo-url-error" className={styles.fieldError} role="alert">{photoError}</small>}</label></div>
-    <div className={styles.twoCols}><label>First name<input autoFocus required value={person.firstName} onChange={e => setPerson({ ...person, firstName: e.target.value })} /></label><label>Last name<input value={person.lastName} onChange={e => setPerson({ ...person, lastName: e.target.value })} /></label></div><label>Gender<select value={person.gender} onChange={e => setPerson({ ...person, gender: e.target.value as Person["gender"] })}><option value="unspecified">Prefer not to say</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Non-binary</option></select></label><div className={styles.twoCols}><label>Born<input type="date" value={person.birthDate} onChange={e => setPerson({ ...person, birthDate: e.target.value })} /></label><label>Died<input type="date" value={person.deathDate} onChange={e => setPerson({ ...person, deathDate: e.target.value })} /></label></div><label>Notes<textarea rows={3} value={person.notes} onChange={e => setPerson({ ...person, notes: e.target.value })} /></label><div className={styles.formActions}><button type="button" onClick={onClose}>Cancel</button><button className={styles.primary} type="submit">Save person</button></div>
+    <label>{t("form.name")}<input autoFocus required maxLength={NAME_MAX} value={person.name} onChange={e => setPerson({ ...person, name: e.target.value })} /></label><div className={styles.twoCols}><label>{t("form.gender")}<select value={person.gender} onChange={e => setPerson({ ...person, gender: e.target.value as Person["gender"] })}><option value="unspecified">{t("gender.unspecified")}</option><option value="female">{t("gender.female")}</option><option value="male">{t("gender.male")}</option></select></label><label>{t("form.residence")}<input maxLength={RESIDENCE_MAX} value={person.residence} onChange={e => setPerson({ ...person, residence: e.target.value })} /></label></div><div className={styles.twoCols}><label>{t("form.birthDate")}<input type="date" value={person.birthDate} onChange={e => setPerson({ ...person, birthDate: e.target.value })} /></label><label>{t("form.deathDate")}<input type="date" value={person.deathDate} onChange={e => setPerson({ ...person, deathDate: e.target.value })} /></label></div><label>{t("form.birthOrder")}<input type="number" min={1} max={99} inputMode="numeric" value={person.birthOrder ?? ""} onChange={e => setPerson({ ...person, birthOrder: e.target.value ? Math.max(1, Math.min(99, Math.round(Number(e.target.value)))) : null })} /><small>{t("form.birthOrderHint")}</small></label><label>{t("form.notes")}<textarea rows={3} maxLength={10000} value={person.notes} onChange={e => setPerson({ ...person, notes: e.target.value })} /></label><div className={styles.formActions}><button type="button" onClick={onClose}>Cancel</button><button className={styles.primary} type="submit">Save person</button></div>
   </form></Modal>;
 }
 

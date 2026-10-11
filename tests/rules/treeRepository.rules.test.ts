@@ -10,9 +10,9 @@ import { ATTACKER_UID, OWNER_UID, attackerContext, createRulesEnvironment, owner
 let env: RulesTestEnvironment;
 
 const newTree = (id: string): OnlineTree => ({
-  id, ownerId: OWNER_UID, name: "Family Tree 2", visibility: "private", publicId: null, revision: 0, schemaVersion: 1,
+  id, ownerId: OWNER_UID, name: "Family Tree 2", visibility: "private", publicId: null, revision: 0, schemaVersion: 2,
   createdAt: "2026-10-11T00:00:00.000Z", updatedAt: "2026-10-11T00:00:00.000Z", publishedRevision: null,
-  people: [{ id: "cimi", firstName: "Cimi", lastName: "Ningsih", gender: "female", birthDate: "2018-09-10", deathDate: "", notes: "", photoUrl: "", sortOrder: 0, updatedAt: "2026-10-11T00:00:00.000Z" }],
+  people: [{ id: "cimi", name: "Cimi Ningsih", gender: "female", birthDate: "2018-09-10", deathDate: "", birthOrder: 1, residence: "Jakarta", notes: "", photoUrl: "", sortOrder: 0, updatedAt: "2026-10-11T00:00:00.000Z" }],
   relationships: [],
 });
 
@@ -25,18 +25,18 @@ describe("FirestoreTreeRepository against the Rules", () => {
     const repository = new FirestoreTreeRepository(ownerContext(env).firestore() as unknown as Firestore);
     const created = await repository.create(newTree("fresh-tree"));
     expect(created.id).toBe("fresh-tree");
-    expect(created.people.map(person => person.firstName)).toEqual(["Cimi"]);
+    expect(created.people.map(person => person.name)).toEqual(["Cimi Ningsih"]);
   });
 
   it("saves an edit that adds a child, then reloads it from Firestore", async () => {
     const repository = new FirestoreTreeRepository(ownerContext(env).firestore() as unknown as Firestore);
     const created = await repository.create(newTree("edited-tree"));
-    const child = { ...created.people[0], id: "thomas", firstName: "Thomas", lastName: "The cat", birthDate: "" };
-    const edited: OnlineTree = { ...created, people: [...created.people, child], relationships: [{ id: "cimi-thomas", type: "parent-child", fromPersonId: "cimi", toPersonId: "thomas", updatedAt: created.updatedAt }] };
+    const child = { ...created.people[0], id: "thomas", name: "Thomas The cat", birthDate: "", birthOrder: null };
+    const edited: OnlineTree = { ...created, people: [...created.people, child], relationships: [{ id: "cimi-thomas", type: "parent-child", fromPersonId: "cimi", toPersonId: "thomas", kind: "adoptive", status: null, marriedOn: "", updatedAt: created.updatedAt }] };
     const saved = await repository.save(edited, created.revision);
     expect(saved.revision).toBe(created.revision + 1);
     const reloaded = await repository.load("edited-tree");
-    expect(reloaded.people.map(person => person.firstName).sort()).toEqual(["Cimi", "Thomas"]);
+    expect(reloaded.people.map(person => person.name).sort()).toEqual(["Cimi Ningsih", "Thomas The cat"]);
     expect(reloaded.relationships).toHaveLength(1);
     expect(reloaded.createdAt).toBe(created.createdAt);
   });
@@ -70,7 +70,7 @@ describe("FirestoreTreeRepository edge cases against the Rules", () => {
   it("creates a large tree through the chunked operations path", async () => {
     const repository = new FirestoreTreeRepository(ownerContext(env).firestore() as unknown as Firestore);
     const base = newTree("large-tree");
-    const people = Array.from({ length: 460 }, (_, index) => ({ ...base.people[0], id: `person-${index}`, firstName: `Person ${index}`, sortOrder: index }));
+    const people = Array.from({ length: 460 }, (_, index) => ({ ...base.people[0], id: `person-${index}`, name: `Person ${index}`, sortOrder: index }));
     const created = await repository.create({ ...base, people });
     expect(created.people).toHaveLength(460);
   }, 60_000);

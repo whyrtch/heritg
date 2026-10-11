@@ -4,9 +4,9 @@ import { planMigration } from "./planMigration";
 
 const workspace: WorkspaceData = { version: 1, activeTreeId: "tree-a", trees: [
   { id: "tree-a", name: "Family A", updatedAt: "2026-01-01T00:00:00.000Z", people: [
-    { id: "person-a", firstName: "A", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photoUrl: "", photo: "data:image/png;base64,abc" },
-    { id: "person-b", firstName: "B", lastName: "", gender: "unspecified", birthDate: "", deathDate: "", notes: "", photoUrl: "https://example.test/b.jpg" },
-  ], relationships: [{ id: "rel-a", type: "parent-child", from: "person-a", to: "person-b" }] },
+    { id: "person-a", name: "A", gender: "unspecified", birthDate: "", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "", photo: "data:image/png;base64,abc" },
+    { id: "person-b", name: "B", gender: "unspecified", birthDate: "", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "https://example.test/b.jpg" },
+  ], relationships: [{ id: "rel-a", type: "parent-child", from: "person-a", to: "person-b", kind: "biological", status: null, marriedOn: "" }] },
   { id: "tree-b", name: "Family B", updatedAt: "2026-01-02T00:00:00.000Z", people: [], relationships: [] },
 ] };
 

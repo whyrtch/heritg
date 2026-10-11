@@ -14,7 +14,7 @@ const snapshot: PublicTreeSnapshot = {
     id: "public_identifier_123456",
     name: "Keluarga Uji",
     updatedAt: "2026-01-01T00:00:00.000Z",
-    people: [{ id: "one", firstName: "Budi", lastName: "Uji", gender: "male", birthDate: "1980-01-01", deathDate: "", notes: "A note", photoUrl: "" }],
+    people: [{ id: "one", name: "Budi Uji", gender: "male", birthDate: "1980-01-01", deathDate: "", birthOrder: null, residence: "", notes: "A note", photoUrl: "" }],
     relationships: [],
   },
 };
@@ -28,10 +28,10 @@ describe("PublicTree", () => {
   });
 
   it("sizes the stage to the whole tree so no generation is cropped", async () => {
-    const people = ["a", "b", "c"].map(id => ({ ...snapshot.tree.people[0], id, firstName: id.toUpperCase() }));
+    const people = ["a", "b", "c"].map(id => ({ ...snapshot.tree.people[0], id, name: `${id.toUpperCase()} Uji` }));
     const tree = { ...snapshot.tree, people, relationships: [
-      { id: "ab", type: "partner" as const, from: "a", to: "b" },
-      { id: "ac", type: "parent-child" as const, from: "a", to: "c" },
+      { id: "ab", type: "partner" as const, from: "a", to: "b", kind: null, status: "married" as const, marriedOn: "" },
+      { id: "ac", type: "parent-child" as const, from: "a", to: "c", kind: "biological" as const, status: null, marriedOn: "" },
     ] };
     const { container } = render(<PublicTree publicId={snapshot.publicId} loader={vi.fn(async () => ({ ...snapshot, tree }))} />);
     await screen.findByText("C Uji");
