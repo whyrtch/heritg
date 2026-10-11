@@ -111,20 +111,33 @@ describe("Workspace shell (heritg.us parity)", () => {
     expect(screen.getByRole("button", { name: "Setelan" })).toBeInTheDocument();
   });
 
-  it("shows edit and add dots for the selected person in an editable tree", async () => {
+  it("starts a tree, adds a relative with the wizard and edits a profile", async () => {
     await openEmptyTree();
     fireEvent.click(screen.getByRole("button", { name: /Tambah anggota keluarga/ }));
-    fireEvent.change(screen.getByLabelText("Nama"), { target: { value: "Sari Dewi" } });
-    fireEvent.change(screen.getByLabelText("Gender"), { target: { value: "female" } });
-    fireEvent.submit(screen.getByLabelText("Nama").closest("form")!);
-    expect(node("Sari Dewi")).toHaveAttribute("aria-label", "Sari Dewi, Perempuan");
-    expect(node("Sari Dewi")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Tampilan pohon: Fokus keluarga · Sari Dewi" })).toBeInTheDocument();
-    // A single person has nobody to be related to yet, so no relation label is drawn.
+    fireEvent.change(screen.getByRole("textbox", { name: "Nama" }), { target: { value: "Budi Santoso" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tambah orang" }));
+    expect(node("Budi Santoso")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Tampilan pohon: Fokus keluarga · Budi Santoso" })).toBeInTheDocument();
     expect(screen.queryByText("Orang terpilih")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit profil Sari Dewi" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Tambah kerabatnya Sari Dewi" }));
-    expect(screen.getByText("Add a relative")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tambah kerabatnya Budi Santoso" }));
+    fireEvent.click(screen.getByRole("button", { name: /Bikin orang baru/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Istri" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Nama" }), { target: { value: "Sari Wulandari" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tambah anggota keluarga" }));
+    // Like heritg.us the person you started from stays selected, and the new wife is labelled.
+    expect(node("Budi Santoso")).toHaveAttribute("aria-pressed", "true");
+    expect(node("Sari Wulandari")).toHaveAttribute("aria-label", "Sari Wulandari, Perempuan");
+    expect(screen.getByText("Orang terpilih")).toBeInTheDocument();
+    expect(screen.getByText("Istri")).toBeInTheDocument();
+    expect(screen.getByText("2 orang · 1 hubungan")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit profil Budi Santoso" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Gender" }), { target: { value: "male" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
+    expect(node("Budi Santoso")).toHaveAttribute("aria-label", "Budi Santoso, Laki-laki");
+    fireEvent.click(node("Sari Wulandari"));
+    expect(screen.getByText("Suami")).toBeInTheDocument();
   });
 
   it("does not show coach marks once the tree has people", async () => {

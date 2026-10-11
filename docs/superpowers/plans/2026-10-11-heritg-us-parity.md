@@ -99,22 +99,26 @@
 
 **Files:** new `src/features/tree/dialogs/{Dialog.tsx,StartDialog.tsx,AddRelativeWizard.tsx,EditProfileDialog.tsx,DiscardConfirm.tsx,DatePicker.tsx,PhotoPicker.tsx}`
 
-- [ ] **Shared dialog shell.** 620 / 780 widths, radius 22, header and footer bars, scroll body, and focus trap.
-- [ ] **"Batal simpan?" confirmation** whenever a dirty form is closed.
-- [ ] **StartDialog ("Mulai bikin silsilah").** Photo card, Nama, and a collapsible "Tambah info (opsional)" with Tanggal lahir, Anak ke-berapa, Tanggal wafat and Domisili.
-- [ ] **AddRelativeWizard:**
+- [x] **Shared dialog shell.** 620 / 780 widths, radius 22, header and footer bars, scroll body, and focus trap.
+- [x] **"Batal simpan?" confirmation** whenever a dirty form is closed.
+- [x] **StartDialog ("Mulai bikin silsilah").** Photo card, Nama, and a collapsible "Tambah info (opsional)" with Tanggal lahir, Anak ke-berapa, Tanggal wafat and Domisili.
+- [x] **AddRelativeWizard:**
   - stepper;
   - step 1: new or link existing, the latter disabled with a hint when nobody else exists;
   - step 2: grouped statuses, with the remaining groups measured on heritg.us;
   - step 3: profile, with Tanggal nikah for spouses and the avatar tinted by implied gender;
   - submit label "Tambah anggota keluarga".
-- [ ] **EditProfileDialog:**
+  - _Measured: exactly four status groups (24 statuses). Step 3 adds "Orang tua bersama (opsional)" for child statuses. Connecting an existing person picks the person in step 3._
+- [x] **EditProfileDialog:**
   - Biodata lengkap and Catatan tambahan;
   - a Keluarga list with edit-marriage-date, edit-relationship and remove actions;
   - "Sambungin anggota keluarga";
   - save and delete person.
-- [ ] **DatePicker** matching the heritg.us button-style picker (measure first).
+  - _Includes the "Edit status hubungan" dialog. Family changes are staged until Simpan, as on heritg.us._
+- [x] **DatePicker** matching the heritg.us button-style picker (measure first).
+  - _Measured: 352 px popover centred in the viewport, month/year selects, Monday first, "Hapus tanggal" / "Hari ini"._
 - [ ] **PhotoPicker.** Upload with client-side resize and compression; store inline thumbnails per the spec, with the matching Rules.
+  - _Blocked on an owner decision: AGENTS.md says "Photos are HTTPS URLs only; no uploads". For now "Pilih foto" opens an HTTPS link field._
 
 ## Phase 4 — Panels
 

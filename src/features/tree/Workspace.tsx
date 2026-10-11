@@ -1,15 +1,18 @@
 "use client";
-import React, { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { ChangeEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Network, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
-import { addRelationship, displayName, emptyPerson, exportTree, FamilyTree, importTree, lifeDatesLong, NAME_MAX, newTree, Person, RESIDENCE_MAX, relativesOf, type Relatives, removePerson } from "./model";
+import { displayName, exportTree, FamilyTree, importTree, lifeDatesLong, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
 import { useT } from "@/i18n";
 import { FlowerMark } from "./components/BrandMark";
 import { CoachMarks } from "./components/CoachMarks";
-import { validatePhotoUrl } from "./domain/photoUrl";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
 import { TreeCanvas } from "./canvas/TreeCanvas";
+import { StartDialog } from "./dialogs/StartDialog";
+import { AddRelativeWizard } from "./dialogs/AddRelativeWizard";
+import { EditProfileDialog } from "./dialogs/EditProfileDialog";
+import { addRelative } from "./domain/relativeActions";
 import { layoutFull } from "./canvas/layoutFull";
 import { DEFAULT_FOCUS, layoutFocus, type FocusOptions } from "./canvas/layoutFocus";
 import { kinshipLabels } from "./canvas/kinship";
@@ -30,7 +33,6 @@ import { useTreeSync } from "./sync/useTreeSync";
 import { useWorkspaceData } from "./useWorkspace";
 import styles from "./workspace.module.css";
 
-type EditorIntent = { mode: "create" | "edit"; person?: Person; relation?: "parent-child" | "partner"; anchorId?: string; reverse?: boolean };
 const IconButton = ({ label, children, onClick, disabled, quiet, className = "" }: { label: string; children: React.ReactNode; onClick?: () => void; disabled?: boolean; quiet?: boolean; className?: string }) => <button className={`${styles.iconButton} ${quiet ? styles.quiet : ""} ${className}`} aria-label={label} title={label} onClick={onClick} disabled={disabled}>{children}</button>;
 
 const MIN_ZOOM = .3, MAX_ZOOM = 1.8;
@@ -55,7 +57,9 @@ export function Workspace() {
   const [migrationResult, setMigrationResult] = useState<MigrationRunResult | null>(null);
   const [migrationVersion, setMigrationVersion] = useState(0);
   const [sidebar, setSidebar] = useState(false);
-  const [editor, setEditor] = useState<EditorIntent | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [wizardFor, setWizardFor] = useState<string | null>(null);
+  const [editFor, setEditFor] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [directory, setDirectory] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -132,7 +136,6 @@ export function Workspace() {
     if (user && treeRepository && cache) void uploadNewTree(next, tree.id, user.uid, treeRepository, new LocalCacheMigrationStateStore(cache)).catch(() => undefined).finally(() => setMigrationVersion(value => value + 1));
   };
   const createTree = () => { addTree(newTree(t("tree.newName", { number: data.trees.length + 1 }))); setSelected(null); setPanelFor(null); setFocusRoot(null); setSidebar(false); };
-  const openEditor = (intent: EditorIntent) => setEditor(intent);
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest("button")) return; drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }; e.currentTarget.setPointerCapture(e.pointerId); };
   const moveDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if (drag.current) setPan({ x: drag.current.px + e.clientX - drag.current.x, y: drag.current.py + e.clientY - drag.current.y }); };
   const centreOf = (id: string) => { const node = nodes.find(n => n.id === id); if (!node || !layout) return null; return { x: -(node.x - (layout.bounds.minX + layout.bounds.maxX) / 2) * zoom, y: -(node.y - (layout.bounds.minY + layout.bounds.maxY) / 2) * zoom }; };
@@ -172,9 +175,9 @@ export function Workspace() {
     </>}
 
     <div ref={canvasRef} className={styles.canvas} role="region" aria-label={t("canvas.label", { name: active.name })} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null}>
-      {isEmpty || !layout ? <EmptyState onAdd={() => openEditor({ mode: "create" })} onImport={() => importRef.current?.click()} onGuide={() => setHelp(true)} /> :
+      {isEmpty || !layout ? <EmptyState onAdd={() => setStarting(true)} onImport={() => importRef.current?.click()} onGuide={() => setHelp(true)} /> :
         <div className={styles.stage} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
-          <TreeCanvas tree={active} layout={layout} labels={labels} selectedId={selected} actions={!readOnly} genderLabel={gender => t(`gender.${gender}`)} editLabel={name => t("canvas.edit", { name })} addLabel={name => t("canvas.add", { name })} onSelect={selectPerson} onEdit={id => { const person = active.people.find(p => p.id === id); if (person) openEditor({ mode: "edit", person }); }} onAdd={id => setPanelFor(id)} style={{ position: "absolute", left: -(layout.bounds.maxX - layout.bounds.minX) / 2, top: -(layout.bounds.maxY - layout.bounds.minY) / 2 }} />
+          <TreeCanvas tree={active} layout={layout} labels={labels} selectedId={selected} actions={!readOnly} genderLabel={gender => t(`gender.${gender}`)} editLabel={name => t("canvas.edit", { name })} addLabel={name => t("canvas.add", { name })} onSelect={selectPerson} onEdit={setEditFor} onAdd={setWizardFor} style={{ position: "absolute", left: -(layout.bounds.maxX - layout.bounds.minX) / 2, top: -(layout.bounds.maxY - layout.bounds.minY) / 2 }} />
         </div>}
     </div>
 
@@ -226,9 +229,10 @@ export function Workspace() {
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
     {sidebar && <TreeSidebar data={data} onClose={() => setSidebar(false)} onSelect={id => { setData({ ...data, activeTreeId: id }); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); }} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} />}
-    {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => openEditor({ mode: "edit", person: panelPerson })} onAdd={(relation, reverse) => openEditor({ mode: "create", relation, anchorId: panelPerson.id, reverse })} onDelete={() => { if (confirm(`Delete ${displayName(panelPerson)}?`)) { setTree(removePerson(active, panelPerson.id)); setSelected(null); setPanelFor(null); } }} />}
-    {editor && <PersonEditor intent={editor} onClose={() => setEditor(null)} onSave={(person) => { try { let next = editor.mode === "edit" ? { ...active, people: active.people.map(p => p.id === person.id ? person : p) } : { ...active, people: [...active.people, person] }; if (editor.relation && editor.anchorId) next = addRelationship(next, editor.relation, editor.reverse ? person.id : editor.anchorId, editor.reverse ? editor.anchorId : person.id); // Like heritg.us, adding a relative keeps the person you started from selected.
- setTree(next); setSelected(editor.anchorId ?? person.id); setPanelFor(null); setEditor(null); } catch (error) { alert(error instanceof Error ? error.message : "Could not save person."); } }} />}
+    {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => { setEditFor(panelPerson.id); setPanelFor(null); }} onAdd={() => { setWizardFor(panelPerson.id); setPanelFor(null); }} onDelete={() => { setEditFor(panelPerson.id); setPanelFor(null); }} />}
+    {starting && !readOnly && <StartDialog onClose={() => setStarting(false)} onSave={person => { setTree({ ...active, people: [...active.people, person], updatedAt: new Date().toISOString() }); setSelected(person.id); setStarting(false); }} />}
+    {wizardFor && !readOnly && active.people.some(p => p.id === wizardFor) && <AddRelativeWizard tree={active} anchorId={wizardFor} onClose={() => setWizardFor(null)} onSubmit={input => { const result = addRelative(active, wizardFor, input); setTree(result.tree); setSelected(wizardFor); setWizardFor(null); }} />}
+    {editFor && !readOnly && active.people.some(p => p.id === editFor) && <EditProfileDialog key={editFor} tree={active} personId={editFor} onClose={() => setEditFor(null)} onSave={next => { setTree(next); setEditFor(null); }} onDelete={id => { setTree(removePerson(active, id)); setSelected(null); setEditFor(null); }} />}
     {directory && <Directory tree={active} privacy={privacy && !readOnly} onClose={() => setDirectory(false)} onFocus={focusPerson} />}
     {settings && <Panel title="Settings" onClose={() => setSettings(false)}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></Panel>}
     {help && <Panel title={t("shell.help")} onClose={() => setHelp(false)}><p className={styles.helpText}>{t("help.short")}</p></Panel>}
@@ -308,36 +312,6 @@ function PersonPanel({ person, relatives, readOnly, onFocus, onStartOwn, onClose
       <button className={styles.primary} onClick={onEdit}><Pencil size={17} aria-hidden="true" /> Edit details</button><h3 className={styles.panelLabel}>Add a relative</h3><div className={styles.relationGrid}><button onClick={() => onAdd("parent-child", true)}><Plus /> Parent</button><button onClick={() => onAdd("partner")}><Plus /> Partner</button><button onClick={() => onAdd("parent-child")}><Plus /> Child</button></div><button className={styles.danger} onClick={onDelete}>Delete person</button>
     </>}
   </Panel>;
-}
-
-function PhotoUrlPreview({ person }: { person: Person }) {
-  const [failed, setFailed] = useState(false);
-  const url = person.photoUrl.trim();
-  useEffect(() => setFailed(false), [url]);
-  const initials = person.name.trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase() || "?";
-  return <div className={styles.photoPreview} aria-label="Photo preview">{url && !failed ? <img src={url} alt="Photo preview" onError={() => setFailed(true)} /> : <span>{initials}</span>}</div>;
-}
-
-function PersonEditor({ intent, onClose, onSave }: { intent: EditorIntent; onClose: () => void; onSave: (person: Person) => void }) {
-  const t = useT();
-  const [person, setPerson] = useState<Person>(intent.person ? { ...intent.person } : emptyPerson());
-  const [photoError, setPhotoError] = useState("");
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!person.name.trim()) return;
-    const validation = validatePhotoUrl(person.photoUrl);
-    if (!validation.ok) { setPhotoError(validation.error); return; }
-    onSave({ ...person, name: person.name.trim(), residence: person.residence.trim(), photoUrl: person.photoUrl.trim() });
-  };
-  const updatePhotoUrl = (value: string) => {
-    setPerson(current => ({ ...current, photoUrl: value }));
-    const validation = validatePhotoUrl(value);
-    setPhotoError(validation.ok ? "" : validation.error);
-  };
-  return <Modal title={intent.mode === "edit" ? "Edit family member" : "Add family member"} onClose={onClose}><form className={styles.form} onSubmit={submit}>
-    <div className={styles.photoUrlRow}><PhotoUrlPreview person={person} /><label>Photo link (optional)<div className={styles.photoInputRow}><input type="url" inputMode="url" placeholder="https://example.com/photo.jpg" aria-invalid={Boolean(photoError)} aria-describedby={photoError ? "photo-url-error" : "photo-url-help"} value={person.photoUrl} onChange={e => updatePhotoUrl(e.target.value)} /><button type="button" disabled={!person.photoUrl} onClick={() => updatePhotoUrl("")}>Remove</button></div><small id="photo-url-help">Use a direct HTTPS image link.</small>{photoError && <small id="photo-url-error" className={styles.fieldError} role="alert">{photoError}</small>}</label></div>
-    <label>{t("form.name")}<input autoFocus required maxLength={NAME_MAX} value={person.name} onChange={e => setPerson({ ...person, name: e.target.value })} /></label><div className={styles.twoCols}><label>{t("form.gender")}<select value={person.gender} onChange={e => setPerson({ ...person, gender: e.target.value as Person["gender"] })}><option value="unspecified">{t("gender.unspecified")}</option><option value="female">{t("gender.female")}</option><option value="male">{t("gender.male")}</option></select></label><label>{t("form.residence")}<input maxLength={RESIDENCE_MAX} value={person.residence} onChange={e => setPerson({ ...person, residence: e.target.value })} /></label></div><div className={styles.twoCols}><label>{t("form.birthDate")}<input type="date" value={person.birthDate} onChange={e => setPerson({ ...person, birthDate: e.target.value })} /></label><label>{t("form.deathDate")}<input type="date" value={person.deathDate} onChange={e => setPerson({ ...person, deathDate: e.target.value })} /></label></div><label>{t("form.birthOrder")}<input type="number" min={1} max={99} inputMode="numeric" value={person.birthOrder ?? ""} onChange={e => setPerson({ ...person, birthOrder: e.target.value ? Math.max(1, Math.min(99, Math.round(Number(e.target.value)))) : null })} /><small>{t("form.birthOrderHint")}</small></label><label>{t("form.notes")}<textarea rows={3} maxLength={10000} value={person.notes} onChange={e => setPerson({ ...person, notes: e.target.value })} /></label><div className={styles.formActions}><button type="button" onClick={onClose}>Cancel</button><button className={styles.primary} type="submit">Save person</button></div>
-  </form></Modal>;
 }
 
 function Directory({ tree, privacy, onClose, onFocus }: { tree: FamilyTree; privacy: boolean; onClose: () => void; onFocus: (id: string) => void }) { const [query, setQuery] = useState(""); const people = tree.people.filter(p => displayName(p).toLowerCase().includes(query.toLowerCase())); return <Panel title="All people" onClose={onClose}><label className={styles.search}><Search /><input autoFocus placeholder="Search people" value={query} onChange={e => setQuery(e.target.value)} /></label><div className={styles.peopleList}>{people.map(p => <button key={p.id} onClick={() => onFocus(p.id)}><span className={styles.smallAvatar}>{(p.photoUrl || p.photo) && !privacy ? <img src={p.photoUrl || p.photo} alt="" /> : displayName(p)[0]}</span><span><strong>{displayName(p)}</strong><small>{privacy ? "Private" : p.birthDate || "Date unknown"}</small></span></button>)}{!people.length && <p className={styles.noResults}>No people found.</p>}</div></Panel>; }
