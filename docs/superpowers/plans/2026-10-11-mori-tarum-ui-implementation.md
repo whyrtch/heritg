@@ -433,8 +433,8 @@ grep -rn "var(--plum)\|var(--brand)\|var(--font-serif)" src
 
 ### Task 10: Verification
 
-- [ ] `npm test -- --run`, `npm run lint`, `npm run build`.
-- [ ] `npm run dev` with `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` (or a configured `.env.local`). Then compare each screen against its Figma row at 1440×900, 768×1024, and 390×844:
+- [x] `npm test -- --run`, `npm run lint`, `npm run build`.
+- [x] `npm run dev` with `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` (or a configured `.env.local`). Then compare each screen against its Figma row at 1440×900, 768×1024, and 390×844:
   - 01 Login
   - 02 Workspace
   - 03 Person panel
@@ -446,9 +446,9 @@ grep -rn "var(--plum)\|var(--brand)\|var(--font-serif)" src
   - 09 Migration
   - 10 Public
   - 11 Unavailable
-- [ ] Keyboard-only pass: Tab reaches the menu, title, Share, Settings, all four capsule buttons, the privacy chip, Help, and every dialog control. The focus ring is visible on indigo and on white.
-- [ ] Emulate `prefers-reduced-motion: reduce` and confirm there are no panel, modal, or card transitions.
-- [ ] Contrast spot-checks:
+- [x] Keyboard-only pass: Tab reaches the menu, title, Share, Settings, all four capsule buttons, the privacy chip, Help, and every dialog control. The focus ring is visible on indigo and on white.
+- [x] Emulate `prefers-reduced-motion: reduce` and confirm there are no panel, modal, or card transitions.
+- [x] Contrast spot-checks:
   - `--muted` on `--canvas` is at least 4.5:1.
   - White on `--primary` is at least 4.5:1.
   - `--danger` on `--panel` is at least 4.5:1.
