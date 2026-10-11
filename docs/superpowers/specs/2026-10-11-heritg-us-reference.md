@@ -103,3 +103,19 @@ Stack: Vite PWA (index-*.js, registerSW.js), lang="id". Font: "Assistant", syste
 - Family+ dialog 620: benefits list (sync across devices, longer share links, encrypted backup, everyday features stay free).
 - Bantuan: sections Geser-geser kanvas / Nambah dan ngedit keluarga / Ngatur silsilah / Nyari orang dengan cepat ...
 - Perlindungan privasi: AES-GCM local encryption explainer; local storage, no account needed.
+
+## Empty state (measured on a fresh empty tree)
+- A brand-new empty tree auto-opens the "Mulai bikin silsilah" dialog.
+- Column 390 wide, centered (text-align center): logo row (img 44 radius 22% shadow 0 6px 16px rgba(62,48,34,.16) + "Heritg" 24.8/700 ls -.03em #795d3f, gap 10, mb 20);
+  h3 21.6/700 mb 6; p 13.76 lh 19.95 #796f63 margin 0 30 18; options column margin 0 25, gap 3: buttons 340 wide, padding 8 12, gap 12, radius 11,
+  left-aligned, icon 19 #795d3f, strong 14.08/700, small 11.36 lh 14.2 #796f63 mt 3; hint row mt 17 gap 6, 11.52 #796f63 with hand icon 15.
+- Title card h2 17.92/700 ls -.01em.
+- Coach marks: #1/#2 svg 64x78 arrows (stroke 1.8, #795d3f), text 13.44/600; #3/#4 svg 76x58 arrows (stroke 1.7), text 12.16/600.
+  Positions (907 wide): #1 box left 22 top 140 (arrow above-left toward menu); #2 box right 22 top 140 (arrow toward Setelan);
+  #3 box left ~70 bottom ~72 (above view chip, arrow down-left); #4 box right ~48 bottom 280 (above controls, arrow down-right).
+
+## Mobile (375x812)
+- Inset 10-12px. Top row: menu 44 (12,10); title card (64,10, 299 wide, 44 high, name ellipsized) + round 44 icon buttons Family+ (purple gradient), Bagikan, Setelan.
+- Coach marks 1, 2 and 3 visible; 4 hidden. Empty-state options full width (340), left aligned.
+- Controls column right 12, bottom 12 (Semua orang ... Pas ke layar, 44 each, gap 8). Privacy chip becomes a round 44 icon-only button, with Bantuan next to it (row at y 700).
+- Bottom-left: eye (12,756) + view chip "Lengkap" (64,756, 122x44).

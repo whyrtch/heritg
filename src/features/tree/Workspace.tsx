@@ -1,8 +1,11 @@
 "use client";
 import React, { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, CircleHelp, FileUp, Folder, Leaf, Lock, Menu, Minus, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn } from "lucide-react";
-import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
+import { ChevronDown, CircleHelp, CirclePlus, Expand, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, ListFilter, Lock, Menu, Pencil, Plus, Search, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
+import { useT } from "@/i18n";
+import { FlowerMark } from "./components/BrandMark";
+import { CoachMarks } from "./components/CoachMarks";
 import { validatePhotoUrl } from "./domain/photoUrl";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
@@ -26,7 +29,7 @@ import styles from "./workspace.module.css";
 type EditorIntent = { mode: "create" | "edit"; person?: Person; relation?: "parent-child" | "partner"; anchorId?: string; reverse?: boolean };
 const IconButton = ({ label, children, onClick, disabled, quiet, className = "" }: { label: string; children: React.ReactNode; onClick?: () => void; disabled?: boolean; quiet?: boolean; className?: string }) => <button className={`${styles.iconButton} ${quiet ? styles.quiet : ""} ${className}`} aria-label={label} title={label} onClick={onClick} disabled={disabled}>{children}</button>;
 
-function Brand() { return <div className={styles.brand}><span className={styles.brandMark}><Leaf size={22} aria-hidden="true" /></span><span>Heritg</span></div>; }
+function Brand() { return <div className={styles.brand}><FlowerMark size={44} className={styles.brandMark} /><span>Heritg</span></div>; }
 
 export function Workspace() {
   const { data, setData, active, updateActive } = useWorkspaceData();
@@ -51,6 +54,11 @@ export function Workspace() {
   const [settings, setSettings] = useState(false);
   const [deferred, setDeferred] = useState<"Family+" | null>(null);
   const [privacy, setPrivacy] = useState(true);
+  const [controlsHidden, setControlsHidden] = useState(false);
+  const [viewMenu, setViewMenu] = useState(false);
+  const [help, setHelp] = useState(false);
+  const [privacyPanel, setPrivacyPanel] = useState(false);
+  const t = useT();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
@@ -75,7 +83,7 @@ export function Workspace() {
     setPan(activePeopleCount > 12 ? { x: 0, y: -300 } : { x: 0, y: 0 });
   }, [activePeopleCount, activeTreeId]);
 
-  if (!data || !active) return <div className={styles.loading}><Brand /><span>Opening your archive…</span></div>;
+  if (!data || !active) return <div className={styles.loading}><Brand /><span>{t("shell.loading")}</span></div>;
 
   const setTree = (tree: FamilyTree) => { if (readOnly) return; updateActive(() => tree); syncApi.current?.mutate(tree); };
   // Signed in: a new or imported tree goes online immediately. If that fails (e.g. offline) it stays on this device and is offered by the migration prompt next time the app opens.
@@ -92,23 +100,31 @@ export function Workspace() {
   const focusPerson = (id: string) => { const node = nodes.find(n => n.id === id); if (node) { setPan({ x: -node.x * zoom, y: -node.y * zoom }); setSelected(id); setDirectory(false); } };
   const download = () => { const blob = new Blob([exportTree(active)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
   const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { addTree(importTree(await file.text())); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
-  const generations = generationCount(active);
-  const summary = active.people.length === 0 ? "No one added yet" : `${active.people.length} ${active.people.length === 1 ? "person" : "people"} across ${generations} ${generations === 1 ? "generation" : "generations"}`;
+  const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
+  const rename = readOnly ? undefined : () => { const name = prompt(t("shell.renamePrompt"), active.name); if (name?.trim()) setTree({ ...active, name: name.trim() }); };
+  const isEmpty = active.people.length === 0;
 
   return <div className={styles.workspace}>
-    <header className={styles.topbar}>
-      <div className={styles.topLeft}>
-        <IconButton label="Show family trees" onClick={() => setSidebar(true)}><Menu size={21} /></IconButton>
-        <button className={styles.treeTitle} aria-disabled={readOnly} onClick={readOnly ? undefined : () => { const name = prompt("Rename family tree", active.name); if (name?.trim()) setTree({ ...active, name: name.trim() }); }}><strong>{active.name}</strong><span>{summary}</span></button>
-      </div>
-      <div className={styles.topActions}>
-        <button className={styles.shareButton} disabled={!activeOnlineTree || !publicationRepository} onClick={() => setPublishOpen(true)}><Share2 size={18} /> <span>Share</span></button>
-        <IconButton label="Settings" onClick={() => setSettings(true)}><SlidersHorizontal size={20} /></IconButton>
-      </div>
-    </header>
+    {!controlsHidden && <>
+      <IconButton className={styles.menuButton} label={t("shell.openTrees")} onClick={() => setSidebar(true)}><Menu size={19} /></IconButton>
+      <header className={styles.topbar}>
+        <div className={styles.titleCard}>
+          <div className={styles.titleRow}>
+            <button className={styles.titleButton} aria-label={t("shell.renameTreeNamed", { name: active.name })} aria-disabled={readOnly} onClick={rename}><h2>{active.name}</h2></button>
+            {!readOnly && <button className={styles.titlePencil} aria-label={t("shell.renameTree")} onClick={rename}><Pencil size={15} aria-hidden="true" /></button>}
+          </div>
+          <p>{summary}</p>
+        </div>
+        <div className={styles.topActions}>
+          <button className={styles.familyPlusButton} aria-label={t("shell.familyPlus")} onClick={() => setDeferred("Family+")}><CirclePlus size={20} aria-hidden="true" /><span>{t("shell.familyPlus")}</span></button>
+          <button className={styles.shareButton} aria-label={t("shell.shareTree")} disabled={!activeOnlineTree || !publicationRepository} onClick={() => setPublishOpen(true)}><Share2 size={17} aria-hidden="true" /><span>{t("shell.share")}</span></button>
+          <IconButton label={t("shell.settings")} onClick={() => setSettings(true)}><SlidersHorizontal size={19} /></IconButton>
+        </div>
+      </header>
+    </>}
 
     <div className={styles.canvas} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null}>
-      {active.people.length === 0 ? <EmptyState onAdd={() => openEditor({ mode: "create" })} onImport={() => importRef.current?.click()} /> :
+      {isEmpty ? <EmptyState onAdd={() => openEditor({ mode: "create" })} onImport={() => importRef.current?.click()} onGuide={() => setHelp(true)} /> :
         <div className={styles.stage} style={{ transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})` }}>
           <svg className={styles.lines} aria-hidden="true">
             {active.relationships.map(rel => { const from = nodes.find(n => n.id === rel.from), to = nodes.find(n => n.id === rel.to); if (!from || !to) return null; return <path key={rel.id} d={connectorPath(from, to, rel.type)} />; })}
@@ -120,16 +136,33 @@ export function Workspace() {
         </div>}
     </div>
 
-    <aside className={styles.rightControls} aria-label="Canvas controls">
-      <IconButton quiet label="All people" onClick={() => setDirectory(true)}><Users size={20} /></IconButton>
-      <IconButton quiet label="Zoom in" onClick={() => setZoom(z => Math.min(1.6, z + .12))}><ZoomIn size={20} /></IconButton>
-      <IconButton quiet label="Zoom out" onClick={() => setZoom(z => Math.max(.45, z - .12))}><Minus size={20} /></IconButton>
-      <IconButton quiet label="Fit tree" onClick={fit} disabled={!active.people.length}><Settings2 size={19} /></IconButton>
-    </aside>
-    <div className={styles.bottomRight}>{!readOnly && <button className={styles.privacyChip} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><ShieldCheck size={18} aria-hidden="true" /> {privacy ? "Dates hidden" : "Dates shown"}</button>}<IconButton label="Help" onClick={() => alert("Drag to move the canvas. Use the controls to zoom. Select a person to add family.")}><CircleHelp size={20} /></IconButton></div>
+    {isEmpty && !readOnly && !controlsHidden && <CoachMarks />}
+    {!controlsHidden && <div className={styles.rightControls} role="group" aria-label={t("shell.controls")}>
+      <IconButton label={t("shell.allPeople")} onClick={() => setDirectory(true)}><Users size={19} /></IconButton>
+      <IconButton label={t("shell.branchCount")} disabled><ListFilter size={18} /></IconButton>
+      <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => Math.min(1.6, z + .12))}><ZoomIn size={18} /></IconButton>
+      <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => Math.max(.45, z - .12))}><ZoomOut size={18} /></IconButton>
+      <IconButton label={t("shell.fit")} onClick={fit} disabled={isEmpty}><Expand size={18} /></IconButton>
+    </div>}
+    {!controlsHidden && <div className={styles.bottomRight} role="group" aria-label={t("shell.privacyGroup")}>
+      <button className={styles.privacyChip} aria-label={t("shell.privacy", { state: t("shell.privacyProtected") })} onClick={() => setPrivacyPanel(true)}><ShieldCheck size={18} aria-hidden="true" /><span>{t("shell.privacyProtected")}</span></button>
+      <IconButton label={t("shell.help")} onClick={() => setHelp(true)}><CircleHelp size={18} /></IconButton>
+    </div>}
+    <div className={styles.bottomLeft}>
+      <IconButton label={controlsHidden ? t("shell.showControls") : t("shell.hideControls")} onClick={() => { setControlsHidden(value => !value); setViewMenu(false); }}>{controlsHidden ? <EyeOff size={18} /> : <Eye size={18} />}</IconButton>
+      {!controlsHidden && <section className={styles.viewMode} aria-label={t("shell.viewMode")}>
+        <button className={styles.viewChip} aria-label={t("shell.viewModeValue", { mode: t("shell.viewFullLong") })} aria-expanded={viewMenu} onClick={() => setViewMenu(value => !value)}><GitBranch size={16} aria-hidden="true" /><span>{t("shell.viewFull")}</span><ChevronDown size={15} aria-hidden="true" /></button>
+        {viewMenu && <div className={styles.viewPopover}>
+          <div className={styles.segmented} role="group" aria-label={t("shell.viewMode")}>
+            <button aria-label={t("shell.viewFocusLong")} disabled title={t("shell.viewSoon")}>{t("shell.viewFocus")}</button>
+            <button aria-label={t("shell.viewFullLong")} aria-pressed="true" className={styles.segmentActive}>{t("shell.viewFull")}</button>
+            <button disabled title={t("shell.viewSoon")}>{t("shell.viewFan")}</button>
+          </div>
+        </div>}
+      </section>}
+    </div>
     {treeRepository && cache && remoteTreeId && <OnlineTreeBridge key={`${remoteTreeId}-${onlineEpoch}`} treeId={remoteTreeId} repository={treeRepository} cache={cache} apiRef={syncApi} onTree={tree => { setOnlineTree(tree); updateActive(() => ({ ...fromOnlineTree(tree), id: active.id })); }} />}
-    {!remoteTreeId && <div className={styles.localStatus}>{readOnly ? "Example tree, view only" : "Saved on this device only"}</div>}
-    {!readOnly && <button className={styles.mobileAdd} aria-label="Add family member" onClick={() => openEditor({ mode: "create" })}><Plus /></button>}
+    {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
     {sidebar && <TreeSidebar data={data} onClose={() => setSidebar(false)} onSelect={id => { setData({ ...data, activeTreeId: id }); setSelected(null); setSidebar(false); }} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} />}
@@ -137,6 +170,8 @@ export function Workspace() {
     {editor && <PersonEditor intent={editor} onClose={() => setEditor(null)} onSave={(person) => { try { let next = editor.mode === "edit" ? { ...active, people: active.people.map(p => p.id === person.id ? person : p) } : { ...active, people: [...active.people, person] }; if (editor.relation && editor.anchorId) next = addRelationship(next, editor.relation, editor.reverse ? person.id : editor.anchorId, editor.reverse ? editor.anchorId : person.id); setTree(next); setSelected(person.id); setEditor(null); } catch (error) { alert(error instanceof Error ? error.message : "Could not save person."); } }} />}
     {directory && <Directory tree={active} privacy={privacy && !readOnly} onClose={() => setDirectory(false)} onFocus={focusPerson} />}
     {settings && <Panel title="Settings" onClose={() => setSettings(false)}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></Panel>}
+    {help && <Panel title={t("shell.help")} onClose={() => setHelp(false)}><p className={styles.helpText}>{t("help.short")}</p></Panel>}
+    {privacyPanel && <Panel title={t("privacy.title")} onClose={() => setPrivacyPanel(false)}><p className={styles.helpText}>{t("privacy.body")}</p><div className={styles.settingRow}><div><strong>{t("privacy.maskTitle")}</strong><p>{t("privacy.maskBody")}</p></div><button className={styles.toggle} aria-pressed={privacy} aria-label={t("privacy.maskTitle")} onClick={() => setPrivacy(v => !v)}><span /></button></div></Panel>}
     {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
     {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => ({ ...fromOnlineTree(tree), id: active.id })); setOnlineEpoch(value => value + 1); }} />}
     {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
@@ -183,7 +218,20 @@ function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree }: {
   </>;
 }
 
-function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) { return <section className={styles.emptyState}><Brand /><h1>Start with anyone</h1><p>Choose any family member: yourself, a parent,<br />grandparent, or ancestor. You can build the tree in<br />any direction.</p><button onClick={onAdd}><UserPlus /><span><strong>Add any family member</strong><small>Start with yourself or an ancestor</small></span></button><button onClick={onImport}><Folder /><span><strong>Open or import a family tree</strong><small>Choose another tree or bring in a .heritg file</small></span></button><button onClick={() => alert("Add someone, then select their card to grow the family in any direction.")}><CircleHelp /><span><strong>Learn the canvas</strong><small>See how to move, zoom, select, and add family</small></span></button><div className={styles.dragHint}>Drag or scroll to move the canvas</div></section>; }
+function EmptyState({ onAdd, onImport, onGuide }: { onAdd: () => void; onImport: () => void; onGuide: () => void }) {
+  const t = useT();
+  return <section className={styles.emptyState}>
+    <Brand />
+    <h3>{t("empty.title")}</h3>
+    <p>{t("empty.body")}</p>
+    <div className={styles.emptyOptions}>
+      <button onClick={onAdd}><UserPlus size={19} aria-hidden="true" /><span><strong>{t("empty.add")}</strong><small>{t("empty.addHint")}</small></span></button>
+      <button onClick={onImport}><FolderOpen size={19} aria-hidden="true" /><span><strong>{t("empty.open")}</strong><small>{t("empty.openHint")}</small></span></button>
+      <button onClick={onGuide}><CircleHelp size={19} aria-hidden="true" /><span><strong>{t("empty.guide")}</strong><small>{t("empty.guideHint")}</small></span></button>
+    </div>
+    <div className={styles.dragHint}><Hand size={15} aria-hidden="true" /><span>{t("empty.drag")}</span></div>
+  </section>;
+}
 
 function TreeSidebar({ data, onClose, onSelect, onCreate, onImport, onExport, onFamilyPlus }: { data: ReturnType<typeof useWorkspaceData>["data"] & {}; onClose: () => void; onSelect: (id: string) => void; onCreate: () => void; onImport: () => void; onExport: () => void; onFamilyPlus: () => void }) { return <div className={styles.backdrop} onMouseDown={e => e.target === e.currentTarget && onClose()}><aside className={styles.sidebar}><div className={styles.sidebarHead}><Brand /><p>Your private family archive</p><IconButton label="Close family trees" onClick={onClose}><X /></IconButton></div><div className={styles.sectionTitle}><strong>Family trees</strong><Plus /></div><label className={styles.search}><Search size={18} /><input placeholder="Search trees" /></label><div className={styles.treeList}>{data.trees.map(tree => <button key={tree.id} className={tree.id === data.activeTreeId ? styles.activeTree : ""} onClick={() => onSelect(tree.id)}><strong>{tree.name}</strong><small>{isDemoTree(tree) ? `${tree.people.length} people, example tree` : `${tree.people.length} ${tree.people.length === 1 ? "person" : "people"}, edited ${new Date(tree.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</small></button>)}</div><button className={styles.sidebarPrimary} onClick={onCreate}><Plus /> New tree</button><button className={styles.sidebarAction} onClick={onImport}><FileUp /> Import file</button><button className={styles.sidebarAction} onClick={onExport}><ChevronDown /> Export current tree</button><hr /><button className={styles.sidebarFamily} onClick={onFamilyPlus}><Sparkles /> <span><strong>Heritg Family+</strong><small>Inviting other editors is coming later</small></span></button><div className={styles.sidebarProtection}><ShieldCheck /><span><strong>Secure sync</strong><small>Online with offline device cache</small></span></div></aside></div>; }
 
