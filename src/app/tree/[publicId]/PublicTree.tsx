@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Leaf, Link as LinkIcon } from "lucide-react";
-import { connectorPath, displayName, layoutTree, lifespanLabel, type Person } from "@/features/tree/model";
+import { CARD_H, CARD_W, connectorPath, displayName, layoutTree, lifespanLabel, type Person } from "@/features/tree/model";
 import { loadPublicTree } from "@/features/tree/publishing/loadPublicTree";
 import type { PublicTreeSnapshot } from "@/features/tree/publishing/PublicationRepository";
 import styles from "./publicTree.module.css";
@@ -32,8 +32,36 @@ export function PublicTree({
 
 function Brand() { return <div className={styles.brand}><span><Leaf aria-hidden="true" /></span>Heritg</div>; }
 
+/** Smallest scale used on narrow screens; below this names become unreadable, so the canvas scrolls sideways instead. */
+const MIN_SCALE = 0.6;
+const CANVAS_GUTTER = 48;
+
 function ReadOnlyCanvas({ snapshot }: { snapshot: PublicTreeSnapshot }) {
   const nodes = useMemo(() => layoutTree(snapshot.tree), [snapshot.tree]);
+  const bounds = useMemo(() => {
+    if (!nodes.length) return null;
+    const xs = nodes.map(node => node.x), ys = nodes.map(node => node.y);
+    const minX = Math.min(...xs), minY = Math.min(...ys);
+    return { minX, minY, width: Math.max(...xs) - minX + CARD_W, height: Math.max(...ys) - minY + CARD_H };
+  }, [nodes]);
+  const canvasRef = useRef<HTMLElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !bounds) return;
+    const fit = () => setScale(Math.min(1, Math.max(MIN_SCALE, (canvas.clientWidth - CANVAS_GUTTER) / bounds.width)));
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(fit);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [bounds]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) canvas.scrollLeft = (canvas.scrollWidth - canvas.clientWidth) / 2;
+  }, [bounds, scale]);
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -41,10 +69,11 @@ function ReadOnlyCanvas({ snapshot }: { snapshot: PublicTreeSnapshot }) {
         <div className={styles.title}><h1>{snapshot.name}</h1><p>View only. Published version {snapshot.publishedRevision}</p></div>
         <div className={styles.badge}>Shared by link</div>
       </header>
-      <section className={styles.canvas} aria-label={`${snapshot.name} family tree`}>
-        {!nodes.length ? <p className={styles.empty}>No family members have been published yet.</p> : (
-          <div className={styles.stage}>
-            <svg className={styles.lines} aria-hidden="true">
+      <section ref={canvasRef} className={styles.canvas} aria-label={`${snapshot.name} family tree`}>
+        {!bounds ? <p className={styles.empty}>No family members have been published yet.</p> : (
+          <div className={styles.stageFrame} style={{ width: bounds.width * scale, height: bounds.height * scale }}>
+          <div data-stage className={styles.stage} style={{ width: bounds.width, height: bounds.height, transform: `scale(${scale})` }}>
+            <svg className={styles.lines} width={bounds.width} height={bounds.height} viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`} aria-hidden="true">
               {snapshot.tree.relationships.map(relationship => {
                 const from = nodes.find(node => node.id === relationship.from);
                 const to = nodes.find(node => node.id === relationship.to);
@@ -54,7 +83,7 @@ function ReadOnlyCanvas({ snapshot }: { snapshot: PublicTreeSnapshot }) {
             </svg>
             {nodes.map(node => {
               const person = snapshot.tree.people.find(item => item.id === node.id)!;
-              return <article key={person.id} className={styles.personCard} style={{ left: node.x, top: node.y }}>
+              return <article key={person.id} className={styles.personCard} style={{ left: node.x - bounds.minX, top: node.y - bounds.minY }}>
                 <Avatar person={person} />
                 <span className={styles.personText}>
                   <strong>{displayName(person)}</strong>
@@ -63,6 +92,7 @@ function ReadOnlyCanvas({ snapshot }: { snapshot: PublicTreeSnapshot }) {
                 </span>
               </article>;
             })}
+          </div>
           </div>
         )}
       </section>
