@@ -404,20 +404,20 @@ return <main className={styles.page}>
 
 **Files:** Modify `src/app/tree/[publicId]/PublicTree.tsx`, `publicTree.module.css`
 
-- [ ] **Step 1: Shared helpers.** Use `connectorPath` and `lifespanLabel` (the public page always shows years, because there is no privacy toggle). Keep `person.notes` as the one-line `<em>`.
-- [ ] **Step 2: Header copy.**
+- [x] **Step 1: Shared helpers.** Use `connectorPath` and `lifespanLabel` (the public page always shows years, because there is no privacy toggle). Keep `person.notes` as the one-line `<em>`.
+- [x] **Step 2: Header copy.**
   - Brand `❈` becomes `<Leaf aria-hidden="true" />` in a soga mark.
   - Badge `UNLISTED` → `Shared by link`, no uppercase or tracking.
   - Meta `Read-only family tree · Published revision {n}` → `View only. Published version {n}`.
-- [ ] **Step 3: Footer copy.** `Anyone with this unlisted link can view this archive.` → `You’re viewing a shared copy kept by the archive owner.`. This must not contain "edit".
-- [ ] **Step 4: CSS.**
+- [x] **Step 3: Footer copy.** `Anyone with this unlisted link can view this archive.` → `You’re viewing a shared copy kept by the archive owner.`. This must not contain "edit".
+- [x] **Step 4: CSS.**
   - Replace every hex value with a token, and every `Georgia,serif` with `var(--font-sans)`.
   - `.personCard` uses the same rules as the workspace card (14px radius, `--card-line`, `--shadow-soft`, 44px avatar, two-line name clamp).
   - Header: `background:rgba(247,248,245,.94)`, border `var(--line)`.
   - Footer: centered, pill radius, no border, `--shadow-soft`.
   - `.status`: `var(--canvas)`. The h1 is 22px, weight 700.
-- [ ] **Step 5: StatusPage.** Show a 52px `--key` circle with a lucide `Link` icon above the title, matching Figma `7:3151`, and the soga brand mark.
-- [ ] **Step 6:** `npm test -- --run "src/app/tree"` passes: there is still no button and no `/edit/i` text. **Commit** `style: refresh public read-only page`.
+- [x] **Step 5: StatusPage.** Show a 52px `--key` circle with a lucide `Link` icon above the title, matching Figma `7:3151`, and the soga brand mark.
+- [x] **Step 6:** `npm test -- --run "src/app/tree"` passes: there is still no button and no `/edit/i` text. **Commit** `style: refresh public read-only page`.
 
 ### Task 9: Clean-up
 
