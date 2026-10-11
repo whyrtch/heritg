@@ -24,6 +24,7 @@ export const id = {
   "shell.showControls": "Tampilkan kontrol",
   "shell.viewMode": "Tampilan pohon",
   "shell.viewModeValue": "Tampilan pohon: {mode}",
+  "shell.viewModeFocusValue": "Tampilan pohon: {mode} · {name}",
   "shell.viewFocus": "Fokus",
   "shell.viewFull": "Lengkap",
   "shell.viewFan": "Kipas",
@@ -114,6 +115,24 @@ export const id = {
   "form.birthOrder": "Anak ke-berapa",
   "form.birthOrderHint": "Boleh dikosongin. Tulis angka 1 buat anak pertama, 2 buat anak kedua, dan seterusnya. Kosongin aja kalau mau otomatis ngikutin tanggal lahir.",
   "form.notes": "Catatan tambahan",
+
+  // Canvas and tree view
+  "canvas.label": "Kanvas silsilah {name}",
+  "canvas.edit": "Edit profil {name}",
+  "canvas.add": "Tambah kerabatnya {name}",
+  "view.exploreFrom": "Jelajahi keluarga dari",
+  "view.pickPerson": "Pilih orang",
+  "view.showing": "Menampilkan {shown} dari {total} orang",
+  "view.siblings": "Tampilkan saudara",
+  "view.siblingsHint": "Kakak dan adik orang terpilih ikut ditampilkan.",
+  "view.moreAncestors": "Leluhur lainnya",
+  "view.moreDescendants": "Keturunan lainnya",
+  "view.fanSoon": "Tampilan Kipas segera hadir",
+  "legend.title": "Hubungan",
+  "legend.parentChild": "Orang tua dan anak",
+  "legend.partner": "Pasangan",
+  "legend.nonBiological": "Tiri, angkat, asuh, atau wali",
+  "legend.ex": "Mantan pasangan",
 
   // Help (temporary until the Bantuan panel lands)
   "help.short": "Tahan dan geser di area kosong buat pindah posisi, pakai tombol zoom, terus pilih satu orang buat nambahin keluarganya.",

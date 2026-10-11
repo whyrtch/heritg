@@ -51,16 +51,18 @@
 - `firestore.rules`, `tests/rules/*`
 - `demoData.ts`, `useWorkspace.ts`, `LocalTreeCache.ts`
 
-- [ ] **Person v2 and relationship v2.** Implement the shapes from the spec, with pure helpers for the wizard's relationship statuses (`statusToRelationship`, `relationshipToStatus`).
-- [ ] **Migration v1 → v2.** Write pure functions with tests, then wire them in:
+- [x] **Person v2 and relationship v2.** Implement the shapes from the spec, with pure helpers for the wizard's relationship statuses (`statusToRelationship`, `relationshipToStatus`).
+- [x] **Migration v1 → v2.** Write pure functions with tests, then wire them in:
   - local cache on read;
   - `.heritg` import of v1 and v2, with export as v2;
   - Firestore lazy upgrade on first owner load, as a revision-checked save.
-- [ ] **Rules for the v2 person and relationship schema.** Keep the v1 shape readable during the transition window. Emulator tests cover:
+  - _Done in `ed50066`. Firestore documents upgrade on the next owner save (every save rewrites all people and relationships), not with a separate upgrade write._
+- [x] **Rules for the v2 person and relationship schema.** Keep the v1 shape readable during the transition window. Emulator tests cover:
   - valid and invalid v2 documents;
   - owner-only access;
   - public snapshots without owner data.
-- [ ] **Example tree in v2 with real genders**, still read-only.
+  - _v1 documents stay readable; all writes must be v2._
+- [x] **Example tree in v2 with real genders**, still read-only.
 
 ## Phase 2 — SVG canvas, kinship labels, Fokus / Lengkap
 
@@ -68,25 +70,30 @@
 - new `src/features/tree/canvas/{TreeCanvas.tsx,layoutFocus.ts,layoutFull.ts,kinship.ts,kinshipTerms/*.ts}`
 - `Workspace.tsx`
 
-- [ ] **Kinship engine and term tables** (`id`, `jv-yogya`, `ms`, `en`), with a fixture-family test suite covering every label.
-- [ ] **Focus layout.** Selected person plus parents, partners and children, with "Tampilkan saudara". "Leluhur lainnya" and "Keturunan lainnya" expand one generation each.
-- [ ] **Full layout.** 260 px generational grid with orthogonal bus connectors and partner lines. Reuse and replace `layoutTree` and `connectorPath`.
-- [ ] **SVG node rendering:**
+- [x] **Kinship engine and term tables** (`id`, `jv-yogya`, `ms`, `en`), with a fixture-family test suite covering every label.
+- [x] **Focus layout.** Selected person plus parents, partners and children, with "Tampilkan saudara". "Leluhur lainnya" and "Keturunan lainnya" expand one generation each.
+- [x] **Full layout.** 260 px generational grid with orthogonal bus connectors and partner lines. Reuse and replace `layoutTree` and `connectorPath`.
+  - _`layoutTree`/`connectorPath` in `model.ts` are no longer used by the UI; remove them with their tests in Phase 7._
+- [x] **SVG node rendering:**
   - circle r=32 with inner r=27, gender fill and stroke;
   - initial, or a photo clipped to the inner circle;
   - name in 14/700 and relation label in 13/500.
   - Invisible hit buttons keep `aria-label="<Name>, <Gender>"` and `aria-pressed`.
-- [ ] **Selected action dots** (edit #a8875b, add #7e9b63), 28 px visible with 44 px hit areas.
-- [ ] **Interaction.** Pan with drag and wheel, zoom buttons, Pas ke layar, and keyboard focus on nodes.
-- [ ] **Tampilan pohon popover:**
+- [x] **Selected action dots** (edit #a8875b, add #7e9b63), 28 px visible with 44 px hit areas.
+  - _Measured on heritg.us: side by side left of the node (add at -61, edit at -95 scene units); hit areas 34×44._
+- [x] **Interaction.** Pan with drag and wheel, zoom buttons, Pas ke layar, and keyboard focus on nodes.
+  - _Wheel pans, Ctrl/⌘ + wheel zooms._
+- [x] **Tampilan pohon popover:**
   - segmented control Fokus | Lengkap | Kipas;
   - "Jelajahi keluarga dari" person picker;
   - "Menampilkan X dari Y orang";
   - the siblings checkbox;
   - the more-ancestors / more-descendants buttons.
-- [ ] **"Hubungan" legend chip** for the Lengkap view.
+  - _The person picker is a native select for now; the avatar list comes with the Phase 4 panels._
+- [x] **"Hubungan" legend chip** for the Lengkap view.
 - [ ] **"Jumlah turunan cabang" popover.** Measure it on heritg.us first.
-- [ ] **Public read-only viewer** renders through the same `TreeCanvas`, without action dots.
+  - _Still open: heritg.us hides this control in Fokus; it needs a larger sample tree in Lengkap to measure. The button stays disabled in Lengkap until then._
+- [x] **Public read-only viewer** renders through the same `TreeCanvas`, without action dots.
 
 ## Phase 3 — Dialogs: start, add-relative wizard, edit profile
 

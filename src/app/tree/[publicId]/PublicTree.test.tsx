@@ -36,12 +36,12 @@ describe("PublicTree", () => {
     const { container } = render(<PublicTree publicId={snapshot.publicId} loader={vi.fn(async () => ({ ...snapshot, tree }))} />);
     await screen.findByText("C Uji");
     const stage = container.querySelector<HTMLElement>("[data-stage]")!;
-    expect(stage.style.width).toBe("460px");
-    expect(stage.style.height).toBe("298px");
-    for (const card of container.querySelectorAll<HTMLElement>("article")) {
-      expect(parseFloat(card.style.left)).toBeGreaterThanOrEqual(0);
-      expect(parseFloat(card.style.top)).toBeGreaterThanOrEqual(0);
-    }
+    // Two partners on one 260 px row plus a child below: 260 + 2 × 120 wide, two rows plus labels high.
+    expect(stage.style.width).toBe("500px");
+    expect(stage.style.height).toBe("426px");
+    const svg = stage.querySelector("svg")!;
+    expect(svg.getAttribute("viewBox")).toBe("-250 -48 500 426");
+    expect(svg.querySelectorAll("circle").length).toBeGreaterThanOrEqual(6);
   });
 
   it("uses one generic unavailable state for inaccessible links", async () => {

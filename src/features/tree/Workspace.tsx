@@ -1,7 +1,7 @@
 "use client";
-import React, { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
-import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, lifeDatesLong, lifespanLabel, NAME_MAX, newTree, Person, RESIDENCE_MAX, relativesOf, type Relatives, removePerson } from "./model";
+import React, { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Network, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { addRelationship, displayName, emptyPerson, exportTree, FamilyTree, importTree, lifeDatesLong, NAME_MAX, newTree, Person, RESIDENCE_MAX, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
 import { useT } from "@/i18n";
 import { FlowerMark } from "./components/BrandMark";
@@ -9,6 +9,10 @@ import { CoachMarks } from "./components/CoachMarks";
 import { validatePhotoUrl } from "./domain/photoUrl";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
+import { TreeCanvas } from "./canvas/TreeCanvas";
+import { layoutFull } from "./canvas/layoutFull";
+import { DEFAULT_FOCUS, layoutFocus, type FocusOptions } from "./canvas/layoutFocus";
+import { kinshipLabels } from "./canvas/kinship";
 import { useAuth } from "@/features/auth/useAuth";
 import { OwnerSession } from "@/features/auth/OwnerSession";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
@@ -28,6 +32,9 @@ import styles from "./workspace.module.css";
 
 type EditorIntent = { mode: "create" | "edit"; person?: Person; relation?: "parent-child" | "partner"; anchorId?: string; reverse?: boolean };
 const IconButton = ({ label, children, onClick, disabled, quiet, className = "" }: { label: string; children: React.ReactNode; onClick?: () => void; disabled?: boolean; quiet?: boolean; className?: string }) => <button className={`${styles.iconButton} ${quiet ? styles.quiet : ""} ${className}`} aria-label={label} title={label} onClick={onClick} disabled={disabled}>{children}</button>;
+
+const MIN_ZOOM = .3, MAX_ZOOM = 1.8;
+const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
 
 function Brand() { return <div className={styles.brand}><FlowerMark size={44} className={styles.brandMark} /><span>Heritg</span></div>; }
 
@@ -56,6 +63,13 @@ export function Workspace() {
   const [privacy, setPrivacy] = useState(true);
   const [controlsHidden, setControlsHidden] = useState(false);
   const [viewMenu, setViewMenu] = useState(false);
+  // heritg.us opens your own trees in Fokus; the example tree starts in Lengkap.
+  const [viewChoice, setView] = useState<"focus" | "full" | null>(null);
+  const [focusRoot, setFocusRoot] = useState<string | null>(null);
+  const [focusOptions, setFocusOptions] = useState<FocusOptions>(DEFAULT_FOCUS);
+  const [legend, setLegend] = useState(false);
+  const [panelFor, setPanelFor] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [help, setHelp] = useState(false);
   const [privacyPanel, setPrivacyPanel] = useState(false);
   const t = useT();
@@ -63,8 +77,14 @@ export function Workspace() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
-  const nodes = useMemo(() => active ? layoutTree(active) : [], [active]);
-  const selectedPerson = active?.people.find(p => p.id === selected) ?? null;
+  const view = viewChoice ?? (active && isDemoTree(active) ? "full" : "focus");
+  // Fokus explores from the chosen person, else the selected one, else the first person in the tree.
+  const rootId = active ? [focusRoot, selected, active.people[0]?.id].find(id => id && active.people.some(person => person.id === id)) ?? null : null;
+  const layout = useMemo(() => !active ? null : view === "focus" && rootId ? layoutFocus(active, rootId, focusOptions) : layoutFull(active), [active, view, rootId, focusOptions]);
+  const nodes = layout?.nodes ?? [];
+  const labelFrom = selected ?? (view === "focus" ? rootId : null);
+  const labels = useMemo(() => active && labelFrom && active.relationships.length ? kinshipLabels(active, labelFrom) : undefined, [active, labelFrom]);
+  const panelPerson = active?.people.find(p => p.id === panelFor) ?? null;
   const activeTreeId = active?.id;
   const activePeopleCount = active?.people.length ?? 0;
   const readOnly = Boolean(active && isDemoTree(active));
@@ -77,11 +97,30 @@ export function Workspace() {
   }, [cache, data, migrationVersion, user]);
   const hasPendingMigration = Boolean(migrationPlan?.items.some(item => !item.alreadyCompleted));
 
+  const fitLayout = useCallback(() => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!layout || !layout.nodes.length || !rect?.width || !rect.height) { setZoom(1); setPan({ x: 0, y: 0 }); return; }
+    const { minX, maxX, minY, maxY } = layout.bounds;
+    const next = Math.max(MIN_ZOOM, Math.min(1.1, (rect.width - 120) / (maxX - minX), (rect.height - 190) / (maxY - minY)));
+    setZoom(next);
+    setPan({ x: 0, y: 12 });
+  }, [layout]);
+  const fitKey = `${activeTreeId}|${activePeopleCount}|${view}|${view === "focus" ? rootId : ""}|${focusOptions.siblings}|${focusOptions.ancestorDepth}|${focusOptions.descendantDepth}`;
+  // Re-fit when the tree, the view or the Fokus selection changes; editing a person does not move the camera.
+  useEffect(() => { fitLayout(); }, [fitKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Wheel pans the canvas; Ctrl/⌘ + wheel (and trackpad pinch) zooms. Needs a non-passive listener.
   useEffect(() => {
-    if (!activeTreeId) return;
-    setZoom(activePeopleCount > 12 ? .62 : 1);
-    setPan(activePeopleCount > 12 ? { x: 0, y: -300 } : { x: 0, y: 0 });
-  }, [activePeopleCount, activeTreeId]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (event.ctrlKey || event.metaKey) setZoom(value => clampZoom(value * Math.exp(-event.deltaY / 300)));
+      else setPan(value => ({ x: value.x - event.deltaX, y: value.y - event.deltaY }));
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, [Boolean(data && active)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data || !active) return <div className={styles.loading}><Brand /><span>{t("shell.loading")}</span></div>;
 
@@ -92,12 +131,21 @@ export function Workspace() {
     setData(next);
     if (user && treeRepository && cache) void uploadNewTree(next, tree.id, user.uid, treeRepository, new LocalCacheMigrationStateStore(cache)).catch(() => undefined).finally(() => setMigrationVersion(value => value + 1));
   };
-  const createTree = () => { addTree(newTree(t("tree.newName", { number: data.trees.length + 1 }))); setSelected(null); setSidebar(false); };
+  const createTree = () => { addTree(newTree(t("tree.newName", { number: data.trees.length + 1 }))); setSelected(null); setPanelFor(null); setFocusRoot(null); setSidebar(false); };
   const openEditor = (intent: EditorIntent) => setEditor(intent);
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest("button")) return; drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }; e.currentTarget.setPointerCapture(e.pointerId); };
   const moveDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if (drag.current) setPan({ x: drag.current.px + e.clientX - drag.current.x, y: drag.current.py + e.clientY - drag.current.y }); };
-  const fit = () => { setPan({ x: 0, y: active.people.length > 4 ? -40 : 0 }); setZoom(active.people.length > 8 ? .72 : active.people.length > 4 ? .86 : 1); };
-  const focusPerson = (id: string) => { const node = nodes.find(n => n.id === id); if (node) { setPan({ x: -node.x * zoom, y: -node.y * zoom }); setSelected(id); setDirectory(false); } };
+  const centreOf = (id: string) => { const node = nodes.find(n => n.id === id); if (!node || !layout) return null; return { x: -(node.x - (layout.bounds.minX + layout.bounds.maxX) / 2) * zoom, y: -(node.y - (layout.bounds.minY + layout.bounds.maxY) / 2) * zoom }; };
+  const focusPerson = (id: string) => {
+    if (view === "focus" && !nodes.some(node => node.id === id)) setFocusRoot(id);
+    const centre = centreOf(id);
+    if (centre) setPan(centre);
+    setSelected(id); setDirectory(false);
+    if (readOnly) setPanelFor(id);
+  };
+  // Clicking the selected person again clears the selection, like heritg.us.
+  const selectPerson = (id: string) => { const next = selected === id ? null : id; setSelected(next); setPanelFor(readOnly ? next : null); };
+  const switchView = (next: "focus" | "full") => { setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
   const download = () => { const blob = new Blob([exportTree(active)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
   const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { addTree(importTree(await file.text())); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
   const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
@@ -123,26 +171,20 @@ export function Workspace() {
       </header>
     </>}
 
-    <div className={styles.canvas} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null}>
-      {isEmpty ? <EmptyState onAdd={() => openEditor({ mode: "create" })} onImport={() => importRef.current?.click()} onGuide={() => setHelp(true)} /> :
-        <div className={styles.stage} style={{ transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})` }}>
-          <svg className={styles.lines} aria-hidden="true">
-            {active.relationships.map(rel => { const from = nodes.find(n => n.id === rel.from), to = nodes.find(n => n.id === rel.to); if (!from || !to) return null; return <path key={rel.id} d={connectorPath(from, to, rel.type)} />; })}
-          </svg>
-          {nodes.map(node => { const person = active.people.find(p => p.id === node.id)!; return <button key={person.id} className={`${styles.personCard} ${selected === person.id ? styles.selected : ""}`} style={{ left: node.x, top: node.y }} onClick={() => setSelected(person.id)}>
-            <span className={styles.avatar}>{person.photoUrl || person.photo ? <img src={person.photoUrl || person.photo} alt="" /> : displayName(person).charAt(0).toUpperCase()}</span>
-            <span className={styles.personText}><strong>{displayName(person)}</strong><small>{privacy && !readOnly ? "Private" : lifespanLabel(person)}</small></span>
-          </button>; })}
+    <div ref={canvasRef} className={styles.canvas} role="region" aria-label={t("canvas.label", { name: active.name })} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null}>
+      {isEmpty || !layout ? <EmptyState onAdd={() => openEditor({ mode: "create" })} onImport={() => importRef.current?.click()} onGuide={() => setHelp(true)} /> :
+        <div className={styles.stage} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
+          <TreeCanvas tree={active} layout={layout} labels={labels} selectedId={selected} actions={!readOnly} genderLabel={gender => t(`gender.${gender}`)} editLabel={name => t("canvas.edit", { name })} addLabel={name => t("canvas.add", { name })} onSelect={selectPerson} onEdit={id => { const person = active.people.find(p => p.id === id); if (person) openEditor({ mode: "edit", person }); }} onAdd={id => setPanelFor(id)} style={{ position: "absolute", left: -(layout.bounds.maxX - layout.bounds.minX) / 2, top: -(layout.bounds.maxY - layout.bounds.minY) / 2 }} />
         </div>}
     </div>
 
     {isEmpty && !readOnly && !controlsHidden && <CoachMarks />}
     {!controlsHidden && <div className={styles.rightControls} role="group" aria-label={t("shell.controls")}>
       <IconButton label={t("shell.allPeople")} onClick={() => setDirectory(true)}><Users size={19} /></IconButton>
-      <IconButton label={t("shell.branchCount")} disabled><SlidersHorizontal size={18} /></IconButton>
-      <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => Math.min(1.6, z + .12))}><ZoomIn size={18} /></IconButton>
-      <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => Math.max(.45, z - .12))}><ZoomOut size={18} /></IconButton>
-      <IconButton label={t("shell.fit")} onClick={fit} disabled={isEmpty}><Maximize2 size={18} /></IconButton>
+      {view === "full" && <IconButton label={t("shell.branchCount")} disabled><SlidersHorizontal size={18} /></IconButton>}
+      <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => clampZoom(z * 1.15))}><ZoomIn size={18} /></IconButton>
+      <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => clampZoom(z / 1.15))}><ZoomOut size={18} /></IconButton>
+      <IconButton label={t("shell.fit")} onClick={fitLayout} disabled={isEmpty}><Maximize2 size={18} /></IconButton>
     </div>}
     {!controlsHidden && <div className={styles.bottomRight} role="group" aria-label={t("shell.privacyGroup")}>
       <button className={styles.privacyChip} aria-label={t("shell.privacy", { state: t("shell.privacyProtected") })} onClick={() => setPrivacyPanel(true)}><ShieldCheck size={18} aria-hidden="true" /><span>{t("shell.privacyProtected")}</span></button>
@@ -151,13 +193,31 @@ export function Workspace() {
     <div className={styles.bottomLeft}>
       <IconButton label={controlsHidden ? t("shell.showControls") : t("shell.hideControls")} onClick={() => { setControlsHidden(value => !value); setViewMenu(false); }}>{controlsHidden ? <EyeOff size={18} /> : <Eye size={18} />}</IconButton>
       {!controlsHidden && <section className={styles.viewMode} aria-label={t("shell.viewMode")}>
-        <button className={styles.viewChip} aria-label={t("shell.viewModeValue", { mode: t("shell.viewFullLong") })} aria-expanded={viewMenu} onClick={() => setViewMenu(value => !value)}><GitBranch size={16} aria-hidden="true" /><span>{t("shell.viewFull")}</span><ChevronDown size={15} aria-hidden="true" /></button>
+        {view === "full" && !isEmpty && <div className={styles.legendWrap}>
+          <button className={styles.legendChip} aria-expanded={legend} onClick={() => { setLegend(value => !value); setViewMenu(false); }}><Network size={15} aria-hidden="true" /><span>{t("legend.title")}</span></button>
+          {legend && <ul className={styles.legend} aria-label={t("legend.title")}>
+            <li><svg width="34" height="10" aria-hidden="true"><path d="M2 5H32" className={styles.legendFamily} /></svg>{t("legend.parentChild")}</li>
+            <li><svg width="34" height="10" aria-hidden="true"><path d="M2 5H32" className={styles.legendPartner} /></svg>{t("legend.partner")}</li>
+            <li><svg width="34" height="10" aria-hidden="true"><path d="M2 5H32" className={`${styles.legendFamily} ${styles.legendDashed}`} /></svg>{t("legend.nonBiological")}</li>
+            <li><svg width="34" height="10" aria-hidden="true"><path d="M2 5H32" className={`${styles.legendPartner} ${styles.legendDashed}`} /></svg>{t("legend.ex")}</li>
+          </ul>}
+        </div>}
+        <button className={styles.viewChip} aria-label={view === "focus" && rootId ? t("shell.viewModeFocusValue", { mode: t("shell.viewFocusLong"), name: displayName(active.people.find(person => person.id === rootId)!) }) : t("shell.viewModeValue", { mode: t(view === "focus" ? "shell.viewFocusLong" : "shell.viewFullLong") })} aria-expanded={viewMenu} onClick={() => { setViewMenu(value => !value); setLegend(false); }}><GitBranch size={16} aria-hidden="true" /><span>{t(view === "focus" ? "shell.viewFocus" : "shell.viewFull")}</span><ChevronDown size={15} aria-hidden="true" /></button>
         {viewMenu && <div className={styles.viewPopover}>
           <div className={styles.segmented} role="group" aria-label={t("shell.viewMode")}>
-            <button aria-label={t("shell.viewFocusLong")} disabled title={t("shell.viewSoon")}>{t("shell.viewFocus")}</button>
-            <button aria-label={t("shell.viewFullLong")} aria-pressed="true" className={styles.segmentActive}>{t("shell.viewFull")}</button>
-            <button disabled title={t("shell.viewSoon")}>{t("shell.viewFan")}</button>
+            <button aria-label={t("shell.viewFocusLong")} aria-pressed={view === "focus"} className={view === "focus" ? styles.segmentActive : ""} disabled={isEmpty} onClick={() => switchView("focus")}>{t("shell.viewFocus")}</button>
+            <button aria-label={t("shell.viewFullLong")} aria-pressed={view === "full"} className={view === "full" ? styles.segmentActive : ""} onClick={() => switchView("full")}>{t("shell.viewFull")}</button>
+            <button disabled title={t("view.fanSoon")}>{t("shell.viewFan")}</button>
           </div>
+          {view === "focus" && rootId && <div className={styles.focusOptions}>
+            <label className={styles.explore}><span>{t("view.exploreFrom")}</span><select value={rootId} onChange={event => { setFocusRoot(event.target.value); setSelected(event.target.value); }}>{active.people.map(person => <option key={person.id} value={person.id}>{displayName(person)}</option>)}</select></label>
+            <p className={styles.showing}>{t("view.showing", { shown: nodes.length, total: active.people.length })}</p>
+            <label className={styles.checkRow}><input type="checkbox" checked={focusOptions.siblings} onChange={event => setFocusOptions(options => ({ ...options, siblings: event.target.checked }))} /><span><strong>{t("view.siblings")}</strong><small>{t("view.siblingsHint")}</small></span></label>
+            <div className={styles.depthButtons}>
+              <button disabled={!layout || !("moreAncestors" in layout) || !layout.moreAncestors} onClick={() => setFocusOptions(options => ({ ...options, ancestorDepth: options.ancestorDepth + 1 }))}><ArrowUp size={15} aria-hidden="true" />{t("view.moreAncestors")}</button>
+              <button disabled={!layout || !("moreDescendants" in layout) || !layout.moreDescendants} onClick={() => setFocusOptions(options => ({ ...options, descendantDepth: options.descendantDepth + 1 }))}><ArrowDown size={15} aria-hidden="true" />{t("view.moreDescendants")}</button>
+            </div>
+          </div>}
         </div>}
       </section>}
     </div>
@@ -165,9 +225,10 @@ export function Workspace() {
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
-    {sidebar && <TreeSidebar data={data} onClose={() => setSidebar(false)} onSelect={id => { setData({ ...data, activeTreeId: id }); setSelected(null); setSidebar(false); }} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} />}
-    {selectedPerson && <PersonPanel person={selectedPerson} relatives={relativesOf(active, selectedPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setSelected(null)} onEdit={() => openEditor({ mode: "edit", person: selectedPerson })} onAdd={(relation, reverse) => openEditor({ mode: "create", relation, anchorId: selectedPerson.id, reverse })} onDelete={() => { if (confirm(`Delete ${displayName(selectedPerson)}?`)) { setTree(removePerson(active, selectedPerson.id)); setSelected(null); } }} />}
-    {editor && <PersonEditor intent={editor} onClose={() => setEditor(null)} onSave={(person) => { try { let next = editor.mode === "edit" ? { ...active, people: active.people.map(p => p.id === person.id ? person : p) } : { ...active, people: [...active.people, person] }; if (editor.relation && editor.anchorId) next = addRelationship(next, editor.relation, editor.reverse ? person.id : editor.anchorId, editor.reverse ? editor.anchorId : person.id); setTree(next); setSelected(person.id); setEditor(null); } catch (error) { alert(error instanceof Error ? error.message : "Could not save person."); } }} />}
+    {sidebar && <TreeSidebar data={data} onClose={() => setSidebar(false)} onSelect={id => { setData({ ...data, activeTreeId: id }); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); }} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} />}
+    {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => openEditor({ mode: "edit", person: panelPerson })} onAdd={(relation, reverse) => openEditor({ mode: "create", relation, anchorId: panelPerson.id, reverse })} onDelete={() => { if (confirm(`Delete ${displayName(panelPerson)}?`)) { setTree(removePerson(active, panelPerson.id)); setSelected(null); setPanelFor(null); } }} />}
+    {editor && <PersonEditor intent={editor} onClose={() => setEditor(null)} onSave={(person) => { try { let next = editor.mode === "edit" ? { ...active, people: active.people.map(p => p.id === person.id ? person : p) } : { ...active, people: [...active.people, person] }; if (editor.relation && editor.anchorId) next = addRelationship(next, editor.relation, editor.reverse ? person.id : editor.anchorId, editor.reverse ? editor.anchorId : person.id); // Like heritg.us, adding a relative keeps the person you started from selected.
+ setTree(next); setSelected(editor.anchorId ?? person.id); setPanelFor(null); setEditor(null); } catch (error) { alert(error instanceof Error ? error.message : "Could not save person."); } }} />}
     {directory && <Directory tree={active} privacy={privacy && !readOnly} onClose={() => setDirectory(false)} onFocus={focusPerson} />}
     {settings && <Panel title="Settings" onClose={() => setSettings(false)}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></Panel>}
     {help && <Panel title={t("shell.help")} onClose={() => setHelp(false)}><p className={styles.helpText}>{t("help.short")}</p></Panel>}
