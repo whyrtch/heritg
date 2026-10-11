@@ -85,7 +85,7 @@ description: "Keep your family tree private, and share it by link when you choos
 
 **Files:** Modify `src/features/tree/model.ts`, `src/features/tree/model.test.ts`
 
-- [ ] **Step 1: Add the failing tests first.**
+- [x] **Step 1: Add the failing tests first.**
 
 ```ts
 import { connectorPath, generationCount, lifeDatesLong, lifespanLabel } from "./model";
@@ -117,7 +117,7 @@ describe("display helpers", () => {
 });
 ```
 
-- [ ] **Step 2: Implement.** Constants are shared with the CSS card size.
+- [x] **Step 2: Implement.** Constants are shared with the CSS card size.
 
 ```ts
 export const CARD_W = 210, CARD_H = 108;
@@ -157,8 +157,8 @@ export function connectorPath(from: NodeLayout, to: NodeLayout, type: Relationsh
 
 The `·` in `lifeDatesLong` is the only middle dot left in the UI. It separates two dates, not a meta list. Replace it with a line break in the panel if a reviewer prefers.
 
-- [ ] **Step 3:** `npm test -- --run src/features/tree/model.test.ts` passes.
-- [ ] **Step 4: Commit** `feat: add lifespan, generation and connector helpers`.
+- [x] **Step 3:** `npm test -- --run src/features/tree/model.test.ts` passes.
+- [x] **Step 4: Commit** `feat: add lifespan, generation and connector helpers`.
 
 ### Task 3: Person cards and connectors on the workspace canvas
 

@@ -15,6 +15,22 @@ export const newTree = (name = "My Family Tree"): FamilyTree => ({ id: uid(), na
 export const initialData = (): WorkspaceData => { const tree = newTree(); return { version: 1, activeTreeId: tree.id, trees: [tree] }; };
 
 export function displayName(person: Person) { return `${person.firstName} ${person.lastName}`.trim() || "Unnamed person"; }
+
+const year = (iso: string) => iso.slice(0, 4);
+export function lifespanLabel(person: Person): string {
+  const born = year(person.birthDate), died = year(person.deathDate);
+  if (born && died) return `${born} – ${died}`;
+  if (born) return `Born ${born}`;
+  if (died) return `Died ${died}`;
+  return "Years unknown";
+}
+
+const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const formatLongDate = (iso: string) => longDate.format(new Date(`${iso}T00:00:00Z`));
+export function lifeDatesLong(person: Person): string {
+  const parts = [person.birthDate && `Born ${formatLongDate(person.birthDate)}`, person.deathDate && `Died ${formatLongDate(person.deathDate)}`].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Birth date unknown";
+}
 export function parentsOf(tree: FamilyTree, id: string) { return tree.relationships.filter(r => r.type === "parent-child" && r.to === id).map(r => r.from); }
 export function childrenOf(tree: FamilyTree, id: string) { return tree.relationships.filter(r => r.type === "parent-child" && r.from === id).map(r => r.to); }
 
@@ -54,6 +70,8 @@ export function importTree(raw: string): FamilyTree {
 }
 
 export type NodeLayout = { id: string; x: number; y: number };
+/** Person card size on the canvas; layoutTree() spacing and connector anchors depend on it. */
+export const CARD_W = 210, CARD_H = 108;
 export function layoutTree(tree: FamilyTree): NodeLayout[] {
   if (!tree.people.length) return [];
   const levels = new Map<string, number>();
@@ -67,4 +85,20 @@ export function layoutTree(tree: FamilyTree): NodeLayout[] {
   const nodes: NodeLayout[] = [];
   [...rows].sort(([a], [b]) => a - b).forEach(([level, ids]) => ids.forEach((id, index) => nodes.push({ id, x: (index - (ids.length - 1) / 2) * 250, y: level * 190 })));
   return nodes;
+}
+
+export function generationCount(tree: FamilyTree): number {
+  return new Set(layoutTree(tree).map(node => node.y)).size;
+}
+
+export function connectorPath(from: NodeLayout, to: NodeLayout, type: Relationship["type"], radius = 12): string {
+  if (type === "partner") {
+    const [left, right] = from.x <= to.x ? [from, to] : [to, from];
+    return `M ${left.x + CARD_W} ${left.y + CARD_H / 2} L ${right.x} ${right.y + CARD_H / 2}`;
+  }
+  const x1 = from.x + CARD_W / 2, top = from.y + CARD_H, x2 = to.x + CARD_W / 2, bottom = to.y;
+  if (Math.abs(x1 - x2) < 1) return `M ${x1} ${top} V ${bottom}`;
+  const mid = (top + bottom) / 2, s = x2 > x1 ? 1 : -1;
+  const r = Math.min(radius, Math.abs(x2 - x1) / 2, (bottom - top) / 2);
+  return `M ${x1} ${top} V ${mid - r} Q ${x1} ${mid} ${x1 + s * r} ${mid} H ${x2 - s * r} Q ${x2} ${mid} ${x2} ${mid + r} V ${bottom}`;
 }
