@@ -102,3 +102,11 @@ export function connectorPath(from: NodeLayout, to: NodeLayout, type: Relationsh
   const r = Math.min(radius, Math.abs(x2 - x1) / 2, (bottom - top) / 2);
   return `M ${x1} ${top} V ${mid - r} Q ${x1} ${mid} ${x1 + s * r} ${mid} H ${x2 - s * r} Q ${x2} ${mid} ${x2} ${mid + r} V ${bottom}`;
 }
+
+export type Relatives = { parents: Person[]; partners: Person[]; children: Person[] };
+export function relativesOf(tree: FamilyTree, id: string): Relatives {
+  const byId = new Map(tree.people.map(person => [person.id, person]));
+  const pick = (ids: string[]) => ids.map(personId => byId.get(personId)).filter((person): person is Person => Boolean(person));
+  const partners = tree.relationships.filter(r => r.type === "partner" && (r.from === id || r.to === id)).map(r => r.from === id ? r.to : r.from);
+  return { parents: pick(parentsOf(tree, id)), partners: pick(partners), children: pick(childrenOf(tree, id)) };
+}

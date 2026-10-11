@@ -50,3 +50,6 @@ export function createJokowiDemoTree(): FamilyTree {
   ];
   return { id: JOKOWI_DEMO_TREE_ID, name: "Keluarga Joko Widodo", people, relationships, updatedAt: "2026-08-31T00:00:00.000Z" };
 }
+
+/** The bundled example tree is a read-only showcase; it is never edited, synced or migrated. */
+export const isDemoTree = (tree: Pick<FamilyTree, "id">) => tree.id === JOKOWI_DEMO_TREE_ID;

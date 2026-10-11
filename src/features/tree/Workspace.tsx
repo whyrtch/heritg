@@ -1,7 +1,8 @@
 "use client";
-import { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, CircleHelp, FileUp, Folder, Leaf, Menu, Minus, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn } from "lucide-react";
-import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, Person, removePerson } from "./model";
+import React, { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, CircleHelp, FileUp, Folder, Leaf, Lock, Menu, Minus, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn } from "lucide-react";
+import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
+import { isDemoTree } from "./demoData";
 import { validatePhotoUrl } from "./domain/photoUrl";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
@@ -58,12 +59,13 @@ export function Workspace() {
   const selectedPerson = active?.people.find(p => p.id === selected) ?? null;
   const activeTreeId = active?.id;
   const activePeopleCount = active?.people.length ?? 0;
+  const readOnly = Boolean(active && isDemoTree(active));
   const mappings = cache?.load().migration;
-  const remoteTreeId = active && mappings?.completedTreeIds.includes(active.id) ? mappings.remoteIdsByLocalId[active.id] : null;
+  const remoteTreeId = active && !readOnly && mappings?.completedTreeIds.includes(active.id) ? mappings.remoteIdsByLocalId[active.id] : null;
   const activeOnlineTree = onlineTree?.id === remoteTreeId ? onlineTree : null;
   const migrationPlan = useMemo(() => {
     void migrationVersion; // Re-read durable mappings after a migration run.
-    return data && user && cache ? planMigration(data, cache.load().migration, { ownerId: user.uid }) : null;
+    return data && user && cache ? planMigration({ ...data, trees: data.trees.filter(tree => !isDemoTree(tree)) }, cache.load().migration, { ownerId: user.uid }) : null;
   }, [cache, data, migrationVersion, user]);
   const hasPendingMigration = Boolean(migrationPlan?.items.some(item => !item.alreadyCompleted));
 
@@ -75,7 +77,7 @@ export function Workspace() {
 
   if (!data || !active) return <div className={styles.loading}><Brand /><span>Opening your archive…</span></div>;
 
-  const setTree = (tree: FamilyTree) => { updateActive(() => tree); syncApi.current?.mutate(tree); };
+  const setTree = (tree: FamilyTree) => { if (readOnly) return; updateActive(() => tree); syncApi.current?.mutate(tree); };
   const createTree = () => { const tree = newTree(`Family Tree ${data.trees.length + 1}`); setData({ ...data, trees: [...data.trees, tree], activeTreeId: tree.id }); setMigrationVisible(true); setSelected(null); setSidebar(false); };
   const openEditor = (intent: EditorIntent) => setEditor(intent);
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest("button")) return; drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }; e.currentTarget.setPointerCapture(e.pointerId); };
@@ -91,7 +93,7 @@ export function Workspace() {
     <header className={styles.topbar}>
       <div className={styles.topLeft}>
         <IconButton label="Show family trees" onClick={() => setSidebar(true)}><Menu size={21} /></IconButton>
-        <button className={styles.treeTitle} onClick={() => { const name = prompt("Rename family tree", active.name); if (name?.trim()) setTree({ ...active, name: name.trim() }); }}><strong>{active.name}</strong><span>{summary}</span></button>
+        <button className={styles.treeTitle} aria-disabled={readOnly} onClick={readOnly ? undefined : () => { const name = prompt("Rename family tree", active.name); if (name?.trim()) setTree({ ...active, name: name.trim() }); }}><strong>{active.name}</strong><span>{summary}</span></button>
       </div>
       <div className={styles.topActions}>
         <button className={styles.shareButton} disabled={!activeOnlineTree || !publicationRepository} onClick={() => setPublishOpen(true)}><Share2 size={18} /> <span>Share</span></button>
@@ -107,7 +109,7 @@ export function Workspace() {
           </svg>
           {nodes.map(node => { const person = active.people.find(p => p.id === node.id)!; return <button key={person.id} className={`${styles.personCard} ${selected === person.id ? styles.selected : ""}`} style={{ left: node.x, top: node.y }} onClick={() => setSelected(person.id)}>
             <span className={styles.avatar}>{person.photoUrl || person.photo ? <img src={person.photoUrl || person.photo} alt="" /> : displayName(person).charAt(0).toUpperCase()}</span>
-            <span className={styles.personText}><strong>{displayName(person)}</strong><small>{privacy ? "Private" : lifespanLabel(person)}</small></span>
+            <span className={styles.personText}><strong>{displayName(person)}</strong><small>{privacy && !readOnly ? "Private" : lifespanLabel(person)}</small></span>
           </button>; })}
         </div>}
     </div>
@@ -118,16 +120,16 @@ export function Workspace() {
       <IconButton quiet label="Zoom out" onClick={() => setZoom(z => Math.max(.45, z - .12))}><Minus size={20} /></IconButton>
       <IconButton quiet label="Fit tree" onClick={fit} disabled={!active.people.length}><Settings2 size={19} /></IconButton>
     </aside>
-    <div className={styles.bottomRight}><button className={styles.privacyChip} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><ShieldCheck size={18} aria-hidden="true" /> {privacy ? "Dates hidden" : "Dates shown"}</button><IconButton label="Help" onClick={() => alert("Drag to move the canvas. Use the controls to zoom. Select a person to add family.")}><CircleHelp size={20} /></IconButton></div>
+    <div className={styles.bottomRight}>{!readOnly && <button className={styles.privacyChip} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><ShieldCheck size={18} aria-hidden="true" /> {privacy ? "Dates hidden" : "Dates shown"}</button>}<IconButton label="Help" onClick={() => alert("Drag to move the canvas. Use the controls to zoom. Select a person to add family.")}><CircleHelp size={20} /></IconButton></div>
     {treeRepository && cache && remoteTreeId && <OnlineTreeBridge key={`${remoteTreeId}-${onlineEpoch}`} treeId={remoteTreeId} repository={treeRepository} cache={cache} apiRef={syncApi} onTree={tree => { setOnlineTree(tree); updateActive(() => ({ ...fromOnlineTree(tree), id: active.id })); }} />}
-    {!remoteTreeId && <div className={styles.localStatus}>Saved on this device only</div>}
-    <button className={styles.mobileAdd} aria-label="Add family member" onClick={() => openEditor({ mode: "create" })}><Plus /></button>
+    {!remoteTreeId && <div className={styles.localStatus}>{readOnly ? "Example tree, view only" : "Saved on this device only"}</div>}
+    {!readOnly && <button className={styles.mobileAdd} aria-label="Add family member" onClick={() => openEditor({ mode: "create" })}><Plus /></button>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
     {sidebar && <TreeSidebar data={data} onClose={() => setSidebar(false)} onSelect={id => { setData({ ...data, activeTreeId: id }); setSelected(null); setSidebar(false); }} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} />}
-    {selectedPerson && <PersonPanel person={selectedPerson} onClose={() => setSelected(null)} onEdit={() => openEditor({ mode: "edit", person: selectedPerson })} onAdd={(relation, reverse) => openEditor({ mode: "create", relation, anchorId: selectedPerson.id, reverse })} onDelete={() => { if (confirm(`Delete ${displayName(selectedPerson)}?`)) { setTree(removePerson(active, selectedPerson.id)); setSelected(null); } }} />}
+    {selectedPerson && <PersonPanel person={selectedPerson} relatives={relativesOf(active, selectedPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setSelected(null)} onEdit={() => openEditor({ mode: "edit", person: selectedPerson })} onAdd={(relation, reverse) => openEditor({ mode: "create", relation, anchorId: selectedPerson.id, reverse })} onDelete={() => { if (confirm(`Delete ${displayName(selectedPerson)}?`)) { setTree(removePerson(active, selectedPerson.id)); setSelected(null); } }} />}
     {editor && <PersonEditor intent={editor} onClose={() => setEditor(null)} onSave={(person) => { try { let next = editor.mode === "edit" ? { ...active, people: active.people.map(p => p.id === person.id ? person : p) } : { ...active, people: [...active.people, person] }; if (editor.relation && editor.anchorId) next = addRelationship(next, editor.relation, editor.reverse ? person.id : editor.anchorId, editor.reverse ? editor.anchorId : person.id); setTree(next); setSelected(person.id); setEditor(null); } catch (error) { alert(error instanceof Error ? error.message : "Could not save person."); } }} />}
-    {directory && <Directory tree={active} privacy={privacy} onClose={() => setDirectory(false)} onFocus={focusPerson} />}
+    {directory && <Directory tree={active} privacy={privacy && !readOnly} onClose={() => setDirectory(false)} onFocus={focusPerson} />}
     {settings && <Panel title="Settings" onClose={() => setSettings(false)}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></Panel>}
     {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
     {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => ({ ...fromOnlineTree(tree), id: active.id })); setOnlineEpoch(value => value + 1); }} />}
@@ -177,9 +179,21 @@ function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree }: {
 
 function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) { return <section className={styles.emptyState}><Brand /><h1>Start with anyone</h1><p>Choose any family member: yourself, a parent,<br />grandparent, or ancestor. You can build the tree in<br />any direction.</p><button onClick={onAdd}><UserPlus /><span><strong>Add any family member</strong><small>Start with yourself or an ancestor</small></span></button><button onClick={onImport}><Folder /><span><strong>Open or import a family tree</strong><small>Choose another tree or bring in a .heritg file</small></span></button><button onClick={() => alert("Add someone, then select their card to grow the family in any direction.")}><CircleHelp /><span><strong>Learn the canvas</strong><small>See how to move, zoom, select, and add family</small></span></button><div className={styles.dragHint}>Drag or scroll to move the canvas</div></section>; }
 
-function TreeSidebar({ data, onClose, onSelect, onCreate, onImport, onExport, onFamilyPlus }: { data: ReturnType<typeof useWorkspaceData>["data"] & {}; onClose: () => void; onSelect: (id: string) => void; onCreate: () => void; onImport: () => void; onExport: () => void; onFamilyPlus: () => void }) { return <div className={styles.backdrop} onMouseDown={e => e.target === e.currentTarget && onClose()}><aside className={styles.sidebar}><div className={styles.sidebarHead}><Brand /><p>Your private family archive</p><IconButton label="Close family trees" onClick={onClose}><X /></IconButton></div><div className={styles.sectionTitle}><strong>Family trees</strong><Plus /></div><label className={styles.search}><Search size={18} /><input placeholder="Search trees" /></label><div className={styles.treeList}>{data.trees.map(tree => <button key={tree.id} className={tree.id === data.activeTreeId ? styles.activeTree : ""} onClick={() => onSelect(tree.id)}><strong>{tree.name}</strong><small>{tree.people.length} {tree.people.length === 1 ? "person" : "people"}, edited {new Date(tree.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></button>)}</div><button className={styles.sidebarPrimary} onClick={onCreate}><Plus /> New tree</button><button className={styles.sidebarAction} onClick={onImport}><FileUp /> Import file</button><button className={styles.sidebarAction} onClick={onExport}><ChevronDown /> Export current tree</button><hr /><button className={styles.sidebarFamily} onClick={onFamilyPlus}><Sparkles /> <span><strong>Heritg Family+</strong><small>Inviting other editors is coming later</small></span></button><div className={styles.sidebarProtection}><ShieldCheck /><span><strong>Secure sync</strong><small>Online with offline device cache</small></span></div></aside></div>; }
+function TreeSidebar({ data, onClose, onSelect, onCreate, onImport, onExport, onFamilyPlus }: { data: ReturnType<typeof useWorkspaceData>["data"] & {}; onClose: () => void; onSelect: (id: string) => void; onCreate: () => void; onImport: () => void; onExport: () => void; onFamilyPlus: () => void }) { return <div className={styles.backdrop} onMouseDown={e => e.target === e.currentTarget && onClose()}><aside className={styles.sidebar}><div className={styles.sidebarHead}><Brand /><p>Your private family archive</p><IconButton label="Close family trees" onClick={onClose}><X /></IconButton></div><div className={styles.sectionTitle}><strong>Family trees</strong><Plus /></div><label className={styles.search}><Search size={18} /><input placeholder="Search trees" /></label><div className={styles.treeList}>{data.trees.map(tree => <button key={tree.id} className={tree.id === data.activeTreeId ? styles.activeTree : ""} onClick={() => onSelect(tree.id)}><strong>{tree.name}</strong><small>{isDemoTree(tree) ? `${tree.people.length} people, example tree` : `${tree.people.length} ${tree.people.length === 1 ? "person" : "people"}, edited ${new Date(tree.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</small></button>)}</div><button className={styles.sidebarPrimary} onClick={onCreate}><Plus /> New tree</button><button className={styles.sidebarAction} onClick={onImport}><FileUp /> Import file</button><button className={styles.sidebarAction} onClick={onExport}><ChevronDown /> Export current tree</button><hr /><button className={styles.sidebarFamily} onClick={onFamilyPlus}><Sparkles /> <span><strong>Heritg Family+</strong><small>Inviting other editors is coming later</small></span></button><div className={styles.sidebarProtection}><ShieldCheck /><span><strong>Secure sync</strong><small>Online with offline device cache</small></span></div></aside></div>; }
 
-function PersonPanel({ person, onClose, onEdit, onAdd, onDelete }: { person: Person; onClose: () => void; onEdit: () => void; onAdd: (relation: "parent-child" | "partner", reverse?: boolean) => void; onDelete: () => void }) { return <Panel title={displayName(person)} onClose={onClose}><div className={styles.profile}><div className={styles.bigAvatar}>{person.photoUrl || person.photo ? <img src={person.photoUrl || person.photo} alt="" /> : displayName(person)[0]}</div><p>{lifeDatesLong(person)}</p>{person.notes && <p className={styles.profileNotes}>{person.notes}</p>}</div><button className={styles.primary} onClick={onEdit}><Pencil size={17} aria-hidden="true" /> Edit details</button><h3 className={styles.panelLabel}>Add a relative</h3><div className={styles.relationGrid}><button onClick={() => onAdd("parent-child", true)}><Plus /> Parent</button><button onClick={() => onAdd("partner")}><Plus /> Partner</button><button onClick={() => onAdd("parent-child")}><Plus /> Child</button></div><button className={styles.danger} onClick={onDelete}>Delete person</button></Panel>; }
+function PersonPanel({ person, relatives, readOnly, onFocus, onStartOwn, onClose, onEdit, onAdd, onDelete }: { person: Person; relatives: Relatives; readOnly: boolean; onFocus: (id: string) => void; onStartOwn: () => void; onClose: () => void; onEdit: () => void; onAdd: (relation: "parent-child" | "partner", reverse?: boolean) => void; onDelete: () => void }) {
+  const groups = [["Parents", relatives.parents], [relatives.partners.length > 1 ? "Partners" : "Partner", relatives.partners], ["Children", relatives.children]] as const;
+  return <Panel title={displayName(person)} onClose={onClose}>
+    <div className={styles.profile}><div className={styles.bigAvatar}>{person.photoUrl || person.photo ? <img src={person.photoUrl || person.photo} alt="" /> : displayName(person)[0]}</div><p>{lifeDatesLong(person)}</p>{person.notes && <p className={styles.profileNotes}>{person.notes}</p>}</div>
+    {groups.some(([, people]) => people.length > 0) && <dl className={styles.relatives}>{groups.filter(([, people]) => people.length > 0).map(([label, people]) => <div key={label}><dt>{label}</dt><dd>{people.map(relative => <button key={relative.id} onClick={() => onFocus(relative.id)}>{displayName(relative)}</button>)}</dd></div>)}</dl>}
+    {readOnly ? <>
+      <div className={styles.readOnlyNote}><Lock size={18} aria-hidden="true" /><div><strong>Example tree</strong><p>This sample can’t be edited. Start your own tree to add your family.</p></div></div>
+      <button className={styles.primary} onClick={onStartOwn}><Plus size={17} aria-hidden="true" /> Start your own tree</button>
+    </> : <>
+      <button className={styles.primary} onClick={onEdit}><Pencil size={17} aria-hidden="true" /> Edit details</button><h3 className={styles.panelLabel}>Add a relative</h3><div className={styles.relationGrid}><button onClick={() => onAdd("parent-child", true)}><Plus /> Parent</button><button onClick={() => onAdd("partner")}><Plus /> Partner</button><button onClick={() => onAdd("parent-child")}><Plus /> Child</button></div><button className={styles.danger} onClick={onDelete}>Delete person</button>
+    </>}
+  </Panel>;
+}
 
 function PhotoUrlPreview({ person }: { person: Person }) {
   const [failed, setFailed] = useState(false);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRelationship, connectorPath, emptyPerson, exportTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree } from "./model";
+import { addRelationship, connectorPath, emptyPerson, exportTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, relativesOf } from "./model";
 import { createJokowiDemoTree } from "./demoData";
 
 describe("family model", () => {
@@ -51,5 +51,17 @@ describe("display helpers", () => {
     expect(connectorPath(a, c, "parent-child")).toBe("M 105 108 V 137 Q 105 149 117 149 H 343 Q 355 149 355 161 V 190");
     expect(connectorPath(a, d, "parent-child")).toContain("Q 105 149 93 149");
     expect(connectorPath(c, b, "partner")).toBe("M 210 244 L 250 244");
+  });
+});
+
+describe("relativesOf", () => {
+  it("groups parents, partners and children", () => {
+    const tree = createJokowiDemoTree();
+    const names = (people: { id: string }[]) => people.map(person => person.id);
+    const relatives = relativesOf(tree, "jokowi");
+    expect(names(relatives.parents)).toEqual(["widjiatno", "sudjiatmi"]);
+    expect(names(relatives.partners)).toEqual(["iriana"]);
+    expect(names(relatives.children)).toEqual(["gibran", "kahiyang", "kaesang"]);
+    expect(names(relativesOf(tree, "iriana").partners)).toEqual(["jokowi"]);
   });
 });
