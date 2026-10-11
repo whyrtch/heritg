@@ -42,7 +42,7 @@
 
 **Files:** Modify `src/app/globals.css`, `src/app/layout.tsx`
 
-- [ ] **Step 1: Replace the `:root` block in `globals.css`.** The old names stay as aliases, so every existing `var(--plum)` / `var(--brand)` keeps working and picks up the new color:
+- [x] **Step 1: Replace the `:root` block in `globals.css`.** The old names stay as aliases, so every existing `var(--plum)` / `var(--brand)` keeps working and picks up the new color:
 
 ```css
 :root{
@@ -64,8 +64,8 @@
 }
 ```
 
-- [ ] **Step 2: Update the focus ring.** `outline:3px solid rgba(43,58,103,.32)`.
-- [ ] **Step 3: Load the font in `layout.tsx`.** Also update `metadata.description`, which still says "privately on this device":
+- [x] **Step 2: Update the focus ring.** `outline:3px solid rgba(43,58,103,.32)`.
+- [x] **Step 3: Load the font in `layout.tsx`.** Also update `metadata.description`, which still says "privately on this device":
 
 ```tsx
 import { Plus_Jakarta_Sans } from "next/font/google";
@@ -78,8 +78,8 @@ return <html lang="en" className={jakarta.variable}><body><AuthProvider>{childre
 description: "Keep your family tree private, and share it by link when you choose.",
 ```
 
-- [ ] **Step 4: Verify.** `npm run build` succeeds; this needs network access to Google Fonts at build time. If the build machine is offline, switch to `@fontsource/plus-jakarta-sans` and import its CSS in `layout.tsx` instead.
-- [ ] **Step 5: Commit** `style: adopt Mori & Tarum tokens and Plus Jakarta Sans`.
+- [x] **Step 4: Verify.** `npm run build` succeeds; this needs network access to Google Fonts at build time. If the build machine is offline, switch to `@fontsource/plus-jakarta-sans` and import its CSS in `layout.tsx` instead.
+- [x] **Step 5: Commit** `style: adopt Mori & Tarum tokens and Plus Jakarta Sans`.
 
 ### Task 2: Model helpers for cards, generations and connectors (TDD)
 
