@@ -1,7 +1,7 @@
 "use client";
 import { ChangeEvent, FormEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, CircleHelp, Eye, EyeOff, FileUp, Folder, GitBranch, Menu, Minus, MoreHorizontal, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn } from "lucide-react";
-import { addRelationship, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, newTree, Person, removePerson } from "./model";
+import { ChevronDown, CircleHelp, Eye, EyeOff, FileUp, Folder, GitBranch, Menu, Minus, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn } from "lucide-react";
+import { addRelationship, connectorPath, displayName, emptyPerson, exportTree, FamilyTree, importTree, layoutTree, lifespanLabel, newTree, Person, removePerson } from "./model";
 import { validatePhotoUrl } from "./domain/photoUrl";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
@@ -101,11 +101,11 @@ export function Workspace() {
       {active.people.length === 0 ? <EmptyState onAdd={() => openEditor({ mode: "create" })} onImport={() => importRef.current?.click()} /> :
         <div className={styles.stage} style={{ transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})` }}>
           <svg className={styles.lines} aria-hidden="true">
-            {active.relationships.map(rel => { const from = nodes.find(n => n.id === rel.from), to = nodes.find(n => n.id === rel.to); if (!from || !to) return null; const x1 = from.x + 105, y1 = from.y + 54, x2 = to.x + 105, y2 = to.y + 54; const d = rel.type === "partner" ? `M ${x1} ${y1} L ${x2} ${y2}` : `M ${x1} ${y1 + 54} V ${(y1 + y2) / 2} H ${x2} V ${y2 - 54}`; return <path key={rel.id} d={d} />; })}
+            {active.relationships.map(rel => { const from = nodes.find(n => n.id === rel.from), to = nodes.find(n => n.id === rel.to); if (!from || !to) return null; return <path key={rel.id} d={connectorPath(from, to, rel.type)} />; })}
           </svg>
           {nodes.map(node => { const person = active.people.find(p => p.id === node.id)!; return <button key={person.id} className={`${styles.personCard} ${selected === person.id ? styles.selected : ""}`} style={{ left: node.x, top: node.y }} onClick={() => setSelected(person.id)}>
             <span className={styles.avatar}>{person.photoUrl || person.photo ? <img src={person.photoUrl || person.photo} alt="" /> : displayName(person).charAt(0).toUpperCase()}</span>
-            <span className={styles.personText}><strong>{displayName(person)}</strong><small>{privacy ? "Private" : [person.birthDate, person.deathDate].filter(Boolean).join(" – ") || "Dates unknown"}</small></span><MoreHorizontal size={17} />
+            <span className={styles.personText}><strong>{displayName(person)}</strong><small>{privacy ? "Private" : lifespanLabel(person)}</small></span>
           </button>; })}
         </div>}
     </div>

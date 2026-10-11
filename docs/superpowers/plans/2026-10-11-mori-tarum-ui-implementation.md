@@ -164,8 +164,8 @@ The `·` in `lifeDatesLong` is the only middle dot left in the UI. It separates 
 
 **Files:** Modify `src/features/tree/Workspace.tsx`, `workspace.module.css`
 
-- [ ] **Step 1: Connectors.** Replace the inline `d` computation in the `<svg className={styles.lines}>` map with `connectorPath(from, to, rel.type)`.
-- [ ] **Step 2: Card markup.** Remove `<MoreHorizontal size={17} />` and its import, and swap the dates line for `lifespanLabel`:
+- [x] **Step 1: Connectors.** Replace the inline `d` computation in the `<svg className={styles.lines}>` map with `connectorPath(from, to, rel.type)`.
+- [x] **Step 2: Card markup.** Remove `<MoreHorizontal size={17} />` and its import, and swap the dates line for `lifespanLabel`:
 
 ```tsx
 <span className={styles.personText}>
@@ -174,7 +174,7 @@ The `·` in `lifeDatesLong` is the only middle dot left in the UI. It separates 
 </span>
 ```
 
-- [ ] **Step 3: CSS.** Replace the `.personCard`, `.avatar`, `.personText`, and `.lines path` rules:
+- [x] **Step 3: CSS.** Replace the `.personCard`, `.avatar`, `.personText`, and `.lines path` rules:
 
 ```css
 .personCard{position:absolute;width:210px;height:108px;border:1px solid var(--card-line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-soft);display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;text-align:left;cursor:pointer;transition:box-shadow .18s,border-color .18s}
@@ -188,9 +188,9 @@ The `·` in `lifeDatesLong` is the only middle dot left in the UI. It separates 
 ```
 
   Drop the hover `translateY(-2px)`: the skill asks for restraint in hover motion on every card. In the shared `.avatar,.smallAvatar` rule, set `background:var(--avatar);color:var(--initials);font-family:var(--font-sans)`.
-- [ ] **Step 4: Mobile.** Remove the `@media(max-width:767px)` override `.personCard{width:190px}`, because the connector math assumes 210. Mobile already zooms the stage.
-- [ ] **Step 5: Verify.** `npm run dev`, open the demo tree, and confirm long names wrap to two lines (e.g. "Panembahan Al Nahyan Nasution") and connectors have rounded elbows.
-- [ ] **Step 6: Commit** `style: readable person cards and rounded connectors`.
+- [x] **Step 4: Mobile.** Remove the `@media(max-width:767px)` override `.personCard{width:190px}`, because the connector math assumes 210. Mobile already zooms the stage.
+- [x] **Step 5: Verify.** `npm run dev`, open the demo tree, and confirm long names wrap to two lines (e.g. "Panembahan Al Nahyan Nasution") and connectors have rounded elbows.
+- [x] **Step 6: Commit** `style: readable person cards and rounded connectors`.
 
 ### Task 4: Consolidate canvas chrome and move Sign out into Settings
 
