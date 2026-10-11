@@ -8,6 +8,7 @@ import {
   getDocs,
   query,
   runTransaction,
+  serverTimestamp,
   setDoc,
   where,
   writeBatch,
@@ -45,18 +46,21 @@ function integer(value: unknown, field: string): number {
   return value as number;
 }
 
-function metadata(tree: OnlineTree) {
+// Firestore Rules require createdAt/updatedAt to equal request.time, so the server stamps them.
+function metadataUpdate(tree: OnlineTree) {
   return {
-    ownerId: tree.ownerId,
     name: tree.name,
     visibility: tree.visibility,
     publicId: tree.publicId,
     revision: tree.revision,
     schemaVersion: tree.schemaVersion,
-    createdAt: timestamp(tree.createdAt),
-    updatedAt: timestamp(tree.updatedAt),
+    updatedAt: serverTimestamp(),
     publishedRevision: tree.publishedRevision,
   };
+}
+
+function newTreeMetadata(tree: OnlineTree) {
+  return { ownerId: tree.ownerId, ...metadataUpdate(tree), createdAt: serverTimestamp() };
 }
 
 function personDocument(person: OnlineTree["people"][number]) {
@@ -69,7 +73,7 @@ function personDocument(person: OnlineTree["people"][number]) {
     notes: person.notes,
     photoUrl: person.photoUrl,
     sortOrder: person.sortOrder,
-    updatedAt: timestamp(person.updatedAt),
+    updatedAt: serverTimestamp(),
   };
 }
 
@@ -78,7 +82,7 @@ function relationshipDocument(relationship: OnlineTree["relationships"][number])
     type: relationship.type,
     fromPersonId: relationship.fromPersonId,
     toPersonId: relationship.toPersonId,
-    updatedAt: timestamp(relationship.updatedAt),
+    updatedAt: serverTimestamp(),
   };
 }
 
@@ -96,6 +100,14 @@ type WriteAction = (batch: ReturnType<typeof writeBatch>) => void;
 
 export class FirestoreTreeRepository implements TreeRepository {
   constructor(private readonly db: Firestore = getFirestoreDb()) {}
+
+  private async ownsExisting(treeId: string): Promise<boolean> {
+    try {
+      return (await getDoc(doc(this.db, "trees", treeId))).exists();
+    } catch {
+      return false;
+    }
+  }
 
   async listOwned(uid: string): Promise<OnlineTree[]> {
     try {
@@ -124,14 +136,23 @@ export class FirestoreTreeRepository implements TreeRepository {
   async create(tree: OnlineTree): Promise<OnlineTree> {
     try {
       if (!tree.ownerId) throw new TreeRepositoryError("invalid-data", "A family tree owner is required.");
-      const existing = await getDoc(doc(this.db, "trees", tree.id));
-      if (existing.exists()) throw new TreeRepositoryError("conflict", "A family tree with this ID already exists.");
+      // No existence pre-check: Rules only allow reading a tree that already belongs to the owner,
+      // so reading a not-yet-created document is always denied. Write first and inspect only on denial.
       const initialBatch = writeBatch(this.db);
-      initialBatch.set(doc(this.db, "trees", tree.id), metadata(tree));
+      initialBatch.set(doc(this.db, "trees", tree.id), newTreeMetadata(tree));
       initialBatch.set(doc(this.db, "trees", tree.id, "members", tree.ownerId), {
         role: "owner", invitedAt: null, acceptedAt: timestamp(tree.createdAt),
       });
-      await initialBatch.commit();
+      try {
+        await initialBatch.commit();
+      } catch (error) {
+        // Writing over an existing tree is an update the create path cannot satisfy. If the tree
+        // exists and this owner can read it, report a conflict so interrupted migrations can resume.
+        if (error instanceof FirebaseError && error.code === "permission-denied" && await this.ownsExisting(tree.id)) {
+          throw new TreeRepositoryError("conflict", "A family tree with this ID already exists.");
+        }
+        throw error;
+      }
       await this.writeChunks(tree.id, this.childWriteActions(tree));
       return this.load(tree.id);
     } catch (error) {
@@ -148,10 +169,11 @@ export class FirestoreTreeRepository implements TreeRepository {
         if (!current.exists()) throw new TreeRepositoryError("not-found", "Family tree was not found.");
         if (current.data().ownerId !== tree.ownerId) throw new TreeRepositoryError("permission-denied", "The family tree owner cannot be changed.");
         if (current.data().revision !== expectedRevision) throw new TreeRepositoryError("conflict", "The family tree was updated elsewhere.");
-        transaction.set(treeRef, metadata(saved));
+        transaction.update(treeRef, metadataUpdate(saved));
       });
       await this.replaceChildren(saved);
-      return saved;
+      // The writes have committed; a failed re-read must not turn a successful save into an error.
+      return await this.load(tree.id).catch(() => saved);
     } catch (error) {
       throw mapError(error);
     }
@@ -227,11 +249,11 @@ export class FirestoreTreeRepository implements TreeRepository {
   private async writeChunks(treeId: string, actions: WriteAction[]): Promise<void> {
     if (actions.length <= MAX_BATCH_OPERATIONS) return this.writeActions(actions);
     const operationRef = doc(collection(this.db, "trees", treeId, "operations"));
-    await setDoc(operationRef, { status: "pending", totalWrites: actions.length, completedWrites: 0, createdAt: Timestamp.now() });
+    await setDoc(operationRef, { status: "pending", totalWrites: actions.length, completedWrites: 0, createdAt: serverTimestamp() });
     for (let offset = 0; offset < actions.length; offset += MAX_BATCH_OPERATIONS) {
       const chunk = actions.slice(offset, offset + MAX_BATCH_OPERATIONS);
       await this.writeActions(chunk);
-      await setDoc(operationRef, { status: "pending", totalWrites: actions.length, completedWrites: Math.min(offset + chunk.length, actions.length), createdAt: Timestamp.now() });
+      await setDoc(operationRef, { status: "pending", totalWrites: actions.length, completedWrites: Math.min(offset + chunk.length, actions.length), createdAt: serverTimestamp() });
     }
     await deleteDoc(operationRef);
   }

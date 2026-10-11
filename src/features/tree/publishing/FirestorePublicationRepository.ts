@@ -19,12 +19,6 @@ import type { PublicationRepository, PublicTreeSnapshot } from "./PublicationRep
 const MAX_ATOMIC_PUBLICATION_WRITES = 490;
 const CLEANUP_BATCH_SIZE = 450;
 
-function timestamp(value: string): Timestamp {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new Error("Invalid tree timestamp.");
-  return Timestamp.fromDate(date);
-}
-
 function timestampIso(value: unknown): string {
   if (!(value instanceof Timestamp)) throw new Error("Invalid published timestamp.");
   return value.toDate().toISOString();
@@ -86,15 +80,14 @@ function privateTree(tree: OnlineTree): OnlineTree {
   };
 }
 
+// ownerId and createdAt are immutable in Rules; update() leaves the stored values untouched.
 function privateMetadata(tree: OnlineTree) {
   return {
-    ownerId: tree.ownerId,
     name: tree.name,
     visibility: tree.visibility,
     publicId: tree.publicId,
     revision: tree.revision,
     schemaVersion: tree.schemaVersion,
-    createdAt: timestamp(tree.createdAt),
     updatedAt: serverTimestamp(),
     publishedRevision: tree.publishedRevision,
   };
@@ -127,7 +120,7 @@ export class FirestorePublicationRepository implements PublicationRepository {
       }
 
       const batch = writeBatch(this.db);
-      batch.set(doc(this.db, "trees", tree.id), privateMetadata(next));
+      batch.update(doc(this.db, "trees", tree.id), privateMetadata(next));
       batch.set(publicRef, {
         sourceTreeId: tree.id,
         name: tree.name,
@@ -166,7 +159,7 @@ export class FirestorePublicationRepository implements PublicationRepository {
         enabled: false,
         publishedAt: serverTimestamp(),
       });
-      batch.set(doc(this.db, "trees", tree.id), privateMetadata(next));
+      batch.update(doc(this.db, "trees", tree.id), privateMetadata(next));
       await batch.commit();
       return next;
     } catch (error) {
