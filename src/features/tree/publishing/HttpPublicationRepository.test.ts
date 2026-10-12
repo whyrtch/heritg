@@ -34,6 +34,22 @@ describe("HttpPublicationRepository", () => {
     expect(fetch.mock.calls[1][1]).toMatchObject({ credentials: "same-origin" });
   });
 
+  it("sends an envelope in password mode, and an explicit plain mode when asked", async () => {
+    const fetch = vi.fn((...args: [string, RequestInit?]) => { void args; return reply(200, { tree }); });
+    const repository = new HttpPublicationRepository(fetch as typeof globalThis.fetch);
+    const envelope = { format: "heritg-encrypted", version: 1, kdf: { name: "PBKDF2", hash: "SHA-256", iterations: 600000, salt: "c2FsdA==" }, cipher: { name: "AES-GCM", iv: "aXY=" }, data: "ZGF0YQ==" } as const;
+    await repository.publish(tree, "public_identifier_abcdefghij", { options: { dates: true, marriageDates: true, photos: false }, encrypted: envelope });
+    expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({ publicId: "public_identifier_abcdefghij", expectedRevision: 4, options: { dates: true, marriageDates: true, photos: false }, mode: "password", envelope });
+    await repository.publish(tree, "public_identifier_abcdefghij", { mode: "plain" });
+    expect(JSON.parse(String(fetch.mock.calls[1][1]?.body))).toEqual({ publicId: "public_identifier_abcdefghij", expectedRevision: 4, mode: "plain" });
+  });
+
+  it("returns a locked link with only its name and envelope", async () => {
+    const envelope = { format: "heritg-encrypted", version: 1, kdf: { name: "PBKDF2", hash: "SHA-256", iterations: 600000, salt: "c2FsdA==" }, cipher: { name: "AES-GCM", iv: "aXY=" }, data: "ZGF0YQ==" };
+    const loaded = await new HttpPublicationRepository((() => reply(200, { encrypted: true, name: "Keluarga Uji", envelope })) as typeof globalThis.fetch).loadPublic("public_identifier_abcdefghij");
+    expect(loaded).toEqual({ encrypted: true, publicId: "public_identifier_abcdefghij", name: "Keluarga Uji", envelope });
+  });
+
   it("surfaces the server's message when publishing fails", async () => {
     const repository = new HttpPublicationRepository((() => reply(409, { error: { message: "Reload it before sharing." } })) as typeof globalThis.fetch);
     await expect(repository.publish(tree, "public_identifier_abcdefghij")).rejects.toThrow("Reload it before sharing.");

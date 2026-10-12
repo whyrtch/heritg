@@ -152,12 +152,22 @@ export const publications = pgTable("publications", {
   options: jsonb("options").notNull().default(sql`'{"dates":true,"marriageDates":true,"photos":true}'::jsonb`),
   /** The link stops working at this moment (checked in SQL on every public read); null = never. */
   expiresAt: timestamp("expires_at", { withTimezone: true }),
+  /** Password-protected link: the snapshot is encrypted in the owner's browser; the server holds only ciphertext and never sees the password or the content. */
+  encrypted: boolean("encrypted").notNull().default(false),
+  /** Base64 AES-GCM ciphertext of the snapshot JSON (encrypted links only). */
+  ciphertext: text("ciphertext"),
+  /** The envelope without `data`: { format, version, kdf, cipher } (encrypted links only). */
+  crypto: jsonb("crypto"),
 }, table => [
   uniqueIndex("publications_tree_key").on(table.treeId),
   check("publications_public_id_check", sql`${table.publicId} ~ '^[A-Za-z0-9_-]{20,128}$'`),
   check("publications_name_check", sql`char_length(${table.name}) between 1 and 120`),
   check("publications_revision_check", sql`${table.publishedRevision} >= 0`),
   check("publications_options_check", sql`jsonb_typeof(${table.options}) = 'object'`),
+  // Encrypted rows carry ciphertext and no readable snapshot; plain rows carry no ciphertext.
+  check("publications_encrypted_check", sql`(${table.encrypted} and ${table.ciphertext} is not null and ${table.crypto} is not null and jsonb_typeof(${table.crypto}) = 'object' and ${table.snapshot} = '{}'::jsonb)
+    or (not ${table.encrypted} and ${table.ciphertext} is null and ${table.crypto} is null)`),
+  check("publications_ciphertext_size_check", sql`${table.ciphertext} is null or char_length(${table.ciphertext}) <= 4000000`),
 ]);
 
 export const publicPhotos = pgTable("public_photos", {

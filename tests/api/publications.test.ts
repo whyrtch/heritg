@@ -141,7 +141,7 @@ describe("link privacy options and expiry", () => {
     expect(snapshot.people[0]).toMatchObject({ birthDate: "1950-01-02", deathDate: "2020-03-04", birthOrder: 2, photoUrl: "https://example.com/a.jpg", photoVersion: expect.any(String) });
     expect(snapshot.relationships[0].marriedOn).toBe("1975-05-06");
     expect((await photo()).status).toBe(200);
-    expect((await (await settings(owner.cookie)).json()).publication).toEqual({ options: { dates: true, marriageDates: true, photos: true }, expiresAt: null });
+    expect((await (await settings(owner.cookie)).json()).publication).toEqual({ options: { dates: true, marriageDates: true, photos: true }, expiresAt: null, mode: "plain" });
   });
 
   it("dates off blanks birth, death and birth order only", async () => {
@@ -243,5 +243,212 @@ describe("link privacy options and expiry", () => {
     const text = await (await view(LINK)).text();
     expect(text).not.toContain("expiresAt");
     expect(text).not.toContain("marriageDates");
+  });
+});
+
+describe("password-protected links", () => {
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new Array(50).fill(7)]);
+  const b64 = (length: number, fill = 1) => Buffer.from(new Uint8Array(length).fill(fill)).toString("base64");
+  const envelope = (overrides: Record<string, unknown> = {}) => ({
+    format: "heritg-encrypted", version: 1,
+    kdf: { name: "PBKDF2", hash: "SHA-256", iterations: 600_000, salt: b64(16) },
+    cipher: { name: "AES-GCM", iv: b64(12) },
+    data: b64(300, 9),
+    ...overrides,
+  });
+  const protect = (body: Record<string, unknown> = {}, cookie = owner.cookie, treeId = "tree-1") =>
+    putPublication(call("PUT", `/api/trees/${treeId}/publication`, { cookie, body: { mode: "password", publicId: LINK, expectedRevision: 0, envelope: envelope(), ...body } }), t.db, treeId);
+  const put = (publicId: string, expectedRevision: number, body: Record<string, unknown> = {}) =>
+    putPublication(call("PUT", "/api/trees/tree-1/publication", { cookie: owner.cookie, body: { publicId, expectedRevision, ...body } }), t.db, "tree-1");
+  const settings = async () => (await (await getPublicationSettings(call("GET", "/api/trees/tree-1/publication", { cookie: owner.cookie }), t.db, "tree-1")).json()).publication;
+  const photo = (publicId = LINK) => getPublicPersonPhoto(call("GET", `/api/public/${publicId}/photos/budi`), t.db, publicId, "budi");
+  const row = async (publicId = LINK) => (await t.db.select().from(publications).where(eq(publications.publicId, publicId)))[0];
+
+  beforeEach(async () => {
+    await removeTree(call("DELETE", "/api/trees/tree-1", { cookie: owner.cookie }), t.db, "tree-1");
+    await postTree(call("POST", "/api/trees", { cookie: owner.cookie, body: { tree: tree({ people: [person("budi", { notes: "Catatan rahasia", residence: "Solo", photoUrl: "https://example.com/a.jpg" })] }) } }), t.db);
+    await putPhoto(t.db, owner.id, "tree-1", "budi", JPEG, "image/jpeg");
+  });
+
+  it("stores only ciphertext: an empty snapshot, no photos, and no readable content", async () => {
+    const response = await protect();
+    expect(response.status).toBe(200);
+    expect((await response.json()).tree).toMatchObject({ visibility: "unlisted", publicId: LINK, revision: 1, publishedRevision: 1 });
+    const stored = await row();
+    expect(stored).toMatchObject({ encrypted: true, snapshot: {}, name: "Keluarga Uji", ciphertext: envelope().data, publishedRevision: 1 });
+    expect(stored.crypto).toEqual({ format: "heritg-encrypted", version: 1, kdf: envelope().kdf, cipher: envelope().cipher });
+    expect(stored.crypto).not.toHaveProperty("data");
+    const text = JSON.stringify(stored);
+    for (const secret of ["BUDI", "Catatan", "Solo", "example.com"]) expect(text).not.toContain(secret);
+    expect(await t.db.select().from(publicPhotos)).toHaveLength(0);
+    expect((await photo()).status).toBe(404);
+  });
+
+  it("protecting removes the photo copies a plain link made, and a plain link copies them again", async () => {
+    await put(LINK, 0);
+    expect(await t.db.select().from(publicPhotos)).toHaveLength(1);
+    expect((await protect({ expectedRevision: 1 })).status).toBe(200);
+    expect(await t.db.select().from(publicPhotos)).toHaveLength(0);
+    expect((await photo()).status).toBe(404);
+    expect((await put(LINK, 2, { mode: "plain" })).status).toBe(200);
+    expect((await photo()).status).toBe(200);
+  });
+
+  it("the database refuses mixed rows", async () => {
+    await put(LINK, 0);
+    const bad = (statement: string) => expect(t.client.query(statement), statement).rejects.toThrow();
+    await bad("update publications set encrypted = true");
+    await bad("update publications set ciphertext = 'AAAA'");
+    await bad("update publications set crypto = '{}'::jsonb");
+    await bad("update publications set encrypted = true, ciphertext = 'AAAA', crypto = '{}'::jsonb");
+    await protect({ publicId: OTHER_LINK, expectedRevision: 1 });
+    await bad(`update publications set snapshot = '{"people":[]}'::jsonb where encrypted`);
+    await bad("update publications set ciphertext = null where encrypted");
+    await bad("update publications set crypto = null where encrypted");
+    await bad("update publications set crypto = '[]'::jsonb where encrypted");
+    await bad("update publications set encrypted = false where encrypted");
+    await bad("update publications set ciphertext = repeat('A', 4000001) where encrypted");
+    await expect(t.client.query("update publications set ciphertext = repeat('A', 4000000) where encrypted")).resolves.toBeTruthy();
+  });
+
+  it("rejects an invalid envelope or mode combination with a 400", async () => {
+    const e = envelope();
+    const cases: Record<string, unknown>[] = [
+      { envelope: undefined }, { envelope: null }, { envelope: "text" },
+      { envelope: { ...e, format: "other" } }, { envelope: { ...e, version: 2 } }, { envelope: { ...e, extra: 1 } },
+      { envelope: { ...e, kdf: { ...e.kdf, name: "scrypt" } } }, { envelope: { ...e, kdf: { ...e.kdf, hash: "SHA-1" } } },
+      { envelope: { ...e, kdf: { ...e.kdf, iterations: 99_999 } } }, { envelope: { ...e, kdf: { ...e.kdf, iterations: 5_000_001 } } },
+      { envelope: { ...e, kdf: { ...e.kdf, iterations: 600_000.5 } } }, { envelope: { ...e, kdf: { ...e.kdf, iterations: "600000" } } },
+      { envelope: { ...e, kdf: { ...e.kdf, salt: b64(15) } } }, { envelope: { ...e, kdf: { ...e.kdf, salt: "not base64!" } } },
+      { envelope: { ...e, kdf: { ...e.kdf, extra: 1 } } },
+      { envelope: { ...e, cipher: { ...e.cipher, name: "AES-CBC" } } }, { envelope: { ...e, cipher: { ...e.cipher, iv: b64(16) } } },
+      { envelope: { ...e, data: "" } }, { envelope: { ...e, data: "AAAA" } }, { envelope: { ...e, data: "abc" } }, { envelope: { ...e, data: "<script>" } },
+      { envelope: { ...e, data: "A".repeat(4_000_004) } },
+      { envelope: { ...e, data: 5 } },
+      { surprise: 1 }, { options: { dates: "x", marriageDates: true, photos: true } }, { expiresInDays: 5 },
+    ];
+    for (const body of cases) expect((await protect(body)).status, JSON.stringify(body).slice(0, 120)).toBe(400);
+    expect((await put(LINK, 0, { envelope: envelope() })).status).toBe(400);
+    expect((await put(LINK, 0, { mode: "other" })).status).toBe(400);
+    expect(await t.db.select().from(publications)).toHaveLength(0);
+  });
+
+  it("limits the request body: password mode up to about 4.5 MB, every other mode as before", async () => {
+    // The largest ciphertext the database allows fits in a body this big.
+    expect((await protect({ envelope: envelope({ data: "A".repeat(4_000_000) }) })).status).toBe(200);
+    expect((await protect({ expectedRevision: 1, envelope: envelope({ data: "A".repeat(4_600_000) }) })).status).toBe(413);
+    expect((await put(LINK, 1, { expiresInDays: 7, padding: "x".repeat(2000) })).status).toBe(413);
+    expect((await put(LINK, 1, { padding: "x".repeat(5_000_000) })).status).toBe(413);
+    expect((await row()).publishedRevision).toBe(1);
+  });
+
+  it("only the signed-in owner can protect a tree; the origin is checked", async () => {
+    expect((await protect({}, "")).status).toBe(401);
+    expect((await protect({}, other.cookie)).status).toBe(404);
+    expect((await putPublication(call("PUT", "/api/trees/tree-1/publication", { cookie: owner.cookie, origin: "https://evil.example", body: { mode: "password", publicId: LINK, expectedRevision: 0, envelope: envelope() } }), t.db, "tree-1")).status).toBe(403);
+    expect(await t.db.select().from(publications)).toHaveLength(0);
+    expect((await protect({ expectedRevision: 5 })).status).toBe(409);
+  });
+
+  it("serves the envelope and the name to anyone with the link, with the same headers", async () => {
+    await protect();
+    const response = await view(LINK);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    const text = await response.text();
+    expect(JSON.parse(text)).toEqual({ encrypted: true, name: "Keluarga Uji", envelope: envelope() });
+    for (const secret of [owner.id, owner.email, "ownerId", "tree-1", "BUDI", "Catatan", "expiresAt", "marriageDates"]) expect(text).not.toContain(secret);
+  });
+
+  it("an expired protected link looks exactly like an unknown one", async () => {
+    await protect({ expiresInDays: 7 });
+    expect((await view(LINK)).status).toBe(200);
+    await t.db.update(publications).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(publications.publicId, LINK));
+    const unknown = "never_published_link_12345";
+    const [expired, missing] = [await view(LINK), await view(unknown)];
+    expect(expired.status).toBe(404);
+    expect(await expired.text()).toBe(await missing.text());
+    expect([...expired.headers].sort()).toEqual([...missing.headers].sort());
+  });
+
+  it("tells the owner the mode, and an omitted expiry keeps the stored one", async () => {
+    expect(await settings()).toBeNull();
+    await protect({ expiresInDays: 30 });
+    const before = await settings();
+    expect(before).toMatchObject({ mode: "password", options: { dates: true, marriageDates: true, photos: true } });
+    expect(before.expiresAt).not.toBeNull();
+    await protect({ expectedRevision: 1, envelope: envelope({ data: b64(400, 3) }) });
+    expect(await settings()).toEqual(before);
+    await protect({ expectedRevision: 2, expiresInDays: null, options: { dates: false, marriageDates: false, photos: false } });
+    expect(await settings()).toEqual({ mode: "password", expiresAt: null, options: { dates: false, marriageDates: false, photos: false } });
+  });
+
+  it("switches password -> plain -> password", async () => {
+    await protect();
+    expect((await put(LINK, 1, { mode: "plain" })).status).toBe(200);
+    expect(await row()).toMatchObject({ encrypted: false, ciphertext: null, crypto: null });
+    expect((await (await view(LINK)).json()).snapshot.people[0]).toMatchObject({ name: "BUDI", notes: "Catatan rahasia" });
+    expect((await settings()).mode).toBe("plain");
+    expect((await protect({ expectedRevision: 2, envelope: envelope({ data: b64(64, 5) }) })).status).toBe(200);
+    const text = await (await view(LINK)).text();
+    expect(JSON.parse(text)).toMatchObject({ encrypted: true, envelope: { data: b64(64, 5) } });
+    expect(text).not.toContain("Catatan");
+    expect(await row()).toMatchObject({ encrypted: true, snapshot: {} });
+    expect(await t.db.select().from(publicPhotos)).toHaveLength(0);
+  });
+
+  it("regenerating keeps a protected link protected: the ciphertext moves to the new id and the old URL dies", async () => {
+    await protect({ expiresInDays: 30 });
+    const before = await settings();
+    expect((await put(OTHER_LINK, 1)).status).toBe(200);
+    expect((await view(LINK)).status).toBe(404);
+    expect(await t.db.select().from(publications)).toHaveLength(1);
+    expect(JSON.parse(await (await view(OTHER_LINK)).text())).toEqual({ encrypted: true, name: "Keluarga Uji", envelope: envelope() });
+    expect(await row(OTHER_LINK)).toMatchObject({ encrypted: true, snapshot: {} });
+    expect(await settings()).toEqual(before);
+  });
+
+  it("a request without a mode never turns a protected link into a readable one", async () => {
+    await protect();
+    expect((await put(LINK, 1, { expiresInDays: 7 })).status).toBe(200);
+    expect(await row()).toMatchObject({ encrypted: true, snapshot: {} });
+    expect((await (await view(LINK)).json()).encrypted).toBe(true);
+    expect(await t.db.select().from(publicPhotos)).toHaveLength(0);
+  });
+
+  it("regenerating a protected link keeps its options and published revision", async () => {
+    const options = { dates: false, marriageDates: true, photos: false };
+    await protect({ options });
+    const before = await row();
+    expect((await put(OTHER_LINK, 1, { expiresInDays: 30 })).status).toBe(200);
+    const after = await row(OTHER_LINK);
+    expect(after).toMatchObject({ options, publishedRevision: 1, encrypted: true });
+    expect(after.publishedAt).toEqual(before.publishedAt);
+    expect((await settings()).options).toEqual(options);
+    expect((await (await put(OTHER_LINK, 2, { expiresInDays: null })).json()).tree).toMatchObject({ publicId: OTHER_LINK, publishedRevision: 1, revision: 3 });
+  });
+
+  it("refuses options without a new envelope on a protected link, and changes nothing", async () => {
+    await protect({ options: { dates: false, marriageDates: true, photos: false } });
+    const before = await row();
+    for (const publicId of [LINK, OTHER_LINK]) {
+      const response = await put(publicId, 1, { options: { dates: true, marriageDates: true, photos: true } });
+      expect(response.status).toBe(409);
+      expect((await response.json()).error.message).toMatch(/password/);
+    }
+    expect(await t.db.select().from(publications)).toEqual([before]);
+    expect((await view(LINK)).status).toBe(200);
+    // With a new envelope the options do change.
+    expect((await protect({ expectedRevision: 1, options: { dates: true, marriageDates: true, photos: true } })).status).toBe(200);
+    expect((await settings()).options).toEqual({ dates: true, marriageDates: true, photos: true });
+  });
+
+  it("revoking a protected link deletes it", async () => {
+    await protect();
+    expect((await unpublish(owner.cookie)).status).toBe(200);
+    expect((await view(LINK)).status).toBe(404);
+    expect(await t.db.select().from(publications)).toHaveLength(0);
   });
 });

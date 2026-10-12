@@ -59,6 +59,6 @@ export async function deletePhoto(db: Database, ownerId: string, treeId: string,
 export async function getPublicPhoto(db: Database, publicId: string, personId: string): Promise<StoredPhoto | null> {
   const [row] = await db.select({ mime: publicPhotos.mime, bytes: publicPhotos.bytes, sha256: publicPhotos.sha256 }).from(publicPhotos)
     .innerJoin(publications, eq(publications.publicId, publicPhotos.publicId))
-    .where(and(eq(publicPhotos.publicId, publicId), eq(publicPhotos.personId, personId), eq(publications.enabled, true), notExpired())).limit(1);
+    .where(and(eq(publicPhotos.publicId, publicId), eq(publicPhotos.personId, personId), eq(publications.enabled, true), eq(publications.encrypted, false), notExpired())).limit(1);
   return row ?? null;
 }

@@ -1,13 +1,11 @@
 import type { OnlineTree } from "../domain/onlineTypes";
-import { fromOnlineTree } from "../domain/serialization";
-import type { PublicationInfo, PublicationRepository, PublicTreeSnapshot, PublishSettings } from "./PublicationRepository";
+import type { EncryptedEnvelope } from "../domain/secureFile";
+import type { EncryptedPublicTree, PublicationInfo, PublicationRepository, PublicTreeSnapshot, PublishSettings } from "./PublicationRepository";
+import { toPublicTreeSnapshot, type PublicSnapshotBody, type PublicSnapshotMeta } from "./publicSnapshot";
 
 type Fetch = typeof fetch;
-type PublicSnapshotResponse = {
-  publicId: string; name: string; schemaVersion: number; publishedRevision: number; publishedAt: string;
-  people: Omit<OnlineTree["people"][number], "updatedAt">[];
-  relationships: Omit<OnlineTree["relationships"][number], "updatedAt">[];
-};
+type PublicSnapshotResponse = PublicSnapshotMeta & PublicSnapshotBody;
+type EncryptedResponse = { encrypted: true; name: string; envelope: EncryptedEnvelope };
 
 /** Publishing through our API. The server snapshots the *stored* tree, so unsaved local edits are not shared. */
 export class HttpPublicationRepository implements PublicationRepository {
@@ -21,7 +19,8 @@ export class HttpPublicationRepository implements PublicationRepository {
   }
 
   publish(tree: OnlineTree, publicId: string, settings?: PublishSettings): Promise<OnlineTree> {
-    return this.tree(`/api/trees/${encodeURIComponent(tree.id)}/publication`, { method: "PUT", body: JSON.stringify({ publicId, expectedRevision: tree.revision, ...(settings ? { options: settings.options, expiresInDays: settings.expiresInDays } : {}) }) });
+    return this.tree(`/api/trees/${encodeURIComponent(tree.id)}/publication`, { method: "PUT", body: JSON.stringify({ publicId, expectedRevision: tree.revision, ...(settings ? { options: settings.options, expiresInDays: settings.expiresInDays } : {}),
+      ...(settings?.encrypted ? { mode: "password", envelope: settings.encrypted } : settings?.mode === "plain" ? { mode: "plain" } : {}) }) });
   }
 
   async getPublication(tree: OnlineTree): Promise<PublicationInfo | null> {
@@ -35,19 +34,15 @@ export class HttpPublicationRepository implements PublicationRepository {
     return this.tree(`/api/trees/${encodeURIComponent(tree.id)}/publication`, { method: "DELETE", body: JSON.stringify({ expectedRevision: tree.revision }) });
   }
 
-  async loadPublic(publicId: string): Promise<PublicTreeSnapshot | null> {
+  async loadPublic(publicId: string): Promise<PublicTreeSnapshot | EncryptedPublicTree | null> {
     try {
       const response = await this.fetchImpl(`/api/public/${encodeURIComponent(publicId)}`, { headers: { Accept: "application/json" }, credentials: "omit" });
       if (!response.ok) return null;
-      const { snapshot } = await response.json() as { snapshot: PublicSnapshotResponse };
-      const at = snapshot.publishedAt;
-      const tree = fromOnlineTree({
-        id: snapshot.publicId, ownerId: "public-snapshot", name: snapshot.name, visibility: "unlisted", publicId: snapshot.publicId,
-        revision: snapshot.publishedRevision, schemaVersion: snapshot.schemaVersion, createdAt: at, updatedAt: at, publishedRevision: snapshot.publishedRevision,
-        people: snapshot.people.map(person => ({ ...person, updatedAt: at })),
-        relationships: snapshot.relationships.map(relationship => ({ ...relationship, updatedAt: at })),
-      }, { photoPath: (personId, version) => `/api/public/${encodeURIComponent(snapshot.publicId)}/photos/${encodeURIComponent(personId)}?v=${encodeURIComponent(version)}` });
-      return { publicId: snapshot.publicId, name: snapshot.name, schemaVersion: snapshot.schemaVersion, publishedRevision: snapshot.publishedRevision, publishedAt: at, tree };
+      const body = await response.json() as { snapshot?: PublicSnapshotResponse } & Partial<EncryptedResponse>;
+      // A password-protected link: only the name is readable until the viewer decrypts in the browser.
+      if (body.encrypted === true && body.envelope && typeof body.name === "string") return { encrypted: true, publicId, name: body.name, envelope: body.envelope };
+      const snapshot = body.snapshot!;
+      return toPublicTreeSnapshot(snapshot, snapshot, (personId, version) => `/api/public/${encodeURIComponent(snapshot.publicId)}/photos/${encodeURIComponent(personId)}?v=${encodeURIComponent(version)}`);
     } catch {
       // Unknown, disabled, malformed and offline links are deliberately indistinguishable.
       return null;

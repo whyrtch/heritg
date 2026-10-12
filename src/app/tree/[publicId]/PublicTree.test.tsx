@@ -1,7 +1,8 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import type { PublicTreeSnapshot } from "@/features/tree/publishing/PublicationRepository";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { encryptText } from "@/features/tree/domain/secureFile";
+import type { EncryptedPublicTree, PublicTreeSnapshot } from "@/features/tree/publishing/PublicationRepository";
 import { PublicTree } from "./PublicTree";
 
 const snapshot: PublicTreeSnapshot = {
@@ -19,10 +20,13 @@ const snapshot: PublicTreeSnapshot = {
   },
 };
 
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
 describe("PublicTree", () => {
   it("renders a public snapshot without editing controls", async () => {
     render(<PublicTree publicId={snapshot.publicId} loader={vi.fn(async () => snapshot)} />);
     expect(await screen.findByText("Budi Uji")).toBeInTheDocument();
+    // The public page is read-only: no button at all, except the unlock form of a password-protected link (tested below).
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByText(/edit/i)).not.toBeInTheDocument();
   });
@@ -47,5 +51,63 @@ describe("PublicTree", () => {
   it("uses one generic unavailable state for inaccessible links", async () => {
     render(<PublicTree publicId="missing_public_identifier" loader={vi.fn(async () => null)} />);
     await waitFor(() => expect(screen.getByText("This family tree is unavailable")).toBeInTheDocument());
+  });
+});
+
+describe("PublicTree with a password-protected link", () => {
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  const PASSWORD = "Sandi#Kuat1";
+  const body = { people: [{ id: "one", name: "Budi Uji", gender: "male", birthDate: "1980-01-01", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "", photoVersion: null, sortOrder: 0 }], relationships: [] };
+  const locked = async (): Promise<EncryptedPublicTree> => ({ encrypted: true, publicId: "public_identifier_123456", name: "Keluarga Terkunci", envelope: await encryptText(JSON.stringify(body), PASSWORD, { iterations: 100_000 }) });
+  const open = async (password: string) => {
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: password } });
+    fireEvent.click(screen.getByRole("button", { name: "Buka" }));
+  };
+
+  it("shows only the name and a password form, with exactly one button", async () => {
+    const link = await locked();
+    render(<PublicTree publicId={link.publicId} loader={vi.fn(async () => link)} />);
+    expect(await screen.findByRole("heading", { name: "Keluarga Terkunci" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Buka" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
+    expect(screen.queryByText("Budi Uji")).not.toBeInTheDocument();
+    expect(screen.queryByText(/edit/i)).not.toBeInTheDocument();
+  });
+
+  it("a wrong password shows the error, can be retried, and sends nothing anywhere", async () => {
+    const link = await locked();
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    render(<PublicTree publicId={link.publicId} loader={vi.fn(async () => link)} />);
+    await screen.findByRole("heading", { name: "Keluarga Terkunci" });
+    await open("Salah#Sandi9");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Password salah");
+    expect(screen.queryByText("Budi Uji")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    await open(PASSWORD);
+    expect(await screen.findByText("Budi Uji")).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("renders the tree after unlocking, with no buttons and no edit wording left", async () => {
+    const link = await locked();
+    const { container } = render(<PublicTree publicId={link.publicId} loader={vi.fn(async () => link)} />);
+    await screen.findByRole("heading", { name: "Keluarga Terkunci" });
+    await open(PASSWORD);
+    expect(await screen.findByText("Budi Uji")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Keluarga Terkunci" })).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    expect(screen.queryByText(/edit/i)).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain(PASSWORD);
+  });
+
+  it("says the data is damaged when the content decrypts but is not a family tree", async () => {
+    const link = { ...(await locked()), envelope: await encryptText("{\"people\":\"no\"}", PASSWORD, { iterations: 100_000 }) };
+    render(<PublicTree publicId={link.publicId} loader={vi.fn(async () => link)} />);
+    await screen.findByRole("heading", { name: "Keluarga Terkunci" });
+    await open(PASSWORD);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/rusak/);
   });
 });

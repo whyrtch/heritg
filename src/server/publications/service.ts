@@ -18,9 +18,24 @@ export type PublicSnapshot = { publicId: string; name: string; schemaVersion: nu
 export type PublishOptions = { dates: boolean; marriageDates: boolean; photos: boolean };
 export const DEFAULT_OPTIONS: PublishOptions = { dates: true, marriageDates: true, photos: true };
 /** Omitted fields keep what the link already has (defaults apply only to the first publish); `expiresInDays: null` clears the expiry. */
-export type PublishSettings = { options?: PublishOptions; expiresInDays?: number | null };
+export type PublishSettings = {
+  options?: PublishOptions;
+  expiresInDays?: number | null;
+  /**
+   * "password" stores `encrypted` (made in the owner's browser) and no readable snapshot; "plain" builds the readable
+   * snapshot and clears any ciphertext. Omitted keeps the link's current mode (plain for a first publish), so a
+   * regenerate can never silently turn a protected link into an open one.
+   */
+  mode?: "plain" | "password";
+  encrypted?: EncryptedPayload;
+};
+/** What the server keeps of a password-protected link: the envelope minus its data, and the base64 data. */
+export type EncryptedPayload = { crypto: Record<string, unknown>; ciphertext: string };
+export type LinkMode = "plain" | "password";
 /** The owner's view of a publication: never part of the public response. */
-export type PublicationInfo = { options: PublishOptions; expiresAt: string | null };
+export type PublicationInfo = { options: PublishOptions; expiresAt: string | null; mode: LinkMode };
+/** A password-protected link as anyone with the link sees it: the name and the envelope to decrypt in the browser. */
+export type EncryptedPublicSnapshot = { encrypted: true; name: string; envelope: Record<string, unknown> };
 
 /** Only the options an owner may set, whatever the stored JSON holds. */
 function optionsOf(value: unknown): PublishOptions {
@@ -61,15 +76,23 @@ export async function publishTree(db: Database, ownerId: string, treeId: string,
     const [row] = await tx.select().from(trees).where(and(eq(trees.id, treeId), eq(trees.ownerId, ownerId))).for("update").limit(1);
     if (!row) throw NOT_FOUND();
     if (row.revision !== expectedRevision) throw new TreeServiceError("conflict", STALE_MESSAGE);
-    const current = await loadTree(tx as unknown as Database, ownerId, treeId);
     // Read the stored settings under the tree lock and before a regenerate deletes the old row.
-    const [existing] = await tx.select({ options: publications.options, expiresAt: publications.expiresAt }).from(publications).where(eq(publications.treeId, row.id)).limit(1);
+    const [existing] = await tx.select({ options: publications.options, expiresAt: publications.expiresAt, encrypted: publications.encrypted, ciphertext: publications.ciphertext, crypto: publications.crypto, publishedRevision: publications.publishedRevision, publishedAt: publications.publishedAt }).from(publications).where(eq(publications.treeId, row.id)).limit(1);
     const options = settings.options ?? (existing ? optionsOf(existing.options) : DEFAULT_OPTIONS);
+    const protectedLink = settings.mode ? settings.mode === "password" : Boolean(existing?.encrypted);
+    // A regenerate of a protected link moves the same ciphertext to the new id (the content, not the id, is what the password protects).
+    const encrypted = !protectedLink ? null : settings.encrypted ?? (existing?.encrypted && existing.ciphertext && existing.crypto ? { ciphertext: existing.ciphertext, crypto: existing.crypto as Record<string, unknown> } : null);
+    // Reusing the stored ciphertext (a regenerate): what it shows is fixed inside it, so settings that would describe other content are refused.
+    const reused = protectedLink && !settings.encrypted;
+    if (reused && settings.options !== undefined) throw new TreeServiceError("conflict", "The options of a password-protected link change only together with a new password. Enter the password again to update it.");
+    if (protectedLink && !encrypted) throw new TreeServiceError("conflict", "Protect the link with a password again to continue.");
+    const current = encrypted ? null : await loadTree(tx as unknown as Database, ownerId, treeId);
     const { expiresInDays } = settings;
     const revision = row.revision + 1, now = new Date();
     // A different id regenerates the link: any other snapshot of this tree is deleted, so its URL stops working.
     await tx.delete(publications).where(and(eq(publications.treeId, row.id), ne(publications.publicId, publicId)));
-    const values = { name: row.name, schemaVersion: row.schemaVersion, publishedRevision: revision, publishedAt: now, enabled: true, snapshot: snapshotOf(current, options), options,
+    const values = { name: row.name, schemaVersion: row.schemaVersion, publishedRevision: reused ? existing!.publishedRevision : revision, publishedAt: reused ? existing!.publishedAt : now, enabled: true, options,
+      ...(encrypted ? { encrypted: true, ciphertext: encrypted.ciphertext, crypto: encrypted.crypto, snapshot: {} } : { encrypted: false, ciphertext: null, crypto: null, snapshot: snapshotOf(current!, options) }),
       expiresAt: expiresInDays === undefined ? (existing?.expiresAt ?? null) : expiresInDays === null ? null : sql`now() + (${expiresInDays} * interval '1 day')` };
     const [saved] = await tx.insert(publications).values({ publicId, treeId: row.id, ...values })
       .onConflictDoUpdate({ target: publications.publicId, set: values, where: eq(publications.treeId, row.id) })
@@ -78,8 +101,8 @@ export async function publishTree(db: Database, ownerId: string, treeId: string,
     if (!saved) throw new TreeServiceError("conflict", "This link id is already in use. Try again.");
     // Photos are copied too, so the public copy keeps working (and stays frozen) whatever happens to the tree.
     await tx.delete(publicPhotos).where(eq(publicPhotos.publicId, publicId));
-    if (options.photos) await tx.execute(sql`insert into public_photos (public_id, person_id, mime, bytes, sha256) select ${publicId}, person_id, mime, bytes, sha256 from photos where tree_id = ${row.id}`);
-    await tx.update(trees).set({ visibility: "unlisted", publicId, revision, publishedRevision: revision, updatedAt: now }).where(eq(trees.id, row.id));
+    if (!encrypted && options.photos) await tx.execute(sql`insert into public_photos (public_id, person_id, mime, bytes, sha256) select ${publicId}, person_id, mime, bytes, sha256 from photos where tree_id = ${row.id}`);
+    await tx.update(trees).set({ visibility: "unlisted", publicId, revision, publishedRevision: reused ? existing!.publishedRevision : revision, updatedAt: now }).where(eq(trees.id, row.id));
   });
   return loadTree(db, ownerId, treeId);
 }
@@ -104,17 +127,24 @@ export async function unpublishTree(db: Database, ownerId: string, treeId: strin
 
 /** The owner's settings for the tree's link, or null when it has none (also for another owner's tree). */
 export async function getPublication(db: Database, ownerId: string, treeId: string): Promise<PublicationInfo | null> {
-  const [row] = await db.select({ options: publications.options, expiresAt: publications.expiresAt }).from(publications)
+  const [row] = await db.select({ options: publications.options, expiresAt: publications.expiresAt, encrypted: publications.encrypted }).from(publications)
     .innerJoin(trees, eq(trees.id, publications.treeId))
     .where(and(eq(publications.treeId, treeId), eq(trees.ownerId, ownerId))).limit(1);
-  return row ? { options: optionsOf(row.options), expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null } : null;
+  return row ? { options: optionsOf(row.options), expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null, mode: row.encrypted ? "password" : "plain" } : null;
 }
 
 /** Anyone with the link: an enabled, unexpired snapshot, or null for unknown, disabled, expired and malformed ids alike. */
-export async function loadPublicSnapshot(db: Database, publicId: string): Promise<PublicSnapshot | null> {
+export async function loadPublicLink(db: Database, publicId: string): Promise<PublicSnapshot | EncryptedPublicSnapshot | null> {
   if (!PUBLIC_ID.test(publicId)) return null;
   const [row] = await db.select().from(publications).where(and(eq(publications.publicId, publicId), eq(publications.enabled, true), notExpired())).limit(1);
   if (!row) return null;
+  if (row.encrypted && row.ciphertext && row.crypto) return { encrypted: true, name: row.name, envelope: { ...(row.crypto as Record<string, unknown>), data: row.ciphertext } };
   const body = row.snapshot as PublicSnapshotBody;
   return { publicId: row.publicId, name: row.name, schemaVersion: row.schemaVersion, publishedRevision: row.publishedRevision, publishedAt: row.publishedAt.toISOString(), people: body.people, relationships: body.relationships };
+}
+
+/** The readable snapshot of a plain link; a password-protected link has none (null). */
+export async function loadPublicSnapshot(db: Database, publicId: string): Promise<PublicSnapshot | null> {
+  const link = await loadPublicLink(db, publicId);
+  return link && !("encrypted" in link) ? link : null;
 }

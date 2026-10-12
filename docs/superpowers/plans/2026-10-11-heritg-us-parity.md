@@ -426,30 +426,31 @@
 - `src/app/tree/[publicId]/PublicTree.tsx` (a password prompt)
 - `tests/api`, i18n
 
-- [ ] **Schema:** `publications` gains:
+- [x] **Schema:** `publications` gains:
   - `encrypted boolean not null default false`;
-  - `ciphertext text null`, a base64 string limited to 3 MB;
+  - `ciphertext text null`, a base64 string limited to 4,000,000 characters (the request body limit for this route is about 4.5 MB);
   - `crypto jsonb null` (kdf and iv, validated).
   - A CHECK requires that encrypted rows have a ciphertext and an empty snapshot, and that plain rows have no ciphertext.
-- [ ] **The owner's client:**
+- [x] **The owner's client:**
   - It builds the filtered snapshot locally, with the same options as 5.5. Photos are embedded as data URLs, and the whole payload is capped.
   - It encrypts with PBKDF2-SHA-256 (600k iterations) → AES-GCM 256.
   - It uploads only the ciphertext and the crypto parameters: `PUT /api/trees/:id/publication` with `{ mode: "password", ... }`.
   - The server never sees the password or the plaintext. There are no `public_photos` rows.
-- [ ] **Password rules:** at least 8 characters, with lower case, upper case, a digit and a symbol. A live checklist shows them, and a confirmation field must match.
+- [x] **Password rules:** at least 8 characters, with lower case, upper case, a digit and a symbol. A live checklist shows them, and a confirmation field must match.
   - Copy: "Kirim link dan password lewat jalur terpisah. Password yang lupa nggak bisa dipulihkan."
-- [ ] **Public read:**
-  - It returns `{ encrypted: true, name, crypto, ciphertext }`.
+- [x] **Public read:**
+  - It returns `{ encrypted: true, name, envelope }`, where the envelope is the stored crypto parameters plus `data` (the ciphertext).
   - Expiry and the noindex/no-store headers work as in 5.5.
   - The name stays visible; the owner is told this ("Nama silsilah tetap kelihatan sebelum password diisi").
-- [ ] **Viewer:**
+- [x] **Viewer:**
   - It shows a password form (read-only page, no "edit" wording), decrypts in the browser, then renders as now.
   - A wrong password gives a neutral error.
   - **Accepted test exception:** the form's submit is the only button on the public page. `PublicTree.test.tsx` is updated to allow exactly that one, while still forbidding edit wording and any other buttons.
-- [ ] **Tests:**
+- [x] **Tests:**
   - API: the encrypted publish stores no plaintext; the CHECK constraints; size limits; another owner gets a 404; expiry.
   - Client: an encrypt/decrypt round-trip, a wrong password, and that the viewer prompt never posts the password anywhere.
-- [ ] **Reviewer (Opus 5.5).**
+- [x] **Reviewer (Opus 5.5).** Approved after two rounds.
+- _Fixed during review:_ _a protected link that reuses its ciphertext keeps its stored options and published version; changing options needs a new envelope (409 otherwise)._
 
 ## Phase 6 — Kipas (fan chart)
 

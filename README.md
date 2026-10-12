@@ -107,6 +107,8 @@ npm run build
 
 The public URL is `/tree/{publicId}`. Treat it as a bearer link: anyone who has it can view every published name, date, residence, note, photo and family relationship. Unpublish or regenerate the link to revoke access.
 
+A link can also be password-protected ("Pakai password" in the Bagikan panel). The snapshot is encrypted in the owner's browser (PBKDF2-SHA-256, 600k iterations, AES-GCM) and the viewer decrypts it in their browser, so the server stores only the ciphertext, its crypto parameters and the tree name, and never sees the password or the content. A lost password cannot be recovered; publish again with a new password. The ciphertext can be up to 4,000,000 base64 characters, so a reverse proxy must allow request bodies of at least 4.5 MB on `PUT /api/trees/*/publication` (for nginx, `client_max_body_size 5m` for that location).
+
 ## Project structure
 
 - `src/server/` contains server-only code:
