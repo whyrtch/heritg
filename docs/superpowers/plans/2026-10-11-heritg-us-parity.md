@@ -338,21 +338,21 @@
 - the import path in `Workspace.tsx` (`loadFile` accepts `.ged`)
 - i18n
 
-- [ ] **Export:**
+- [x] **Export:**
   - `HEAD` with `GEDC VERS 5.5.1`, `CHAR UTF-8` and `SOUR HERITG`;
   - each `INDI` with `NAME`, `SEX`, `BIRT/DATE`, `DEAT/DATE` and `NOTE`; residence goes to `RESI/PLAC`;
   - each `FAM` with `HUSB`/`WIFE` (or two partners by gender), `CHIL`, and `MARR/DATE`; an ex-partner gets `DIV`;
   - for a non-biological parent, the child's `FAMC` carries `PEDI` (adopted, foster, step); guardian maps to `PEDI foster` with a `NOTE`;
   - dates in GEDCOM form (`21 JUN 1961`);
   - CRLF line endings, and long text split with `CONC`/`CONT`.
-- [ ] **Privacy options** apply: birth dates and order, and marriage dates. Photos are never included.
-- [ ] **Import:**
+- [x] **Privacy options** apply: birth dates and order, and marriage dates. Photos are never included.
+- [x] **Import:**
   - read the same subset, ignore unknown tags, and accept partial dates (`JUN 1961`, `1961`);
   - map `PEDI` back to the parent kind;
   - build a new `FamilyTree` with new ids;
   - reject non-GEDCOM files with a clear error.
-- [ ] **Round-trip test:** the example tree survives export → import with the same people, relationships, kinds and dates (ids aside).
-- [ ] **Card:** a "Buat di aplikasi lain" badge, the privacy options, and "Download GEDCOM".
+- [x] **Round-trip test:** the example tree survives export → import with the same people, relationships, kinds and dates (ids aside).
+- [x] **Card:** a "Buat di aplikasi lain" badge, the privacy options, and "Download GEDCOM".
 
 ### Task 5.3 — Simpan Gambar (PNG and SVG)
 **Files:**

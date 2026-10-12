@@ -13,6 +13,7 @@ import { PeoplePanel } from "./panels/PeoplePanel";
 import { SettingsPanel, type SyncReport } from "./panels/SettingsPanel";
 import { HelpPanel } from "./panels/HelpPanel";
 import { PrivacyPanel } from "./panels/PrivacyPanel";
+import { exportGedcom, importGedcom, looksLikeGedcom, type GedcomOptions } from "./domain/gedcom";
 import { SharePanel } from "./panels/SharePanel";
 import { TreeSidebar } from "./panels/TreeSidebar";
 import { RenameTreeDialog } from "./panels/RenameTreeDialog";
@@ -211,7 +212,8 @@ export function Workspace() {
   const switchView = (next: "focus" | "full") => { setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
   // The backup embeds uploaded photos as data, so the file stays complete without this account.
   const download = async () => { const blob = new Blob([exportTree(await withEmbeddedPhotos(active))], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
-  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { addTree(importTree(await file.text())); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
+  const downloadGedcom = (options: GedcomOptions) => { const blob = new Blob([exportGedcom(active, options)], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "silsilah"}.ged`; a.click(); URL.revokeObjectURL(url); };
+  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { const text = await file.text(); addTree(/.ged$/i.test(file.name) || looksLikeGedcom(text) ? importGedcom(text) : importTree(text)); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
   const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
   const rename = readOnly ? undefined : () => setRenaming(true);
   const selectTree = (id: string) => { setData({ ...data, activeTreeId: id }); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); };
@@ -326,7 +328,7 @@ export function Workspace() {
     {treeRepository && cache && remoteTreeId && <OnlineTreeBridge key={`${remoteTreeId}-${onlineEpoch}`} treeId={remoteTreeId} repository={treeRepository} cache={cache} apiRef={syncApi} photoQueue={photoQueue} photoClient={photoClient} photoTick={photoTick} onStatus={setSyncReport} onTree={tree => { setOnlineTree(tree); updateActive(() => localFromOnline(tree)); }} />}
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
-    <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
+    <input ref={importRef} type="file" accept=".heritg,.ged,application/json" hidden onChange={loadFile} />
     {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onCopy={copyTree} onRename={renameFromSidebar} onDelete={tree => { setSidebar(false); setDeleting(tree); }} onFamilyPlus={() => { setSidebar(false); setFamilyPlus(true); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
     {renaming && !readOnly && <RenameTreeDialog name={active.name} onClose={() => setRenaming(false)} onSave={name => { setTree({ ...active, name }); setRenaming(false); }} />}
     {deleting && !isDemoTree(deleting) && <DeleteTreeDialog name={deleting.name} people={deleting.people.length} relationships={deleting.relationships.length} synced={Boolean(remoteIdOf(deleting))} onClose={() => setDeleting(null)} onConfirm={() => deleteTree(deleting)} />}
@@ -338,7 +340,7 @@ export function Workspace() {
     {rightPanel === "settings" && <SettingsPanel syncReport={remoteTreeId ? syncReport : null} onFamilyPlus={() => setFamilyPlus(true)} onClose={closeRightPanel} />}
     {rightPanel === "help" && <HelpPanel onClose={closeRightPanel} />}
     {rightPanel === "privacy" && <PrivacyPanel masked={privacy} onToggleMask={() => setPrivacy(v => !v)} onClose={closeRightPanel} />}
-    {rightPanel === "share" && <SharePanel treeName={active.name} peopleCount={active.people.length} example={readOnly} signedIn={online} publishing={activeOnlineTree && publicationRepository ? { tree: activeOnlineTree, repository: publicationRepository, onTreeChange: tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); } } : null} onDownload={download} onClose={closeRightPanel} />}
+    {rightPanel === "share" && <SharePanel treeName={active.name} peopleCount={active.people.length} example={readOnly} signedIn={online} publishing={activeOnlineTree && publicationRepository ? { tree: activeOnlineTree, repository: publicationRepository, onTreeChange: tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); } } : null} onDownload={download} onDownloadGedcom={downloadGedcom} onClose={closeRightPanel} />}
     {familyPlus && <FamilyPlusDialog onClose={() => setFamilyPlus(false)} />}
         {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
   </div>;

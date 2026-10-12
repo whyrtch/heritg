@@ -13,7 +13,7 @@ const tree: OnlineTree = {
 const repository: PublicationRepository = { publish: vi.fn(), disable: vi.fn(), loadPublic: vi.fn(async () => null) };
 
 function setup(overrides: Partial<React.ComponentProps<typeof SharePanel>> = {}) {
-  const props = { treeName: "Keluarga Saya", peopleCount: 3, example: false, signedIn: false, publishing: null, onDownload: vi.fn(), onClose: vi.fn(), ...overrides };
+  const props = { treeName: "Keluarga Saya", peopleCount: 3, example: false, signedIn: false, publishing: null, onDownload: vi.fn(), onDownloadGedcom: vi.fn(), onClose: vi.fn(), ...overrides };
   render(<SharePanel {...props} />);
   return props;
 }
@@ -38,7 +38,7 @@ describe("SharePanel", () => {
     fireEvent.click(method("File GEDCOM"));
     expect(method("File GEDCOM")).toHaveAttribute("aria-pressed", "true");
     expect(method("File Backup HERITG")).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("Segera hadir")).toBeInTheDocument();
+    expect(screen.getByText("Buat aplikasi lain")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Download .heritg" })).not.toBeInTheDocument();
     fireEvent.click(method("Simpan Gambar"));
     expect(screen.getByText("Gambar pohon dalam format PNG atau SVG.")).toBeInTheDocument();
@@ -48,6 +48,20 @@ describe("SharePanel", () => {
     const props = setup();
     fireEvent.click(screen.getByRole("button", { name: "Download .heritg" }));
     expect(props.onDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it("downloads GEDCOM with the chosen privacy options", () => {
+    const props = setup();
+    fireEvent.click(method("File GEDCOM"));
+    expect(screen.getByText("Yang ikut di file")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Download GEDCOM" }));
+    expect(props.onDownloadGedcom).toHaveBeenLastCalledWith({ dates: true, marriageDates: true });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Tanggal nikah" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download GEDCOM" }));
+    expect(props.onDownloadGedcom).toHaveBeenLastCalledWith({ dates: true, marriageDates: false });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Tanggal & urutan lahir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download GEDCOM" }));
+    expect(props.onDownloadGedcom).toHaveBeenLastCalledWith({ dates: false, marriageDates: false });
   });
 
   it("explains the web link when signed out, signed in but not synced, and for the example tree", () => {
