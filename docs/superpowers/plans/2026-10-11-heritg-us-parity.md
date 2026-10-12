@@ -124,21 +124,167 @@
 
 ## Phase 4 — Panels
 
-- [ ] **Sidebar:**
-  - head;
-  - "Silsilah keluarga" with a plus button;
-  - search;
-  - tree item cards with an "Atur Silsilah" kebab (rename, duplicate, export, delete — measure first);
-  - Silsilah baru and Impor file;
-  - menu rows Heritg Family+, Perlindungan privasi, Bantuan, Laporin bug.
-- [ ] **Semua orang.** Search plus a list showing relation labels; clicking a row selects that person and centers the canvas.
-- [ ] **Setelan:**
-  - Family+ status, mapped to our sync;
-  - Akun, showing the owner with Sign in / Sign out;
-  - Bahasa aplikasi (id / en / ms);
-  - Sebutan status keluarga (dialect for kinship terms).
-- [ ] **Bantuan and Perlindungan privasi.** Copy adapted to our architecture, per the spec.
-- [ ] **Heritg Family+ dialog** (benefits list), with the CTA mapped to the online-sync explanation.
+> Detailed on 2026-10-12, after measuring heritg.us (reference section "Panels, measured 2026-10-12").
+> - Re-implement from those measurements. Write our own copy; take nothing from heritg.us beyond short UI labels.
+> - All six tasks edit `Workspace.tsx`, so they run **sequentially**.
+> - Each task ends with `npm test -- --run` and `npm run lint`, and is one commit.
+
+**Shared decisions (the owner may override):**
+- **One right-side panel at a time.** `Workspace` holds `rightPanel: "people" | "settings" | "help" | "privacy" | null`. Opening one panel replaces another. The PersonPanel (example tree) stays as it is.
+- **Panel semantics.** Panels are `role="dialog"` with `aria-modal="false"` and `aria-label` = the title. They close with a "Tutup" button or Escape, and they do not trap focus.
+- **Strings.** New strings go into `src/i18n/{id,en,ms}.ts`. Indonesian is the default.
+- **No bug reporting.** There is no "Laporin bug" row or card, because we have no report channel.
+- **No payments.** Family+ explains that online sync is part of the owner account.
+
+### Task 4.1 — Side panel shell and Semua orang
+**Files:**
+- new `src/features/tree/panels/{SidePanel.tsx, PeoplePanel.tsx, panels.module.css, panels.test.tsx}`
+- `Workspace.tsx` (wiring; remove `Directory`)
+- i18n catalogs
+
+- [ ] **`SidePanel`:**
+  - fixed to the right, 390 wide, full height;
+  - header 68 high with an h2 (17.28/700) and a "Tutup" close button;
+  - body with padding 20 that scrolls;
+  - Escape closes it;
+  - under 600 px it is full width (the mobile sheet comes in Phase 7).
+- [ ] **`PeoplePanel` search and list:**
+  - The search input (type=search, label "Cari orang") filters case-insensitively.
+  - Each row shows a 44 avatar in the gender tint. It shows the photo if there is one, unless privacy masking is on.
+  - Each row shows the name and a subline:
+    - the kinship label relative to the selected person (`kinshipLabels` with the chosen dialect);
+    - "Dipilih" for the selected person;
+    - otherwise "Anggota keluarga".
+  - Each row ends with an arrow-right icon.
+- [ ] **`PeoplePanel` behaviour:**
+  - Clicking a row closes the panel, selects the person and centres on them (`focusPerson`).
+  - When nothing matches, it shows "Nggak ada yang cocok".
+- [ ] **Tests:**
+  - the filter;
+  - the subline labels;
+  - a row click selects the person and closes the panel;
+  - in the Workspace test, opening "Semua orang" and jumping to a person.
+
+### Task 4.2 — Setelan
+**Files:**
+- new `src/features/tree/panels/SettingsPanel.tsx` and its tests
+- new `src/features/tree/canvas/dialectSetting.ts` (a `useSyncExternalStore` store, key `heritg.kinshipDialect`, default "id")
+- `Workspace.tsx`, i18n
+
+- [ ] **Akses Family+ group:**
+  - a gradient card titled "Heritg Family+";
+  - a badge: "Aktif" when signed in, "Belum aktif" otherwise;
+  - a sync sub-row ("Sinkron online") with a status pill from the active tree: "Tersimpan", "Menyimpan…", "Offline", "Perlu dicek" (conflict or error), or "Cuma di perangkat ini";
+  - a full-width gradient button that opens the Family+ dialog.
+- [ ] **Akun group:** "Akun pemilik" with the email or "Belum masuk", plus the existing `OwnerSession` sign-in and sign-out.
+- [ ] **Bahasa aplikasi group:** a two-column option grid (Bahasa Indonesia / English / Bahasa Melayu) with `aria-pressed`, calling `setLanguage`.
+- [ ] **Sebutan status keluarga group:**
+  - one option per `KINSHIP_DIALECTS` entry: Bahasa Indonesia, Basa Jawa (Yogyakarta), Bahasa Melayu, English;
+  - stored via `dialectSetting`;
+  - `Workspace` passes the dialect to `kinshipLabels`.
+- [ ] **Perangkat ini group:** keep the existing "Reset device cache" button. Its confirmation must say that edits not yet synced are lost too.
+- [ ] **Footer:** a note row with a shield-check icon, and a version line from the `version` in `package.json`.
+- [ ] **Remove the old Settings panel** and its "Privacy protection" toggle. Masking moves to the privacy panel (4.3).
+- [ ] **Tests:**
+  - switching the language re-renders the UI;
+  - choosing a dialect changes a kinship label on the canvas;
+  - the sync pill maps every status;
+  - the copy for a signed-out account.
+
+### Task 4.3 — Bantuan and Perlindungan privasi
+**Files:** new `src/features/tree/panels/{HelpPanel.tsx, PrivacyPanel.tsx}` and their tests, `Workspace.tsx`, i18n.
+
+- [ ] **Bantuan.** An intro paragraph, then six help items. Each has a 38 icon tile, a title and text, all in our own words:
+  - pan and zoom the canvas (drag, wheel, Ctrl/⌘ + wheel);
+  - add and edit relatives (the + and the pencil next to a person);
+  - manage trees (the menu at the top left: new, rename, copy, import);
+  - find people (Semua orang);
+  - the Fokus and Lengkap views, with the depth buttons;
+  - sync and offline: edits wait on this device and are sent once back online.
+- [ ] **Perlindungan privasi.** A green status card, then help items that describe **our** model honestly:
+  - only the owner account can read or change private trees, and the server checks every request;
+  - passwords are hashed (Argon2id) and sessions are HTTP-only cookies;
+  - this browser keeps an **unencrypted** offline copy, so use a trusted device and sign out on shared ones;
+  - a public link is read-only, anyone who has it can view it, and it can be revoked;
+  - exported `.heritg` files are readable by anyone who has them.
+- [ ] **Masking toggle.** Keep the existing toggle here, labelled "Samarkan tanggal dan foto di daftar".
+- [ ] **Privacy chip.** The canvas chip keeps "Dilindungi", but its panel must not claim device encryption.
+- [ ] **Tests:**
+  - both panels open from their chrome buttons;
+  - both open from the sidebar rows (after 4.4);
+  - the copy makes no claim that this device is encrypted ("enkripsi" / "encrypted").
+
+### Task 4.4 — Sidebar
+**Files:**
+- new `src/features/tree/panels/{TreeSidebar.tsx, TreeMenu.tsx}` and their tests
+- `model.ts`: `duplicateTree`, which gives new person and relationship ids and the name "<name> (salinan)", with unit tests
+- `Workspace.tsx`, i18n
+
+- [ ] **Head and search** (following the reference):
+  - 304 wide, sliding in from the left;
+  - the head holds the logo, "Heritg", "Arsip keluarga pribadi" and a "Tutup" close button;
+  - a "Silsilah keluarga" section with a round "Silsilah baru" plus button;
+  - a search box that filters the tree cards.
+- [ ] **Tree cards and actions:**
+  - Each card has a tree-icon avatar, the name, and "N orang · 11 Okt" (or "contoh" for the example).
+  - The active card has `aria-current`.
+  - Buttons: "Silsilah baru" (primary) and "Impor file".
+  - Plus "Ekspor file", kept until Phase 5 moves export into Bagikan.
+- [ ] **Menu rows:**
+  - Heritg Family+ (a gradient row that opens the dialog);
+  - Perlindungan privasi (opens the panel);
+  - Bantuan (opens the panel).
+- [ ] **Kebab "<name>: Atur Silsilah"** with `aria-expanded`. It closes on Escape or an outside click. Its popover has these items:
+  - "Bikin salinan keluarga": first embed the photos with `withEmbeddedPhotos`, then hand the copy to `addTree`. A signed-in owner therefore uploads it and its photos are queued.
+  - "Ubah nama": a 430 `Dialog` with the field "Nama silsilah keluarga" (maxlength 160) and Batal / Simpan. It also replaces the `prompt()` behind the title pencil.
+  - "Hapus": handled in 4.5. Until then the item is not rendered.
+  - On the example tree the menu offers only "Bikin salinan keluarga" (an editable copy).
+- [ ] **Tests:**
+  - the search filter;
+  - duplicating creates new ids and keeps the relationships consistent;
+  - renaming through the dialog;
+  - the example tree's menu has no rename;
+  - the sidebar menu rows open the right panels.
+
+### Task 4.5 — Delete a tree (reviewer required: touches sync and the server)
+**Files:** `TreeMenu.tsx`, `Workspace.tsx`, i18n, tests. The server and API do not change: `DELETE /api/trees/:id` already exists and is owner-scoped.
+
+- [ ] **Confirmation dialog.** "Hapus" opens a 430 dialog titled "Hapus <name>?". It shows the person and relationship counts and says that:
+  - the tree is removed from the account and from this device;
+  - its public link stops working.
+  - The danger button reads "Hapus silsilah".
+- [ ] **Synced tree** (it has a remote id): call `HttpTreeRepository.delete` first.
+  - **Only if that succeeds**, remove the local tree and everything tied to it:
+    - its cached online copy;
+    - its pending operations;
+    - its migration mapping;
+    - its photo queue entries.
+  - Then switch to another tree, or to a new empty tree when none is left.
+  - **When offline or on failure,** keep everything and show "Silsilah ini perlu online buat dihapus".
+- [ ] **Local-only tree:** remove it from this device.
+- [ ] **The example tree** cannot be deleted.
+- [ ] **Tests:**
+  - a successful online delete removes the local data;
+  - an offline failure keeps every local byte;
+  - deleting the active tree selects another.
+- [ ] **Reviewer (Opus 5.5)** before the commit.
+
+### Task 4.6 — Heritg Family+ dialog
+**Files:** new `src/features/tree/panels/FamilyPlusDialog.tsx` and its tests, `Workspace.tsx`, i18n.
+
+- [ ] **A 620 `Dialog` titled "Heritg Family+".** It contains:
+  - a gradient benefits box with a sparkles title "Yang sudah kamu dapat" and three items mapped to our features:
+    - sync to the owner account across devices;
+    - an offline copy that sends edits once back online;
+    - revocable public read-only links;
+  - an "everyday features" note;
+  - a status block: signed in → "Aktif di akun <email>"; signed out → "Masuk dulu buat sinkron online" with a link to `/login`.
+  - Footer: "Mengerti" (primary). No prices and no payments.
+- [ ] **Replace the old `deferred` modal** ("Coming in the collaboration release") everywhere.
+- [ ] **Tests:**
+  - the signed-in variant;
+  - the signed-out variant;
+  - no price text appears.
 
 ## Phase 5 — Share / export (reviewer required for the web link)
 

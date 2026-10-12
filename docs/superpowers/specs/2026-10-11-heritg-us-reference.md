@@ -119,3 +119,57 @@ Stack: Vite PWA (index-*.js, registerSW.js), lang="id". Font: "Assistant", syste
 - Coach marks 1, 2 and 3 visible; 4 hidden. Empty-state options full width (340), left aligned.
 - Controls column right 12, bottom 12 (Semua orang ... Pas ke layar, 44 each, gap 8). Privacy chip becomes a round 44 icon-only button, with Bantuan next to it (row at y 700).
 - Bottom-left: eye (12,756) + view chip "Lengkap" (64,756, 122x44).
+
+## Panels, measured 2026-10-12 (desktop 1280x860)
+
+### Sidebar tree kebab ("<tree name>: Atur Silsilah", 44 round quiet button, aria-expanded)
+- Popover `position:absolute z 50`, about 145 wide, anchored under the kebab and right-aligned to the card. Padding 5, radius 12, bg #fffdf8, border 1px #d8ccbc, shadow --shadow.
+- Items are 44 high, padding 0 10, radius 8, gap 9, 13.6px, lucide icon 15. Three items: copy-plus "Bikin salinan keluarga", pencil "Ubah nama", trash-2 "Hapus" (danger text #b95c4b). No export item.
+- "Ubah nama" opens a small modal (430 wide): title "Ubah nama silsilah", one field "Nama silsilah keluarga" (maxlength 160), footer Batal (secondary) and Simpan (primary).
+- "Hapus" opens a small modal (430): title "Hapus <name>?", a copy line with the person and relationship counts, footer Batal and a danger "Hapus silsilah".
+
+### Shared side panel (role=dialog, aria-modal=false, aria-label = title)
+- Fixed right, 390 x full height. Bg rgba(247,243,236,.96), border-left 1px #d8ccbc, shadow -18px 0 46px rgba(62,48,34,.12).
+- Header 68 high, padding 10 14 10 22, border-bottom 1px #d8ccbc; h2 17.28/700; close "Tutup" round 44 quiet, x icon.
+- Body padding 20, scrolls.
+- Only one right panel is open at a time; opening another replaces it.
+
+### Semua orang
+- Search label sticky-ish block (bg #f7f3ec, padding 4 0 10, margin -4 0 14) with a search icon 18 #796f63 at left. The input is type=search, 44 high, padding-left 40, radius 11, bg #ede5d8, transparent border, 14.72px, placeholder "Cari orang" (sr-only label the same).
+- List is a grid with gap 8. Row button: grid 44px 1fr 17px, gap 12, padding 10 13, radius 13, bg #fffdf8, border 1px #d8ccbc.
+  - Avatar 44 round, border 2px, initial 16/700 #795d3f. Neutral is bg #ede5d8 / border #796f63; female is bg #f4e4e8 / border #985c6d. Male uses the canvas male tint.
+  - Name 16/700; subline 12.16 #796f63 margin-top 3 (relation label to the selected person, or a generic "family member" when none); arrow-right 17.
+- Clicking a row closes the panel, selects that person on the canvas (aria-pressed) and centres on them.
+
+### Setelan
+- Groups (margin-top 16, grid gap 10): h3 uppercase 12.48/700, letter-spacing .06em, margin 0 3.
+- Card: padding 15, radius 14, bg #fffdf8, border 1px #d8ccbc, grid gap 12. Card header is flex gap 12: icon 25 (#a8875b), strong 14.72/700, detail 13.76 #796f63.
+- Family+ card: gradient 160deg #faf7f7 → #fffdf8, border #d8cddd, icon in #73558a.
+  - Title line has a pill badge (padding 4 7, radius 999, 10.88/750, border #d8ccbc, #796f63).
+  - Sync sub-row (cloud icon) with its own pill status.
+  - Full-width gradient button (145deg #73558a → #4d345b, 40 high, radius 12, white 14.72/600).
+- Groups in order: Akses Family+, Akun, Bahasa aplikasi, Sebutan status keluarga.
+- Option grids are 2 columns, gap 7. Buttons are 44 high, padding 10 12, radius 10, 16/700, aria-pressed. Unselected: bg #f7f3ec, border #d8ccbc. Selected: bg #fffaf2, border #a8875b.
+- The footer is a note row (shield-check 17, 11.52 #796f63, padding-top 15) plus a version line (12.48 #796f63).
+
+### Bantuan
+- Intro paragraph 14.4 / lh 22.32 #796f63, margin-bottom 22.
+- Help list is a grid with gap 8. Each item: grid 38px 1fr, gap 12, padding 12 4.
+  - Icon tile 38, radius 11, bg #ede5d8, icon 19 #795d3f.
+  - h3 14.4/700; p 12.8 / lh 18.56 #796f63.
+- Six topics: pan the canvas, add/edit relatives, manage trees, find people, focus a branch, zoom/fit.
+- A closing report-bug card: padding 11, radius 14, bg #fffdf8, border #d8ccbc, grid 38px 1fr; strong 13.6/700, small 11.84.
+
+### Perlindungan privasi
+- Status card: padding 15, radius 15, bg ≈ #f0f1e6, border ≈ #b8bb9d, green #4f6d3d. Shield 22; strong 16/700; span 12.48 / lh 18.1 #796f63.
+- Then help-list items (same style as Bantuan) explaining storage, keys, local-only and exports.
+- A green link card: bg #4f6d3d, white, padding 15 17, radius 14, external-link icon.
+- Ends with the version line.
+
+### Heritg Family+ dialog (modal-medium 620)
+- Header 66 high, h2 19.84/700. Body padding 22.
+- Benefits box: padding 15, radius 14, gradient 145deg #f4eff6 → ~#fbf8f8, border #d8cddd, grid gap 14.
+  - Title row: sparkles 17 #4d345b.
+  - List grid gap 11. Each item has an icon tile 32 (padding 7, radius 9, bg ≈ #eee9eb, #4d345b) and strong 14.08/700 followed by text.
+- Free-tools note 12.48 / lh 20 #4d345b; a recovery note (info icon, bg ≈ #f8f3eb, radius 10).
+- Then plan pricing and checkout. Out of scope for us: no payments.
