@@ -258,6 +258,16 @@ describe("Workspace sidebar", () => {
     const aside = await openSidebar();
     fireEvent.click(within(aside).getByRole("button", { name: /Heritg Family\+/ }));
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
-    expect(screen.getByText("Coming in the collaboration release")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Heritg Family+" })).toBeInTheDocument();
+  });
+
+  it("opens the Family+ dialog from the top bar and closes it with Mengerti", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(screen.getByRole("button", { name: "Heritg Family+" }));
+    expect(screen.getByRole("dialog", { name: "Heritg Family+" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Masuk" })).toHaveAttribute("href", "/login");
+    fireEvent.click(screen.getByRole("button", { name: "Mengerti" }));
+    expect(screen.queryByRole("dialog", { name: "Heritg Family+" })).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 import React, { ChangeEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Network, Pencil, Plus, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Network, Pencil, Plus, Settings2, Share2, ShieldCheck, SlidersHorizontal, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { displayName, duplicateTree, exportTree, FamilyTree, importTree, lifeDatesLong, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
 import { useT } from "@/i18n";
@@ -15,6 +15,7 @@ import { HelpPanel } from "./panels/HelpPanel";
 import { PrivacyPanel } from "./panels/PrivacyPanel";
 import { TreeSidebar } from "./panels/TreeSidebar";
 import { RenameTreeDialog } from "./panels/RenameTreeDialog";
+import { FamilyPlusDialog } from "./panels/FamilyPlusDialog";
 import { DeleteTreeDialog, type DeleteFailure } from "./panels/DeleteTreeDialog";
 import { useDialect } from "./canvas/dialectSetting";
 import { StartDialog } from "./dialogs/StartDialog";
@@ -83,7 +84,7 @@ export function Workspace() {
   const [rightPanel, setRightPanel] = useState<"people" | "settings" | "help" | "privacy" | null>(null);
   const [syncReport, setSyncReport] = useState<SyncReport | null>(null);
   const dialect = useDialect();
-  const [deferred, setDeferred] = useState<"Family+" | null>(null);
+  const [familyPlus, setFamilyPlus] = useState(false);
   const [privacy, setPrivacy] = useState(true);
   const [controlsHidden, setControlsHidden] = useState(false);
   const [viewMenu, setViewMenu] = useState(false);
@@ -266,7 +267,7 @@ export function Workspace() {
           <p>{summary}</p>
         </div>
         <div className={styles.topActions}>
-          <button className={styles.familyPlusButton} aria-label={t("shell.familyPlus")} onClick={() => setDeferred("Family+")}><CirclePlus size={20} aria-hidden="true" /><span>{t("shell.familyPlus")}</span></button>
+          <button className={styles.familyPlusButton} aria-label={t("shell.familyPlus")} onClick={() => setFamilyPlus(true)}><CirclePlus size={20} aria-hidden="true" /><span>{t("shell.familyPlus")}</span></button>
           <button className={styles.shareButton} aria-label={t("shell.shareTree")} disabled={!activeOnlineTree || !publicationRepository} onClick={() => setPublishOpen(true)}><Share2 size={17} aria-hidden="true" /><span>{t("shell.share")}</span></button>
           <IconButton label={t("shell.settings")} onClick={() => setRightPanel("settings")}><Settings2 size={19} /></IconButton>
         </div>
@@ -327,7 +328,7 @@ export function Workspace() {
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
-    {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onCopy={copyTree} onRename={renameFromSidebar} onDelete={tree => { setSidebar(false); setDeleting(tree); }} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
+    {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onCopy={copyTree} onRename={renameFromSidebar} onDelete={tree => { setSidebar(false); setDeleting(tree); }} onFamilyPlus={() => { setSidebar(false); setFamilyPlus(true); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
     {renaming && !readOnly && <RenameTreeDialog name={active.name} onClose={() => setRenaming(false)} onSave={name => { setTree({ ...active, name }); setRenaming(false); }} />}
     {deleting && !isDemoTree(deleting) && <DeleteTreeDialog name={deleting.name} people={deleting.people.length} relationships={deleting.relationships.length} synced={Boolean(remoteIdOf(deleting))} onClose={() => setDeleting(null)} onConfirm={() => deleteTree(deleting)} />}
     {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => { setEditFor(panelPerson.id); setPanelFor(null); }} onAdd={() => { setWizardFor(panelPerson.id); setPanelFor(null); }} onDelete={() => { setEditFor(panelPerson.id); setPanelFor(null); }} />}
@@ -335,10 +336,10 @@ export function Workspace() {
     {wizardFor && !readOnly && active.people.some(p => p.id === wizardFor) && <AddRelativeWizard tree={active} anchorId={wizardFor} onClose={() => setWizardFor(null)} onSubmit={input => { const result = addRelative(active, wizardFor, input); setTree(result.tree); setSelected(wizardFor); setWizardFor(null); }} />}
     {editFor && !readOnly && active.people.some(p => p.id === editFor) && <EditProfileDialog key={editFor} tree={active} personId={editFor} onClose={() => setEditFor(null)} onSave={next => { setTree(next); setEditFor(null); }} onDelete={id => { setTree(removePerson(active, id)); setSelected(null); setEditFor(null); }} />}
     {rightPanel === "people" && <PeoplePanel tree={active} selectedId={selected} labels={labels} privacy={privacy && !readOnly} onPick={focusPerson} onClose={closeRightPanel} />}
-    {rightPanel === "settings" && <SettingsPanel syncReport={remoteTreeId ? syncReport : null} onFamilyPlus={() => setDeferred("Family+")} onClose={closeRightPanel} />}
+    {rightPanel === "settings" && <SettingsPanel syncReport={remoteTreeId ? syncReport : null} onFamilyPlus={() => setFamilyPlus(true)} onClose={closeRightPanel} />}
     {rightPanel === "help" && <HelpPanel onClose={closeRightPanel} />}
     {rightPanel === "privacy" && <PrivacyPanel masked={privacy} onToggleMask={() => setPrivacy(v => !v)} onClose={closeRightPanel} />}
-    {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
+    {familyPlus && <FamilyPlusDialog onClose={() => setFamilyPlus(false)} />}
     {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); }} />}
     {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
   </div>;
@@ -473,4 +474,3 @@ function PersonPanel({ person, relatives, readOnly, onFocus, onStartOwn, onClose
 }
 
 function Panel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <aside className={styles.panel}><div className={styles.panelHead}><h2>{title}</h2><IconButton label="Close panel" onClick={onClose}><X /></IconButton></div>{children}</aside>; }
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <div className={styles.modalBackdrop} onMouseDown={e => e.target === e.currentTarget && onClose()}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className={styles.panelHead}><h2 id="modal-title">{title}</h2><IconButton label="Close dialog" onClick={onClose}><X /></IconButton></div>{children}</section></div>; }

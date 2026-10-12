@@ -17,15 +17,15 @@ describe("OwnerSession", () => {
   it("offers sign in, not sign out, when nobody is signed in", () => {
     auth = { user: null, status: "unauthenticated" };
     render(<OwnerSession />);
-    expect(screen.queryByRole("button", { name: /sign out/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.queryByRole("button", { name: /keluar/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Masuk" }));
     expect(push).toHaveBeenCalledWith("/login");
   });
 
   it("signs the owner out when signed in", async () => {
     auth = { user: { email: "owner@example.test" }, status: "authenticated" };
     render(<OwnerSession />);
-    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keluar" }));
     await waitFor(() => expect(signOut).toHaveBeenCalledOnce());
     expect(screen.queryByRole("button", { name: "Sign in" })).not.toBeInTheDocument();
   });

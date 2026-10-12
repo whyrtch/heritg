@@ -3,10 +3,12 @@
 import { LogIn, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
+import { useT } from "@/i18n";
 import { useAuth } from "./useAuth";
 import styles from "./auth.module.css";
 
 export function OwnerSession() {
+  const t = useT();
   const { user, signOut } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -15,7 +17,7 @@ export function OwnerSession() {
   if (!user) {
     return <button className={styles.session} type="button" onClick={() => router.push("/login")}>
       <LogIn size={17} aria-hidden="true" />
-      <span>Sign in</span>
+      <span>{t("session.signIn")}</span>
     </button>;
   }
 
@@ -26,8 +28,8 @@ export function OwnerSession() {
       try { await signOut(); } catch { setFailed(true); } finally { setBusy(false); }
     }} title={user.email ?? "Owner account"}>
       <LogOut size={17} aria-hidden="true" />
-      <span>{busy ? "Signing out…" : "Sign out"}</span>
+      <span>{busy ? t("session.signingOut") : t("session.signOut")}</span>
     </button>
-    {failed && <p role="alert">Couldn’t sign out. Try again when you’re online.</p>}
+    {failed && <p role="alert">{t("session.failed")}</p>}
   </>;
 }
