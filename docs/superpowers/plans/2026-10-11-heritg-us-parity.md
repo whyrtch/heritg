@@ -569,14 +569,14 @@
 ### Task 7.3 — Reduced motion, keyboard and contrast
 **Files:** `globals.css`, the module CSS files, components as needed, and tests.
 
-- [ ] **Reduced motion:** with `@media (prefers-reduced-motion: reduce)`, turn off the slide and fade animations and the canvas transform transition.
-- [ ] **Keyboard:**
+- [x] **Reduced motion:** with `@media (prefers-reduced-motion: reduce)`, turn off the slide and fade animations and the canvas transform transition.
+- [x] **Keyboard:**
   - every dialog and panel closes on Escape and returns focus to the control that opened it;
   - the sidebar and kebab menus are reachable;
   - fan segments are focusable;
   - no focus trap leaks.
   - Add tests for focus return on the side panels and the sidebar.
-- [ ] **Contrast:** check text and token pairs against WCAG AA, i.e. 4.5:1 for body text and 3:1 for large text and UI glyphs. Darken only the tokens that fail, document the change in globals.css, and stay in the Mori & Tarum / heritg.us palette.
+- [x] **Contrast:** check text and token pairs against WCAG AA, i.e. 4.5:1 for body text and 3:1 for large text and UI glyphs. Darken only the tokens that fail, document the change in globals.css, and stay in the Mori & Tarum / heritg.us palette.
 
 ### Task 7.4 — Side-by-side review and full verification (main session)
 - [ ] **Screens to compare** with heritg.us at desktop and 375 px:

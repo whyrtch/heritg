@@ -13,7 +13,7 @@
 .chart{margin:16px 0;overflow-x:auto;border-radius:12px;background:var(--base);text-align:center}
 .svg{display:block;height:auto;max-width:none;margin:0 auto}
 .segment{cursor:pointer;outline:none}
-.segment:focus-visible .shape{stroke:var(--brand-deep);stroke-width:3}
+.segment:focus-visible .shape{stroke:var(--brand-deep);stroke-width:4}
 .segment:hover .shape{filter:brightness(.96)}
 .shape,.placeholder{stroke:var(--line);stroke-width:1.5}
 .placeholder{fill:var(--base)}

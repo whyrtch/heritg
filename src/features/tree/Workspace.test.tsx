@@ -428,3 +428,34 @@ describe("Workspace Kipas view", () => {
     expect(screen.queryByText("Silsilah contoh")).not.toBeInTheDocument();
   });
 });
+
+describe("Workspace keyboard focus return", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(cleanup);
+
+  for (const name of ["Semua orang", "Setelan"]) {
+    it(`Escape closes ${name} and returns focus to its button`, async () => {
+      render(<Workspace />);
+      await screen.findByText("Keluarga Joko Widodo");
+      const opener = screen.getByRole("button", { name });
+      opener.focus();
+      fireEvent.click(opener);
+      expect(screen.getByRole("dialog", { name })).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByRole("dialog", { name })).not.toBeInTheDocument();
+      expect(opener).toHaveFocus();
+    });
+  }
+
+  it("Escape closes the sidebar and returns focus to the menu button", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    const opener = screen.getByRole("button", { name: "Lihat kumpulan silsilah" });
+    opener.focus();
+    fireEvent.click(opener);
+    expect(screen.getByRole("complementary", { name: "Silsilah keluarga" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+});

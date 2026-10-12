@@ -68,3 +68,15 @@ describe("PeoplePanel", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("focus return", () => {
+  it("SidePanel focuses its close button on open and returns focus to the opener on close", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener); opener.focus();
+    const { unmount } = render(<SidePanel title="Judul" onClose={() => {}}><p>isi</p></SidePanel>);
+    expect(screen.getByRole("button", { name: "Tutup" })).toHaveFocus();
+    unmount();
+    expect(opener).toHaveFocus();
+    opener.remove();
+  });
+});
