@@ -1,1 +1,130 @@
 .state{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);text-align:center}.state strong{color:var(--ink)}.spinner{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--plum);border-radius:50%;animation:spin .8s linear infinite}.session{position:fixed;z-index:20;right:184px;top:13px;height:40px;display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--surface);box-shadow:0 4px 12px rgba(69,52,36,.08);font-size:12px;font-weight:700;cursor:pointer}.session:disabled{opacity:.55}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:700px){.session{right:103px}.session span{display:none}}
+
+/* Login Panel */
+.loginPanel {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.loginPanel h3 {
+  margin: 0 0 16px 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background: var(--surface);
+  border-color: var(--plum);
+}
+
+.tabActive {
+  background: var(--plum);
+  color: white;
+  border-color: var(--plum);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: var(--plum);
+}
+
+.submitButton {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 8px;
+  background: var(--plum);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--ink);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #e53e3e;
+  font-size: 13px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.loginBanner {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 20px;
+  text-align: center;
+}
+
+.owner-session-btn {
+  position: fixed;
+  z-index: 20;
+  right: 184px;
+  top: 13px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: var(--surface);
+  box-shadow: 0 4px 12px rgba(69,52,36,.08);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}

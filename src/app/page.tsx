@@ -1,7 +1,13 @@
 import { Workspace } from "@/features/tree/Workspace";
+import { AuthLoginForm } from "@/features/auth/AuthLoginForm";
 import { OwnerSession } from "@/features/auth/OwnerSession";
-import { RequireOwner } from "@/features/auth/RequireOwner";
 
 export default function Home() {
-  return <RequireOwner><main aria-label="Family tree workspace"><Workspace /><OwnerSession /></main></RequireOwner>;
+  return (
+    <main aria-label="Family tree workspace">
+      <Workspace />
+      <AuthLoginForm />
+      <OwnerSession />
+    </main>
+  );
 }

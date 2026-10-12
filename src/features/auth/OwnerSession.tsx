@@ -1,19 +1,33 @@
 "use client";
 
-import { LogOut } from "lucide-react";
-import React, { useState } from "react";
-import { useAuth } from "./useAuth";
-import styles from "./auth.module.css";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/features/auth/useAuth";
 
 export function OwnerSession() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, status } = useAuth();
   const [busy, setBusy] = useState(false);
 
-  return <button className={styles.session} type="button" disabled={busy} onClick={async () => {
-    setBusy(true);
-    try { await signOut(); } finally { setBusy(false); }
-  }} title={user?.email ?? "Owner account"}>
-    <LogOut size={17} aria-hidden="true" />
-    <span>{busy ? "Signing out…" : "Sign out"}</span>
-  </button>;
+  useEffect(() => {
+    // Auto-refresh user status when auth changes
+  }, [status, user]);
+
+  if (status !== "authenticated" || !user) {
+    return null;
+  }
+
+  return (
+    <button
+      className="owner-session-btn"
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await signOut();
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      Sign out ({user.email})
+    </button>
+  );
 }

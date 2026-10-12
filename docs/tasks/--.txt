@@ -1,0 +1,8 @@
+# Task File
+
+Put the current task description here. The tech-lead agent reads this file at the start of every task.
+
+Format:
+- One task per file session
+- Clear, unambiguous requirements
+- Reference related docs (business flow, context) when relevant
