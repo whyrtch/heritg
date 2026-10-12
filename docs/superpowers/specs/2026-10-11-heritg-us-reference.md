@@ -173,3 +173,24 @@ Stack: Vite PWA (index-*.js, registerSW.js), lang="id". Font: "Assistant", syste
   - List grid gap 11. Each item has an icon tile 32 (padding 7, radius 9, bg ≈ #eee9eb, #4d345b) and strong 14.08/700 followed by text.
 - Free-tools note 12.48 / lh 20 #4d345b; a recovery note (info icon, bg ≈ #f8f3eb, radius 10).
 - Then plan pricing and checkout. Out of scope for us: no payments.
+
+## Bagikan / Ekspor, measured 2026-10-12
+
+The panel is a SidePanel titled "Bagikan / Ekspor silsilah".
+
+- **Scope card:** padding 13, radius 14, bg #f7f3ec, border #d8ccbc, flex gap 11. It holds a users-round icon 19 #795d3f, the tree name in strong, and a small line with the person count.
+- **Picker title:** 13.44/700, margin 0 2 -6.
+- **Method picker:** a grid with gap 8. Each choice is a button with `aria-pressed`, `aria-controls` pointing at the details card, padding 9 11, radius 14, and a grid of 38px 1fr with gap 11. The selected choice has bg #fffaf2 and border #a8875b.
+  - Icon tile: 38, radius 10, bg #f7f3ec, #795d3f.
+  - Strong text 16/700; small text 12.16 #796f63.
+- **Methods and icons:** link-2 (web link), hard-drive (backup), file-text (GEDCOM), file-image (image).
+- **Details card:** padding 15, radius 14, bg #fffdf8, border #d8ccbc, grid gap 16. It has a settings-card header and, optionally, a pill badge ("recommended" / "for other apps").
+  - h4 14.4/700.
+  - A `<details>` privacy block whose summary is padded 8 11, holding checkboxes.
+  - The warning row has a shield icon, 13.12px, in #795d3f.
+  - Inputs and selects are 44 high, radius 10, border #d8ccbc.
+  - Full-width buttons are 44 high, radius 12. Primary is bg #795d3f, white, 14.72/600.
+- **Web link card:** includes a password plus confirmation with a show toggle, a live requirements list (8+, lower case, upper case, digit, special; 12.48px, x/check icons), an expiry select, and a create button that stays disabled until valid.
+- **Backup card:** has an optional password field with a help line and a "Download .heritg" secondary button.
+- **GEDCOM card:** has privacy checkboxes (dates, marriage dates) and a download button.
+- **Image card:** has privacy checkboxes (dates, marriage dates, photos, ages) and two secondary buttons, PNG HD and SVG.

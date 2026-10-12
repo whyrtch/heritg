@@ -292,15 +292,160 @@
 
 ## Phase 5 — Share / export (reviewer required for the web link)
 
-- [ ] **Bagikan / Ekspor panel.** Four cards: Bikin Link Web, File Backup HERITG, File GEDCOM, Simpan Gambar.
-- [ ] **Backup.** `.heritg` v2 export and import, including inline photos.
-- [ ] **GEDCOM 5.5.1 export**, plus import (persons, families, step / adoptive pedigree via `PEDI`), with round-trip tests.
-- [ ] **Simpan Gambar.** PNG via an offscreen canvas from the SVG, and SVG download.
-- [ ] **Password-protected web link:**
-  - PBKDF2 → AES-GCM snapshot encryption;
-  - a new public-snapshot shape, with Rules and emulator tests;
-  - a viewer password prompt;
-  - the "Yang bakal kelihatan di link" privacy options (dates, photos, ages).
+> Detailed on 2026-10-12 after measuring the heritg.us "Bagikan / Ekspor silsilah" panel. The measurements are in the reference, section "Bagikan / Ekspor, measured 2026-10-12".
+> - Write our own copy. Tasks run sequentially, because they share `Workspace.tsx` and the share panel.
+> - Every task ends with `npm test -- --run` and `npm run lint`. Tasks 5.5 and 5.6 also run `npm run test:api` and need the reviewer.
+> - One commit per task.
+
+**Shared decisions (the owner may override):**
+- **The Bagikan button always works.** It opens a right `SidePanel` titled "Bagikan / Ekspor silsilah", including for local-only trees. Only "Bikin Link Web" needs a synced tree and a signed-in owner; otherwise that card explains why.
+- **"Ekspor file" leaves the sidebar.** Export lives in this panel.
+- **Privacy options** ("Yang bakal kelihatan"):
+  - birth dates and birth order;
+  - marriage dates;
+  - profile photos.
+  - Names, genders and relationships are always included. "Usia yang dihitung" is left out, since we do not show computed ages.
+- **One link per tree,** as today. A link is either plain (as now) or password-protected. Both can carry an expiry: never, 7, 30 or 90 days.
+
+### Task 5.1 — Bagikan panel and backup card
+**Files:**
+- new `src/features/tree/panels/SharePanel.tsx` and its tests
+- `Workspace.tsx`, `TreeSidebar.tsx` (remove "Ekspor file")
+- i18n, `panels.module.css`
+
+- [ ] **Panel layout:**
+  - A scope card shows the tree name and "Ada N orang di silsilah ini".
+  - The heading is "Mau bagikan apa?".
+  - A method picker holds four `aria-pressed` cards: Bikin Link Web, File Backup HERITG, File GEDCOM, Simpan Gambar. Each card has a 38 icon tile and a strong label with a small line under it.
+  - Below the picker is a details card for the chosen method.
+- [ ] **Link Web card** (for now): the existing `PublishDialog` content, moved into the card.
+  - It keeps its accessible names and tests.
+  - It is shown only for a synced tree. Otherwise the card says "Link web butuh silsilah yang sudah online di akunmu" (or asks the owner to sign in).
+- [ ] **Backup card:**
+  - It shows a "Paling disarankan" badge and a short explanation.
+  - Its button is "Download .heritg". This is the existing `download` with embedded photos.
+- [ ] **GEDCOM and Gambar cards:** placeholders that say "Segera" until 5.2 and 5.3.
+- [ ] **Tests:**
+  - the panel opens for a local-only tree;
+  - the method switch works;
+  - the backup download is called;
+  - the link card is shown only when synced.
+
+### Task 5.2 — GEDCOM 5.5.1 export and import
+**Files:**
+- new `src/features/tree/domain/gedcom.ts` and `gedcom.test.ts`
+- `SharePanel.tsx`
+- the import path in `Workspace.tsx` (`loadFile` accepts `.ged`)
+- i18n
+
+- [ ] **Export:**
+  - `HEAD` with `GEDC VERS 5.5.1`, `CHAR UTF-8` and `SOUR HERITG`;
+  - each `INDI` with `NAME`, `SEX`, `BIRT/DATE`, `DEAT/DATE` and `NOTE`; residence goes to `RESI/PLAC`;
+  - each `FAM` with `HUSB`/`WIFE` (or two partners by gender), `CHIL`, and `MARR/DATE`; an ex-partner gets `DIV`;
+  - for a non-biological parent, the child's `FAMC` carries `PEDI` (adopted, foster, step); guardian maps to `PEDI foster` with a `NOTE`;
+  - dates in GEDCOM form (`21 JUN 1961`);
+  - CRLF line endings, and long text split with `CONC`/`CONT`.
+- [ ] **Privacy options** apply: birth dates and order, and marriage dates. Photos are never included.
+- [ ] **Import:**
+  - read the same subset, ignore unknown tags, and accept partial dates (`JUN 1961`, `1961`);
+  - map `PEDI` back to the parent kind;
+  - build a new `FamilyTree` with new ids;
+  - reject non-GEDCOM files with a clear error.
+- [ ] **Round-trip test:** the example tree survives export → import with the same people, relationships, kinds and dates (ids aside).
+- [ ] **Card:** a "Buat di aplikasi lain" badge, the privacy options, and "Download GEDCOM".
+
+### Task 5.3 — Simpan Gambar (PNG and SVG)
+**Files:**
+- new `src/features/tree/canvas/exportImage.ts` and its tests
+- `SharePanel.tsx`, i18n
+
+- [ ] **SVG:**
+  - Render the current layout (the active view) through `TreeCanvas` to static markup, with no buttons or action dots, as the public viewer does.
+  - Inline the needed CSS variables as literal colours, so the file stands alone.
+  - Embed photos as data URLs: server photos are fetched with credentials. Drop photos when the option is off.
+  - Use the font stack with a system fallback.
+- [ ] **PNG:**
+  - Draw the SVG to an offscreen canvas at 2× ("PNG HD"), with a cap of 8000 px on the long side.
+  - Use `toBlob` and download the result.
+- [ ] **Privacy options:** dates and photos.
+- [ ] **Card text:** say plainly that image files are not protected.
+- [ ] **Tests:**
+  - the SVG string has no `<button`, includes the names, and drops dates and photos when unchecked;
+  - unit-test the PNG size calculation.
+
+### Task 5.4 — Password for the backup file
+**Files:**
+- new `src/features/tree/domain/secureFile.ts` (Web Crypto) and its tests
+- `model.ts` import (detect an encrypted file)
+- `SharePanel.tsx`, `Workspace.tsx` (a password prompt `Dialog` on import), i18n
+
+- [ ] **Format:**
+  - `{ "format": "heritg-encrypted", "version": 1, "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 600000, "salt": b64 }, "cipher": { "name": "AES-GCM", "iv": b64 }, "data": b64 }`;
+  - the plaintext is the normal `.heritg` JSON.
+- [ ] **Password field:** optional, and it uses the same rules as the web link (5.6). Empty means a normal file.
+- [ ] **Import:** prompt for the password. A wrong password shows "Password salah" and changes nothing.
+- [ ] **Tests:** round-trip, a wrong password, a tampered ciphertext failing, and an unencrypted file still importing.
+
+### Task 5.5 — Link privacy options and expiry (server; reviewer required)
+**Files:**
+- `src/server/db/schema.ts` plus a new drizzle migration
+- `src/server/publications/{service,handlers}.ts`
+- `src/app/api/trees/[id]/publication`, `src/app/api/public/**`
+- `tests/api/publications.test.ts`
+- the client `HttpPublicationRepository`, the publishing UI, i18n
+
+- [ ] **Schema:** `publications` gains:
+  - `options jsonb not null default '{}'` (`{ dates, marriageDates, photos }`, all booleans, default true);
+  - `expires_at timestamptz null`.
+- [ ] **Publish and update** accept `{ options, expiresInDays: 7 | 30 | 90 | null }`.
+- [ ] **Snapshot:** the server builds the snapshot honouring the options:
+  - blank `birthDate`/`deathDate`/`birthOrder` when dates are off;
+  - blank `marriedOn` when marriage dates are off;
+  - no `public_photos` and blank photo fields when photos are off.
+  - Zod validates the options.
+- [ ] **Public reads:**
+  - An expired link returns the same 404 as an unknown one, for both the tree and its photos.
+  - The response sets `Cache-Control: no-store`, as now.
+- [ ] **API tests:** each option strips its fields; expiry turns into a 404, including for photos; invalid options give a 400; another owner gets a 404.
+- [ ] **UI:**
+  - The Link Web card gets the "Yang bakal kelihatan di link" `<details>`, holding three checkboxes and a short note.
+  - It also gets an expiry select (Tanpa batas / 7 / 30 / 90 hari) and shows "Berlaku sampai <tanggal>".
+- [ ] **Reviewer (Opus 5.5).**
+
+### Task 5.6 — Password-protected link (server, client crypto and viewer; reviewer required)
+**Files:**
+- schema plus migration
+- the publications service and handlers
+- public routes
+- `secureFile.ts` (reuse the crypto)
+- the Link Web card
+- `src/app/tree/[publicId]/PublicTree.tsx` (a password prompt)
+- `tests/api`, i18n
+
+- [ ] **Schema:** `publications` gains:
+  - `encrypted boolean not null default false`;
+  - `ciphertext text null`, a base64 string limited to 3 MB;
+  - `crypto jsonb null` (kdf and iv, validated).
+  - A CHECK requires that encrypted rows have a ciphertext and an empty snapshot, and that plain rows have no ciphertext.
+- [ ] **The owner's client:**
+  - It builds the filtered snapshot locally, with the same options as 5.5. Photos are embedded as data URLs, and the whole payload is capped.
+  - It encrypts with PBKDF2-SHA-256 (600k iterations) → AES-GCM 256.
+  - It uploads only the ciphertext and the crypto parameters: `PUT /api/trees/:id/publication` with `{ mode: "password", ... }`.
+  - The server never sees the password or the plaintext. There are no `public_photos` rows.
+- [ ] **Password rules:** at least 8 characters, with lower case, upper case, a digit and a symbol. A live checklist shows them, and a confirmation field must match.
+  - Copy: "Kirim link dan password lewat jalur terpisah. Password yang lupa nggak bisa dipulihkan."
+- [ ] **Public read:**
+  - It returns `{ encrypted: true, name, crypto, ciphertext }`.
+  - Expiry and the noindex/no-store headers work as in 5.5.
+  - The name stays visible; the owner is told this ("Nama silsilah tetap kelihatan sebelum password diisi").
+- [ ] **Viewer:**
+  - It shows a password form (read-only page, no "edit" wording), decrypts in the browser, then renders as now.
+  - A wrong password gives a neutral error.
+  - **Accepted test exception:** the form's submit is the only button on the public page. `PublicTree.test.tsx` is updated to allow exactly that one, while still forbidding edit wording and any other buttons.
+- [ ] **Tests:**
+  - API: the encrypted publish stores no plaintext; the CHECK constraints; size limits; another owner gets a 404; expiry.
+  - Client: an encrypt/decrypt round-trip, a wrong password, and that the viewer prompt never posts the password anywhere.
+- [ ] **Reviewer (Opus 5.5).**
 
 ## Phase 6 — Kipas (fan chart)
 
