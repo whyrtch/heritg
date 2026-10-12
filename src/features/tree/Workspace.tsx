@@ -14,6 +14,7 @@ import { SettingsPanel, type SyncReport } from "./panels/SettingsPanel";
 import { HelpPanel } from "./panels/HelpPanel";
 import { PrivacyPanel } from "./panels/PrivacyPanel";
 import { exportGedcom, importGedcom, looksLikeGedcom, type GedcomOptions } from "./domain/gedcom";
+import { buildTreeSvg, downloadPng, downloadSvg, readTheme, type ImageOptions } from "./canvas/exportImage";
 import { SharePanel } from "./panels/SharePanel";
 import { TreeSidebar } from "./panels/TreeSidebar";
 import { RenameTreeDialog } from "./panels/RenameTreeDialog";
@@ -212,6 +213,13 @@ export function Workspace() {
   const switchView = (next: "focus" | "full") => { setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
   // The backup embeds uploaded photos as data, so the file stays complete without this account.
   const download = async () => { const blob = new Blob([exportTree(await withEmbeddedPhotos(active))], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
+  const downloadImage = async (format: "png" | "svg", options: ImageOptions) => {
+    if (!layout) return;
+    const source = options.photos ? await withEmbeddedPhotos(active) : active;
+    const svg = buildTreeSvg(source, layout, options, readTheme());
+    const base = active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "silsilah";
+    if (format === "png") await downloadPng(svg, `${base}.png`); else downloadSvg(svg, `${base}.svg`);
+  };
   const downloadGedcom = (options: GedcomOptions) => { const blob = new Blob([exportGedcom(active, options)], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "silsilah"}.ged`; a.click(); URL.revokeObjectURL(url); };
   const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { const text = await file.text(); addTree(/.ged$/i.test(file.name) || looksLikeGedcom(text) ? importGedcom(text) : importTree(text)); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
   const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
@@ -340,7 +348,7 @@ export function Workspace() {
     {rightPanel === "settings" && <SettingsPanel syncReport={remoteTreeId ? syncReport : null} onFamilyPlus={() => setFamilyPlus(true)} onClose={closeRightPanel} />}
     {rightPanel === "help" && <HelpPanel onClose={closeRightPanel} />}
     {rightPanel === "privacy" && <PrivacyPanel masked={privacy} onToggleMask={() => setPrivacy(v => !v)} onClose={closeRightPanel} />}
-    {rightPanel === "share" && <SharePanel treeName={active.name} peopleCount={active.people.length} example={readOnly} signedIn={online} publishing={activeOnlineTree && publicationRepository ? { tree: activeOnlineTree, repository: publicationRepository, onTreeChange: tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); } } : null} onDownload={download} onDownloadGedcom={downloadGedcom} onClose={closeRightPanel} />}
+    {rightPanel === "share" && <SharePanel treeName={active.name} peopleCount={active.people.length} example={readOnly} signedIn={online} publishing={activeOnlineTree && publicationRepository ? { tree: activeOnlineTree, repository: publicationRepository, onTreeChange: tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); } } : null} onDownload={download} onDownloadGedcom={downloadGedcom} onDownloadImage={downloadImage} onClose={closeRightPanel} />}
     {familyPlus && <FamilyPlusDialog onClose={() => setFamilyPlus(false)} />}
         {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
   </div>;

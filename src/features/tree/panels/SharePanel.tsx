@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Download, FileImage, FileText, HardDrive, Link2, UsersRound, type LucideIcon } from "lucide-react";
 import { useT, type MessageKey } from "@/i18n";
+import type { ImageOptions } from "../canvas/exportImage";
 import type { GedcomOptions } from "../domain/gedcom";
 import { PublishCard } from "../components/PublishDialog";
 import type { OnlineTree } from "../domain/onlineTypes";
@@ -28,15 +29,25 @@ type Props = {
   publishing: { tree: OnlineTree; repository: PublicationRepository; onTreeChange: (tree: OnlineTree) => void } | null;
   onDownload: () => void;
   onDownloadGedcom: (options: GedcomOptions) => void;
+  /** Renders the displayed layout and downloads it; rejects when the image cannot be made. */
+  onDownloadImage: (format: "png" | "svg", options: ImageOptions) => Promise<void>;
   onClose: () => void;
 };
 
 /** Bagikan / Ekspor: pick how to share the active tree, then use that method's card. */
-export function SharePanel({ treeName, peopleCount, example, signedIn, publishing, onDownload, onDownloadGedcom, onClose }: Props) {
+export function SharePanel({ treeName, peopleCount, example, signedIn, publishing, onDownload, onDownloadGedcom, onDownloadImage, onClose }: Props) {
   const t = useT();
   const [gedcomDates, setGedcomDates] = useState(true);
   const [gedcomMarriage, setGedcomMarriage] = useState(true);
+  const [imageDates, setImageDates] = useState(true);
+  const [imagePhotos, setImagePhotos] = useState(true);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const [method, setMethod] = useState<Method>(publishing ? "link" : "backup");
+  const saveImage = async (format: "png" | "svg") => {
+    setImageBusy(true); setImageFailed(false);
+    try { await onDownloadImage(format, { dates: imageDates, photos: imagePhotos }); } catch { setImageFailed(true); } finally { setImageBusy(false); }
+  };
   return <SidePanel title={t("share.title")} onClose={onClose}>
     <div className={styles.shareStack}>
       <div className={styles.scopeCard}>
@@ -71,8 +82,21 @@ export function SharePanel({ treeName, peopleCount, example, signedIn, publishin
           <button type="button" className={styles.shareAction} onClick={() => onDownloadGedcom({ dates: gedcomDates, marriageDates: gedcomMarriage })}><Download size={16} aria-hidden="true" /> {t("share.gedcomAction")}</button>
         </>}
         {method === "image" && <>
-          <div className={styles.detailHead}><h4>{t("share.image")}</h4><span className={styles.badge}>{t("share.soon")}</span></div>
+          <div className={styles.detailHead}><h4>{t("share.image")}</h4></div>
           <p className={styles.detailText}>{t("share.imageText")}</p>
+          <p className={styles.detailText}>{t("share.imageWarning")}</p>
+          <details className={styles.options}>
+            <summary>{t("share.imageIncludes")}</summary>
+            <label><input type="checkbox" checked={imageDates} onChange={event => setImageDates(event.target.checked)} /> {t("share.imageDates")}</label>
+            <label><input type="checkbox" checked={imagePhotos} onChange={event => setImagePhotos(event.target.checked)} /> {t("share.imagePhotos")}</label>
+            {imagePhotos && <small className={styles.detailText}>{t("share.imageNote")}</small>}
+          </details>
+          <div className={styles.imageActions}>
+            <button type="button" className={styles.shareSecondary} disabled={imageBusy || peopleCount === 0} onClick={() => void saveImage("png")}><Download size={16} aria-hidden="true" /> {t("share.imagePng")}</button>
+            <button type="button" className={styles.shareSecondary} disabled={imageBusy || peopleCount === 0} onClick={() => void saveImage("svg")}><Download size={16} aria-hidden="true" /> {t("share.imageSvg")}</button>
+          </div>
+          {imageBusy && <p className={styles.detailText} role="status">{t("share.imageBusy")}</p>}
+          {imageFailed && <p className={styles.detailText} role="alert">{t("share.imageError")}</p>}
         </>}
       </div>
     </div>

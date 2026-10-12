@@ -359,17 +359,17 @@
 - new `src/features/tree/canvas/exportImage.ts` and its tests
 - `SharePanel.tsx`, i18n
 
-- [ ] **SVG:**
+- [x] **SVG:**
   - Render the current layout (the active view) through `TreeCanvas` to static markup, with no buttons or action dots, as the public viewer does.
   - Inline the needed CSS variables as literal colours, so the file stands alone.
   - Embed photos as data URLs: server photos are fetched with credentials. Drop photos when the option is off.
   - Use the font stack with a system fallback.
-- [ ] **PNG:**
+- [x] **PNG:**
   - Draw the SVG to an offscreen canvas at 2× ("PNG HD"), with a cap of 8000 px on the long side.
   - Use `toBlob` and download the result.
-- [ ] **Privacy options:** dates and photos.
-- [ ] **Card text:** say plainly that image files are not protected.
-- [ ] **Tests:**
+- [x] **Privacy options:** dates and photos.
+- [x] **Card text:** say plainly that image files are not protected.
+- [x] **Tests:**
   - the SVG string has no `<button`, includes the names, and drops dates and photos when unchecked;
   - unit-test the PNG size calculation.
 

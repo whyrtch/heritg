@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OnlineTree } from "../domain/onlineTypes";
 import type { PublicationRepository } from "../publishing/PublicationRepository";
@@ -13,7 +13,7 @@ const tree: OnlineTree = {
 const repository: PublicationRepository = { publish: vi.fn(), disable: vi.fn(), loadPublic: vi.fn(async () => null) };
 
 function setup(overrides: Partial<React.ComponentProps<typeof SharePanel>> = {}) {
-  const props = { treeName: "Keluarga Saya", peopleCount: 3, example: false, signedIn: false, publishing: null, onDownload: vi.fn(), onDownloadGedcom: vi.fn(), onClose: vi.fn(), ...overrides };
+  const props = { treeName: "Keluarga Saya", peopleCount: 3, example: false, signedIn: false, publishing: null, onDownload: vi.fn(), onDownloadGedcom: vi.fn(), onDownloadImage: vi.fn(async () => {}), onClose: vi.fn(), ...overrides };
   render(<SharePanel {...props} />);
   return props;
 }
@@ -41,13 +41,34 @@ describe("SharePanel", () => {
     expect(screen.getByText("Buat aplikasi lain")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Download .heritg" })).not.toBeInTheDocument();
     fireEvent.click(method("Simpan Gambar"));
-    expect(screen.getByText("Gambar pohon dalam format PNG atau SVG.")).toBeInTheDocument();
+    expect(screen.getByText(/File gambar tidak diberi kunci/)).toBeInTheDocument();
   });
 
   it("downloads the backup", () => {
     const props = setup();
     fireEvent.click(screen.getByRole("button", { name: "Download .heritg" }));
     expect(props.onDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it("downloads the image as PNG or SVG with the chosen options", async () => {
+    const props = setup();
+    fireEvent.click(method("Simpan Gambar"));
+    fireEvent.click(screen.getByRole("button", { name: "Download PNG HD" }));
+    await waitFor(() => expect(props.onDownloadImage).toHaveBeenLastCalledWith("png", { dates: true, photos: true }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Foto profil" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download SVG" }));
+    await waitFor(() => expect(props.onDownloadImage).toHaveBeenLastCalledWith("svg", { dates: true, photos: false }));
+  });
+
+  it("disables the image buttons for an empty tree and shows a friendly error on failure", async () => {
+    setup({ peopleCount: 0 });
+    fireEvent.click(method("Simpan Gambar"));
+    expect(screen.getByRole("button", { name: "Download PNG HD" })).toBeDisabled();
+    cleanup();
+    setup({ onDownloadImage: vi.fn(async () => { throw new Error("x"); }) });
+    fireEvent.click(method("Simpan Gambar"));
+    fireEvent.click(screen.getByRole("button", { name: "Download SVG" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Gambar belum bisa dibuat");
   });
 
   it("downloads GEDCOM with the chosen privacy options", () => {
