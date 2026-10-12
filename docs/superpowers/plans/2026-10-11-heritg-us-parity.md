@@ -462,25 +462,25 @@
 ### Task 6.1 — Fan layout (pure)
 **Files:** new `src/features/tree/canvas/fanLayout.ts` and `fanLayout.test.ts`.
 
-- [ ] **`layoutFan(tree, rootId, generations: 1..5)`** returns `{ viewBox, root, ancestors: FanSegment[], children: FanSegment[] }`.
+- [x] **`layoutFan(tree, rootId, generations: 1..5)`** returns `{ viewBox, root, ancestors: FanSegment[], children: FanSegment[] }`.
   - The centre is (cx, cy). The root circle has r 52, with text clipped to r 48.
   - Ancestor ring g (g ≥ 1) has inner radius `72 + (g-1)*80` and outer `inner + 78`. It spans the upper half (180° → 360°), split into 2^g equal slots.
   - Slot i of ring g is the parent of slot ⌊i/2⌋ of ring g-1. The first parent slot is the father side: a male parent, else the first parent by relationship order. The second slot is the other parent.
   - With more than two parents (biological plus step or adoptive), use the two biological parents. If there are none, use the first two.
-- [ ] **Placeholders:**
+- [x] **Placeholders:**
   - A missing parent of a *known* person becomes a `placeholder: true` segment ("Belum tercatat").
   - Slots above a placeholder are not drawn.
   - Rings beyond the requested generations are not drawn.
-- [ ] **Children:** the lower half (0° → 180°) holds one ring at radii 72–150, split equally among the root's children (all parent kinds), ordered by birth order, then birth date, then name.
-- [ ] **Each segment** carries:
+- [x] **Children:** the lower half (0° → 180°) holds one ring at radii 72–150, split equally among the root's children (all parent kinds), ordered by birth order, then birth date, then name.
+- [x] **Each segment** carries:
   - an SVG path (an annular sector: outer arc, line, inner arc, close);
   - a label anchor point and a rotation that keeps text upright and readable (flip text that would be upside down);
   - `personId | null`, `generation`, and the gender for the fill;
   - a `relation` used in the accessible label: "Orang tua dari X", "Kakek/nenek…", or "Anak dari X".
-- [ ] **viewBox:**
+- [x] **viewBox:**
   - It is computed from the outermost drawn radius plus a 6-unit margin.
   - Its height is only the top half plus the root when there are no children, or the full circle extent when there are children.
-- [ ] **Tests:**
+- [x] **Tests:**
   - the example tree from Joko Widodo with 3 generations gives the right ancestors in the right slots;
   - placeholders appear only for missing parents of known people;
   - no slots appear above a placeholder;
