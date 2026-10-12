@@ -593,13 +593,14 @@
 - _Note: run `npm run build` only while no dev server is running. Both write `.next`, and a dev server left running ends up with a broken cache ("Cannot find module vendor-chunks")._
 
 ### Task 7.5 — Docs
-- [ ] **README:** features (panels, export formats, password links, Kipas), the UI languages, and the deployment note on body size.
-- [ ] **AGENTS.md:**
+- [x] **README:** features (panels, export formats, password links, Kipas), the UI languages, and the deployment note on body size.
+- [x] **AGENTS.md:**
   - the UI language rule (Indonesian default; every string in the i18n catalog for id/en/ms);
   - the layout of `src/features/tree/panels/`;
   - the public-page exception for the password prompt;
   - the export formats.
-- [ ] **Figma:** optional, only if the MCP quota allows. Skip otherwise and say so.
+- [x] **Figma:** optional, only if the MCP quota allows. Skip otherwise and say so.
+  - Skipped: the MCP quota is limited and the owner has not asked for it.
 
 ## Self-review
 

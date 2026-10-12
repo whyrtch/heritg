@@ -7,7 +7,16 @@ The app opens with a read-only example tree (`Keluarga Joko Widodo`).
 ## Features
 
 - Owner-only email/password login (Argon2id, database sessions). There is no public registration.
-- Several family trees with typed relationships (biological, step, adoptive, foster, guardian; married, partner, ex), cycle prevention, a pannable SVG canvas with Fokus and Lengkap views, kinship labels in four dialects, and `.heritg` import and export.
+- Several family trees with typed relationships (biological, step, adoptive, foster, guardian; married, partner, ex), cycle prevention, a pannable SVG canvas with Fokus and Lengkap views, and kinship labels in four dialects.
+- Tree management from the sidebar: copy, rename and delete a tree. Deleting a tree that is saved to your account removes it from the account first, and its public link stops working.
+- Side panels: Semua orang (everyone in the tree), Setelan (app language and kinship dialect), Bantuan, Perlindungan privasi, and Family+ info.
+- Bagikan / Ekspor:
+  - a public link, plain or password-protected, with options for what it shows (dates, marriage dates, photos) and a validity of no limit, 7, 30 or 90 days;
+  - a `.heritg` backup, optionally locked with a password;
+  - GEDCOM 5.5.1 export and import;
+  - PNG and SVG images of the tree.
+- Kipas: a fan chart of one person's ancestors and children.
+- UI languages: Indonesian (default), English and Malay, chosen in Setelan.
 - The server is the source of truth, with optimistic saves, an offline queue, revision conflicts and `.heritg` backup recovery. Local browser data is never deleted automatically.
 - Photos: an HTTPS link, or an uploaded image shrunk in the browser to a small JPEG/WebP thumbnail (at most 256 px and 48 KB) and stored in PostgreSQL.
 - Per-tree unlisted publication: copy the link, update it, regenerate it, or unpublish. Public pages are read-only and marked `noindex, nofollow`.
@@ -107,7 +116,7 @@ npm run build
 
 The public URL is `/tree/{publicId}`. Treat it as a bearer link: anyone who has it can view every published name, date, residence, note, photo and family relationship. Unpublish or regenerate the link to revoke access.
 
-A link can also be password-protected ("Pakai password" in the Bagikan panel). The snapshot is encrypted in the owner's browser (PBKDF2-SHA-256, 600k iterations, AES-GCM) and the viewer decrypts it in their browser, so the server stores only the ciphertext, its crypto parameters and the tree name, and never sees the password or the content. A lost password cannot be recovered; publish again with a new password. The ciphertext can be up to 4,000,000 base64 characters, so a reverse proxy must allow request bodies of at least 4.5 MB on `PUT /api/trees/*/publication` (for nginx, `client_max_body_size 5m` for that location).
+A link can also be password-protected ("Pakai password" in the Bagikan panel). The snapshot is encrypted in the owner's browser (PBKDF2-SHA-256, 600k iterations, AES-GCM) and the viewer decrypts it in their browser, so the server stores only the ciphertext, its crypto parameters and the tree name, and never sees the password or the content. A lost password cannot be recovered; publish again with a new password. The ciphertext can be up to 4,000,000 base64 characters, so a reverse proxy must allow request bodies of at least 4.5 MB (the server accepts up to 4,500,000 bytes) on `PUT /api/trees/*/publication` (for nginx, `client_max_body_size 5m` for that location).
 
 ## Project structure
 
@@ -124,8 +133,10 @@ A link can also be password-protected ("Pakai password" in the Bagikan panel). T
   - `sync/`: optimistic/offline synchronization, conflict recovery and the photo upload queue;
   - `migration/`: moving browser-only trees to the account;
   - `publishing/`: the unlisted link lifecycle;
-  - `canvas/`: the SVG family canvas, layouts and kinship;
+  - `canvas/`: the SVG family canvas, layouts, kinship, the Kipas fan chart and PNG/SVG export;
+  - `panels/`: the side panels, sidebar, share panel and their dialogs;
   - `dialogs/`: the add/edit dialogs.
+- `src/i18n/`: the UI text catalogs (`id`, `en`, `ms`).
 - `src/app/tree/[publicId]/`: the anonymous read-only viewer.
 - `drizzle/`: SQL migrations (`npm run db:generate` after changing `src/server/db/schema.ts`).
 - `scripts/`: the owner account CLI and the one-time Firebase import.

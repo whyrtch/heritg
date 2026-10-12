@@ -30,6 +30,9 @@ Next.js 15 (App Router, Route Handlers) · React 19 · TypeScript · CSS Modules
 - `src/features/auth/` — session state, owner guard, safe error messages.
 - `src/features/tree/model.ts` — local domain model and pure helpers (relationships, import/export).
 - `src/features/tree/{domain,repository,sync,migration,publishing,canvas,dialogs}/` — online model, HTTP/local repositories, offline sync + photo queue, browser-tree migration, unlisted publishing, SVG canvas, dialogs.
+- `src/features/tree/panels/` — side panels (people, settings, help, privacy, Family+), sidebar and tree menu, share panel (link, `.heritg`, GEDCOM, PNG/SVG) and the rename/delete/unlock dialogs.
+- `src/features/tree/canvas/` also holds the Kipas fan chart (`FanView.tsx`, `fanLayout.ts`) and image export (`exportImage.ts`); `domain/gedcom.ts` and `domain/secureFile.ts` hold GEDCOM and password-protected files.
+- `src/i18n/` — UI text catalogs `id.ts`, `en.ts`, `ms.ts`.
 - `src/features/tree/Workspace.tsx` — main workspace UI (dense, single file).
 - `drizzle/` — SQL migrations. `tests/api/` — authorization and database tests.
 - `docs/superpowers/specs/` — approved designs. `docs/superpowers/plans/` — step-by-step implementation plans.
@@ -42,13 +45,16 @@ Next.js 15 (App Router, Route Handlers) · React 19 · TypeScript · CSS Modules
 - **Public snapshots and public photos** never contain owner id, email or session data.
 - **Never weaken login protection:** Argon2id hashing, neutral login errors, the per-address and per-account login limits, and session expiry/rotation.
 - **Never delete local user data** in migration/sync code paths.
-- **Public pages** stay read-only: no buttons, no "edit" wording (`PublicTree.test.tsx` guards this), `noindex, nofollow`.
+- **Public pages** stay read-only: no buttons, no "edit" wording (`PublicTree.test.tsx` guards this), `noindex, nofollow`. The one exception is the single "Buka" submit button of the password prompt on protected links.
+- **Privacy:** an update must never silently widen what a public link shows; settings omitted from an update keep their stored values.
 - **Photos** are HTTPS links or uploaded thumbnails only (owner decision 2026-10-11): JPEG/WebP, at most 256 px and 48 KB, shrunk in the browser and checked again on the server by magic bytes and size. They are stored in PostgreSQL and never travel inside a tree save.
 - Keep accessible names that tests assert (see the relevant plan's Global Constraints) unless the plan changes them together with the test.
 - Don't commit secrets: `DATABASE_URL`, service-account keys and data exports stay out of Git (`.gitignore` covers the usual names).
 
 ## Conventions
 
+- **UI language:** Indonesian is the default. Every user-visible string lives in `src/i18n/{id,en,ms}.ts`; add each key to all three.
+- Run `npm run build` only while no dev server is running.
 - Match the surrounding code: compact components, CSS Modules, design tokens from `src/app/globals.css` (no new hardcoded hex colors once the Mori & Tarum tokens land).
 - Pure logic goes in `model.ts` / `domain/` with unit tests; UI stays thin.
 - Conventional commit prefixes, as in history: `feat:`, `fix:`, `style:`, `refactor:`, `docs:`, `security:`, `chore:`, `test:`. One task from a plan = one commit.
