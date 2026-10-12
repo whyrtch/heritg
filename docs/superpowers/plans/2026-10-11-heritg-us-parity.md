@@ -171,21 +171,21 @@
 - new `src/features/tree/canvas/dialectSetting.ts` (a `useSyncExternalStore` store, key `heritg.kinshipDialect`, default "id")
 - `Workspace.tsx`, i18n
 
-- [ ] **Akses Family+ group:**
+- [x] **Akses Family+ group:**
   - a gradient card titled "Heritg Family+";
   - a badge: "Aktif" when signed in, "Belum aktif" otherwise;
   - a sync sub-row ("Sinkron online") with a status pill from the active tree: "Tersimpan", "Menyimpan…", "Offline", "Perlu dicek" (conflict or error), or "Cuma di perangkat ini";
   - a full-width gradient button that opens the Family+ dialog.
-- [ ] **Akun group:** "Akun pemilik" with the email or "Belum masuk", plus the existing `OwnerSession` sign-in and sign-out.
-- [ ] **Bahasa aplikasi group:** a two-column option grid (Bahasa Indonesia / English / Bahasa Melayu) with `aria-pressed`, calling `setLanguage`.
-- [ ] **Sebutan status keluarga group:**
+- [x] **Akun group:** "Akun pemilik" with the email or "Belum masuk", plus the existing `OwnerSession` sign-in and sign-out.
+- [x] **Bahasa aplikasi group:** a two-column option grid (Bahasa Indonesia / English / Bahasa Melayu) with `aria-pressed`, calling `setLanguage`.
+- [x] **Sebutan status keluarga group:**
   - one option per `KINSHIP_DIALECTS` entry: Bahasa Indonesia, Basa Jawa (Yogyakarta), Bahasa Melayu, English;
   - stored via `dialectSetting`;
   - `Workspace` passes the dialect to `kinshipLabels`.
-- [ ] **Perangkat ini group:** keep the existing "Reset device cache" button. Its confirmation must say that edits not yet synced are lost too.
-- [ ] **Footer:** a note row with a shield-check icon, and a version line from the `version` in `package.json`.
-- [ ] **Remove the old Settings panel** and its "Privacy protection" toggle. Masking moves to the privacy panel (4.3).
-- [ ] **Tests:**
+- [x] **Perangkat ini group:** keep the existing "Reset device cache" button. Its confirmation must say that edits not yet synced are lost too.
+- [x] **Footer:** a note row with a shield-check icon, and a version line from the `version` in `package.json`.
+- [x] **Remove the old Settings panel** and its "Privacy protection" toggle. Masking moves to the privacy panel (4.3).
+- [x] **Tests:**
   - switching the language re-renders the UI;
   - choosing a dialect changes a kinship label on the canvas;
   - the sync pill maps every status;

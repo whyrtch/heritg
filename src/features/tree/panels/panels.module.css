@@ -23,3 +23,30 @@
 .who strong{font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .who small{font-size:12.16px;color:var(--muted);margin-top:3px}
 .none{margin:12px 0;color:var(--muted);text-align:center}
+
+.groups{display:grid;gap:18px}
+.group{display:grid;gap:10px;align-content:start}
+.group h3{margin:0 3px;font-size:12.48px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.card{padding:15px;border-radius:14px;background:var(--base);border:1px solid var(--line);display:grid;gap:12px}
+.cardHead{display:flex;gap:12px;align-items:flex-start}
+.cardHead>svg{flex:none;color:var(--brand)}
+.cardHead strong{font-size:14.72px;font-weight:700}
+.cardHead p{margin:3px 0 0;font-size:13.76px;color:var(--muted);overflow-wrap:anywhere}
+.plusCard{background:linear-gradient(160deg,var(--family-plus-soft),var(--base));border-color:var(--family-plus-line)}
+.plusCard .cardHead>svg{color:var(--family-plus)}
+.badge{display:inline-block;padding:4px 7px;border-radius:999px;border:1px solid var(--line);font-size:10.88px;font-weight:750;color:var(--muted);vertical-align:middle;margin-left:4px;background:var(--base)}
+.syncRow{display:flex;align-items:center;gap:8px;font-size:13.76px;color:var(--muted)}
+.syncRow>span:nth-child(2){flex:1}
+.pill{margin-left:0}
+.pill[data-pill="saved"]{color:var(--shield);border-color:var(--shield)}
+.pill[data-pill="check"]{color:var(--danger);border-color:var(--danger)}
+.plusButton{width:100%;height:40px;border:0;border-radius:12px;background:linear-gradient(145deg,var(--family-plus),var(--family-plus-deep));color:#fff;font-size:14.72px;font-weight:600;cursor:pointer}
+.plusButton:hover{background:var(--family-plus-hover)}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.options button{min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper);font-size:16px;font-weight:700;color:var(--ink);cursor:pointer;text-align:left}
+.options button[aria-pressed="true"]{background:var(--elevated);border-color:var(--brand)}
+.resetButton{border:1px solid var(--danger);background:transparent;color:var(--danger);border-radius:10px;height:40px;font-weight:700;cursor:pointer}
+.settingsFoot{padding-top:15px}
+.note{display:flex;gap:8px;align-items:flex-start;margin:0;font-size:11.52px;color:var(--muted)}
+.note svg{flex:none;color:var(--shield)}
+.version{margin:10px 0 0;font-size:12.48px;color:var(--muted)}

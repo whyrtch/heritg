@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Workspace } from "./Workspace";
 import { createJokowiDemoTree } from "./demoData";
+import { setLanguage } from "@/i18n";
+import { setDialect } from "./canvas/dialectSetting";
 import { LocalTreeCache } from "./repository/LocalTreeCache";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
@@ -156,5 +158,22 @@ describe("Workspace shell (heritg.us parity)", () => {
     await screen.findByText("Keluarga Joko Widodo");
     expect(screen.queryByText("Bagikan · Setelan")).not.toBeInTheDocument();
     expect(screen.getByText("20 orang · 31 hubungan")).toBeInTheDocument();
+  });
+});
+
+describe("Workspace settings panel", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => { cleanup(); setLanguage("id"); setDialect("id"); window.localStorage.clear(); });
+
+  it("changes kinship labels on the canvas when a dialect is chosen", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(node("Joko Widodo"));
+    expect(screen.getAllByText("Istri").length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByRole("button", { name: "Setelan" }));
+    const panel = screen.getByRole("dialog", { name: "Setelan" });
+    fireEvent.click(within(panel).getAllByRole("button", { name: "English" })[1]);
+    expect(screen.getAllByText("Wife").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Istri")).not.toBeInTheDocument();
   });
 });

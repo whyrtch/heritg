@@ -11,6 +11,8 @@ import type { OnlineTree } from "./domain/onlineTypes";
 import { TreeCanvas } from "./canvas/TreeCanvas";
 import { SidePanel } from "./panels/SidePanel";
 import { PeoplePanel } from "./panels/PeoplePanel";
+import { SettingsPanel, type SyncReport } from "./panels/SettingsPanel";
+import { useDialect } from "./canvas/dialectSetting";
 import { StartDialog } from "./dialogs/StartDialog";
 import { AddRelativeWizard } from "./dialogs/AddRelativeWizard";
 import { EditProfileDialog } from "./dialogs/EditProfileDialog";
@@ -19,7 +21,6 @@ import { layoutFull } from "./canvas/layoutFull";
 import { DEFAULT_FOCUS, layoutFocus, type FocusOptions } from "./canvas/layoutFocus";
 import { kinshipLabels } from "./canvas/kinship";
 import { useAuth } from "@/features/auth/useAuth";
-import { OwnerSession } from "@/features/auth/OwnerSession";
 import { HttpTreeRepository } from "./repository/HttpTreeRepository";
 import { HttpPhotoClient, PhotoRequestError } from "./repository/HttpPhotoClient";
 import { PhotoQueue, photoTasks, removedPeople, withPendingPhotos } from "./sync/photoQueue";
@@ -74,6 +75,8 @@ export function Workspace() {
   const [selected, setSelected] = useState<string | null>(null);
   // Only one right-hand panel is open at a time.
   const [rightPanel, setRightPanel] = useState<"people" | "settings" | "help" | "privacy" | null>(null);
+  const [syncReport, setSyncReport] = useState<SyncReport | null>(null);
+  const dialect = useDialect();
   const [deferred, setDeferred] = useState<"Family+" | null>(null);
   const [privacy, setPrivacy] = useState(true);
   const [controlsHidden, setControlsHidden] = useState(false);
@@ -96,7 +99,7 @@ export function Workspace() {
   const layout = useMemo(() => !active ? null : view === "focus" && rootId ? layoutFocus(active, rootId, focusOptions) : layoutFull(active), [active, view, rootId, focusOptions]);
   const nodes = layout?.nodes ?? [];
   const labelFrom = selected ?? (view === "focus" ? rootId : null);
-  const labels = useMemo(() => active && labelFrom && active.relationships.length ? kinshipLabels(active, labelFrom) : undefined, [active, labelFrom]);
+  const labels = useMemo(() => active && labelFrom && active.relationships.length ? kinshipLabels(active, labelFrom, dialect) : undefined, [active, labelFrom, dialect]);
   const panelPerson = active?.people.find(p => p.id === panelFor) ?? null;
   const activeTreeId = active?.id;
   const activePeopleCount = active?.people.length ?? 0;
@@ -277,7 +280,7 @@ export function Workspace() {
         </div>}
       </section>}
     </div>
-    {treeRepository && cache && remoteTreeId && <OnlineTreeBridge key={`${remoteTreeId}-${onlineEpoch}`} treeId={remoteTreeId} repository={treeRepository} cache={cache} apiRef={syncApi} photoQueue={photoQueue} photoClient={photoClient} photoTick={photoTick} onTree={tree => { setOnlineTree(tree); updateActive(() => localFromOnline(tree)); }} />}
+    {treeRepository && cache && remoteTreeId && <OnlineTreeBridge key={`${remoteTreeId}-${onlineEpoch}`} treeId={remoteTreeId} repository={treeRepository} cache={cache} apiRef={syncApi} photoQueue={photoQueue} photoClient={photoClient} photoTick={photoTick} onStatus={setSyncReport} onTree={tree => { setOnlineTree(tree); updateActive(() => localFromOnline(tree)); }} />}
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
@@ -287,7 +290,7 @@ export function Workspace() {
     {wizardFor && !readOnly && active.people.some(p => p.id === wizardFor) && <AddRelativeWizard tree={active} anchorId={wizardFor} onClose={() => setWizardFor(null)} onSubmit={input => { const result = addRelative(active, wizardFor, input); setTree(result.tree); setSelected(wizardFor); setWizardFor(null); }} />}
     {editFor && !readOnly && active.people.some(p => p.id === editFor) && <EditProfileDialog key={editFor} tree={active} personId={editFor} onClose={() => setEditFor(null)} onSave={next => { setTree(next); setEditFor(null); }} onDelete={id => { setTree(removePerson(active, id)); setSelected(null); setEditFor(null); }} />}
     {rightPanel === "people" && <PeoplePanel tree={active} selectedId={selected} labels={labels} privacy={privacy && !readOnly} onPick={focusPerson} onClose={closeRightPanel} />}
-    {rightPanel === "settings" && <SidePanel title="Settings" onClose={closeRightPanel}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></SidePanel>}
+    {rightPanel === "settings" && <SettingsPanel syncReport={remoteTreeId ? syncReport : null} onFamilyPlus={() => setDeferred("Family+")} onClose={closeRightPanel} />}
     {rightPanel === "help" && <SidePanel title={t("shell.help")} onClose={closeRightPanel}><p className={styles.helpText}>{t("help.short")}</p></SidePanel>}
     {rightPanel === "privacy" && <SidePanel title={t("privacy.title")} onClose={closeRightPanel}><p className={styles.helpText}>{t("privacy.body")}</p><div className={styles.settingRow}><div><strong>{t("privacy.maskTitle")}</strong><p>{t("privacy.maskBody")}</p></div><button className={styles.toggle} aria-pressed={privacy} aria-label={t("privacy.maskTitle")} onClick={() => setPrivacy(v => !v)}><span /></button></div></SidePanel>}
     {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
@@ -330,12 +333,13 @@ async function withEmbeddedPhotos(tree: FamilyTree): Promise<FamilyTree> {
   return { ...tree, people };
 }
 
-function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree, photoQueue, photoClient, photoTick }: {
+function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree, onStatus, photoQueue, photoClient, photoTick }: {
   treeId: string;
   repository: TreeRepository;
   cache: LocalTreeCache;
   apiRef: MutableRefObject<{ mutate: (tree: FamilyTree) => void } | null>;
   onTree: (tree: OnlineTree) => void;
+  onStatus: (report: SyncReport | null) => void;
   photoQueue: PhotoQueue | null;
   photoClient: HttpPhotoClient | null;
   photoTick: number;
@@ -384,6 +388,9 @@ function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree, photoQueu
     return () => { apiRef.current = null; };
   }, [apiRef, mutate]);
   useEffect(() => { if (state.tree) onTreeRef.current(state.tree); }, [state.tree]);
+  const reportedError = state.error ?? photoError;
+  useEffect(() => { onStatus({ status: state.status, error: reportedError }); }, [onStatus, state.status, reportedError]);
+  useEffect(() => () => onStatus(null), [onStatus]);
 
   return <>
     <div className={styles.syncStatus}><SyncStatus status={state.status} error={state.error ?? photoError} onRetry={() => { setPhotoError(null); void retry(); }} /></div>
