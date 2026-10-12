@@ -11,9 +11,12 @@
     "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
     "test:api": "vitest run --config vitest.api.config.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "owner:create": "tsx --conditions=react-server scripts/owner-create.ts",
+    "owner:reset-password": "tsx --conditions=react-server scripts/owner-reset-password.ts"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.2.2",
     "drizzle-orm": "^0.45.4",
     "firebase": "^12.18.0",
     "lucide-react": "^0.468.0",
@@ -38,6 +41,7 @@
     "eslint-config-next": "^15.1.0",
     "firebase-tools": "^15.28.2",
     "jsdom": "^25.0.1",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
     "vitest": "^2.1.8"

@@ -10,6 +10,7 @@ export function OwnerSession() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   if (!user) {
     return <button className={styles.session} type="button" onClick={() => router.push("/login")}>
@@ -18,11 +19,15 @@ export function OwnerSession() {
     </button>;
   }
 
-  return <button className={styles.session} type="button" disabled={busy} onClick={async () => {
-    setBusy(true);
-    try { await signOut(); } finally { setBusy(false); }
-  }} title={user.email ?? "Owner account"}>
-    <LogOut size={17} aria-hidden="true" />
-    <span>{busy ? "Signing out…" : "Sign out"}</span>
-  </button>;
+  return <>
+    <button className={styles.session} type="button" disabled={busy} onClick={async () => {
+      setBusy(true);
+      setFailed(false);
+      try { await signOut(); } catch { setFailed(true); } finally { setBusy(false); }
+    }} title={user.email ?? "Owner account"}>
+      <LogOut size={17} aria-hidden="true" />
+      <span>{busy ? "Signing out…" : "Sign out"}</span>
+    </button>
+    {failed && <p role="alert">Couldn’t sign out. Try again when you’re online.</p>}
+  </>;
 }

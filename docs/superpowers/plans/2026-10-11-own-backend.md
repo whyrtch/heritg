@@ -51,26 +51,26 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - `src/app/login/page.tsx`
 
 **Tasks**
-- [ ] Argon2id hashing (`@node-rs/argon2`), with a dummy-hash path for unknown emails.
-- [ ] Sessions:
+- [x] Argon2id hashing (`@node-rs/argon2`), with a dummy-hash path for unknown emails.
+- [x] Sessions:
   - random 32-byte token, SHA-256 stored;
   - `__Host-` cookie (HttpOnly, Secure, SameSite=Lax);
   - 30-day sliding expiry, `last_seen_at` throttled to once per hour;
   - expired sessions purged on login.
-- [ ] `requireOwner(request)`: reads the cookie, loads the session and user, and checks Origin/Host on mutating methods.
-- [ ] Rate limit: 5 failures per 15 minutes per email and 20 per IP, through `login_attempts`.
-- [ ] Routes:
+- [x] `requireOwner(request)`: reads the cookie, loads the session and user, and checks Origin/Host on mutating methods.
+- [x] Rate limit: 5 failures per 15 minutes per email and 20 per IP, through `login_attempts`.
+- [x] Routes:
   - `login`: neutral error, rotates the session;
   - `logout`;
   - `session`;
   - `password`: change it and revoke the other sessions.
-- [ ] Owner CLI scripts: create the owner and reset the password, with an interactive password prompt. Document them in the README.
-- [ ] Client:
+- [x] Owner CLI scripts: create the owner and reset the password, with an interactive password prompt. Document them in the README.
+- [x] Client:
   - `AuthProvider` uses `GET /api/auth/session`;
   - `signIn` and `signOut` call the API;
   - `useAuth` keeps its shape (`user`, `status`, `signOut`), so `Workspace`, `RequireOwner` and `OwnerSession` change minimally.
-- [ ] Login page: same UI. "Lupa password?" now shows help text ("Minta pemilik arsip menjalankan reset password"), since there is no email service.
-- [ ] Tests:
+- [x] Login page: same UI. "Lupa password?" now shows help text ("Minta pemilik arsip menjalankan reset password"), since there is no email service.
+- [x] Tests:
   - login success, wrong password and unknown email (identical response);
   - rate limit;
   - cookie flags;
@@ -79,6 +79,15 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
   - password change revoking other sessions;
   - a cross-origin POST rejected;
   - the client auth components with a mocked fetch.
+- _Review (Opus 5.5) changed the rate limiting:_
+  - _Attempts are recorded before the password is checked, so parallel guesses count._
+  - _The block applies per address+account and per address. The address is trusted only through `TRUSTED_PROXY_HOPS`._
+  - _An account is never locked; instead its attempts are spaced 1–10 s apart (about 90 per 15 min)._
+  - _Argon2 hashing runs in a bounded pool._
+  - _Bodies are read with a streaming limit._
+  - _`/session` re-sends the cookie, and sessions have a 90-day absolute cap._
+  - _`APP_URL` is required in production; without it, every POST is refused._
+- [ ] Follow-up (from review): an attacker who keeps sending attempts to the owner's email holds the account spacing open, so the owner gets 429 while the attack lasts. Fix: a signed "known device" cookie on successful login that skips account spacing, and measure the gap only against attempts that were let through.
 
 ## B3 — Trees API + HttpTreeRepository
 

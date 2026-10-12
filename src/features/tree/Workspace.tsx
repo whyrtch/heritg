@@ -18,7 +18,6 @@ import { DEFAULT_FOCUS, layoutFocus, type FocusOptions } from "./canvas/layoutFo
 import { kinshipLabels } from "./canvas/kinship";
 import { useAuth } from "@/features/auth/useAuth";
 import { OwnerSession } from "@/features/auth/OwnerSession";
-import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { FirestoreTreeRepository } from "./repository/FirestoreTreeRepository";
 import { LocalTreeCache } from "./repository/LocalTreeCache";
 import { FirestorePublicationRepository } from "./publishing/FirestorePublicationRepository";
@@ -38,12 +37,16 @@ const IconButton = ({ label, children, onClick, disabled, quiet, className = "" 
 const MIN_ZOOM = .3, MAX_ZOOM = 1.8;
 const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
 
+const ONLINE_SYNC_READY = false;
+
 function Brand() { return <div className={styles.brand}><FlowerMark size={44} className={styles.brandMark} /><span>Heritg</span></div>; }
 
 export function Workspace() {
   const { data, setData, active, updateActive } = useWorkspaceData();
   const { user } = useAuth();
-  const online = Boolean(user && isFirebaseConfigured());
+  // Own backend B2: sign-in now uses /api/auth. Online sync returns in B3 (HttpTreeRepository); until then
+  // trees stay in this browser, because the Firestore repositories need a Firebase Auth session.
+  const online = Boolean(user) && ONLINE_SYNC_READY;
   const cache = useMemo(() => typeof window !== "undefined" ? new LocalTreeCache(window.localStorage) : null, []);
   const treeRepository = useMemo(() => online ? new FirestoreTreeRepository() : null, [online]);
   const publicationRepository = useMemo(() => online ? new FirestorePublicationRepository() : null, [online]);
