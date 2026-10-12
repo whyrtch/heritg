@@ -14,7 +14,8 @@ export function getDb(): Database {
   if (instance) return instance;
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set. Copy it into .env.local (see README).");
-  const client = postgres(url, { max: 10, prepare: false });
+  const max = Number.parseInt(process.env.DATABASE_POOL_MAX ?? "10", 10);
+  const client = postgres(url, { max: Number.isSafeInteger(max) && max > 0 ? max : 10, prepare: false });
   instance = drizzle(client, { schema });
   return instance;
 }

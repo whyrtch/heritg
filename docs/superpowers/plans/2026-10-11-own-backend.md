@@ -99,24 +99,30 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - `src/features/tree/repository/FirestoreTreeRepository.ts` (deleted in B7)
 
 **Tasks**
-- [ ] Zod schemas for `OnlineTree` v2, reusing the domain limits (`NAME_MAX`, `RESIDENCE_MAX`, `BIRTH_ORDER_MAX`, ISO dates, HTTPS photo URLs).
-- [ ] Service functions, all scoped by `ownerId`:
+- [x] Zod schemas for `OnlineTree` v2, reusing the domain limits (`NAME_MAX`, `RESIDENCE_MAX`, `BIRTH_ORDER_MAX`, ISO dates, HTTPS photo URLs).
+- [x] Service functions, all scoped by `ownerId`:
   - `listOwned`;
   - `load`;
   - `create`: a conflict when this owner already has the id, not-found when another owner has it;
   - `save`: a SERIALIZABLE transaction with a revision check, diffing people and relationships, and a 409 that returns the current tree;
   - `delete`.
-- [ ] Routes map service errors onto the `TreeRepositoryError` codes the client already understands. These are `conflict`, `not-found`, `permission-denied`, `offline` and `invalid-data`.
-- [ ] `HttpTreeRepository` implements `TreeRepository` with `fetch` and credentials. A network failure maps to `offline` (the sync queue keeps the edit).
-- [ ] `Workspace`: build `HttpTreeRepository` instead of `FirestoreTreeRepository` when signed in.
-- [ ] Tests (API, PGlite) — the old `tests/rules` coverage, re-expressed:
+- [x] Routes map service errors onto the `TreeRepositoryError` codes the client already understands. These are `conflict`, `not-found`, `permission-denied`, `offline` and `invalid-data`.
+- [x] `HttpTreeRepository` implements `TreeRepository` with `fetch` and credentials. A network failure maps to `offline` (the sync queue keeps the edit).
+- [x] `Workspace`: build `HttpTreeRepository` instead of `FirestoreTreeRepository` when signed in.
+- [x] Tests (API, PGlite) — the old `tests/rules` coverage, re-expressed:
   - owner-only access, with another owner getting 404 and anonymous getting 401;
   - validation failures;
   - relationship endpoints confined to the same tree;
   - revision conflict;
   - a large tree (500 people) saved in one transaction;
   - a v1-shaped body rejected.
-- [ ] `useTreeSync` tests run against `HttpTreeRepository` with a mocked fetch.
+- [x] `useTreeSync` tests run against `HttpTreeRepository` with a mocked fetch.
+- _Notes:_
+  - _Text fields reject NUL characters. As a backstop, PostgreSQL data errors map to 400, so a missed rule never reads as "offline" and wedges the sync queue._
+  - _Verified in the browser against an in-memory PGlite exposed through `@electric-sql/pglite-socket`: login, the import dialog, save (revision++), and the wizard adding a partner. That test server shares one PGlite session across connections, so use `DATABASE_POOL_MAX=1` with it. Real PostgreSQL is unaffected (confirmed in review)._
+- [ ] Follow-up: imported `.heritg` files may carry ids outside `[A-Za-z0-9_-]{1,128}`. Re-map them in `importTree`/`planMigration`, or report them before upload.
+- [ ] Follow-up: an expired session (401) only shows a sync error. Surface it to `AuthProvider` with a sign-in prompt; queued edits are kept and replay after sign-in.
+- [ ] Follow-up (existing, more likely over HTTP): `useTreeSync` can run two saves in parallel. A later edit can then hit a 409 and be dropped when the earlier one is acknowledged. Allow one in-flight save per tree, chaining the persists.
 
 ## B4 — Publishing API + public page
 
