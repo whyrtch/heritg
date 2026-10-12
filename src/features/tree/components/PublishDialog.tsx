@@ -62,7 +62,7 @@ export function PublishDialog({ tree, repository, onTreeChange, onClose, appUrl 
           <button type="button" aria-label="Close sharing dialog" onClick={onClose} style={quietButtonStyle}><X size={20} aria-hidden="true" /></button>
         </header>
         <div style={warningStyle}>
-          Anyone who has this link can view every published name, date, note, and photo URL. The link can be forwarded.
+          Anyone who has this link can view every published name, date, residence, note, photo and family relationship. The link can be forwarded.
         </div>
 
         {!isPublished ? (

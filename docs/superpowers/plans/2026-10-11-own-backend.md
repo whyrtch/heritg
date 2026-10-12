@@ -133,21 +133,30 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - `src/app/tree/[publicId]/page.tsx`
 
 **Tasks**
-- [ ] Publish:
+- [x] Publish:
   - one transaction copies the people and relationships, without owner identity, into the `publications.snapshot` jsonb plus `public_photos`;
   - it sets the tree's `visibility`, `public_id` and `published_revision`;
   - republishing under a new id deletes the old row.
-- [ ] Disable deletes the publication row (photos cascade) and makes the tree private, atomically. The `cleanupDisabled` interface method becomes a no-op.
-- [ ] `GET /api/public/:publicId`:
+- [x] Disable deletes the publication row (photos cascade) and makes the tree private, atomically. The `cleanupDisabled` interface method becomes a no-op.
+- [x] `GET /api/public/:publicId`:
   - enabled snapshot only, with an identical 404 for unknown and disabled links;
   - `X-Robots-Tag: noindex, nofollow`, `Cache-Control: no-store`.
-- [ ] The public page loads through the API; `PublicTree` itself is unchanged.
-- [ ] Tests:
+- [x] The public page loads through the API; `PublicTree` itself is unchanged.
+- [x] Tests:
   - anonymous read of an enabled snapshot;
   - a disabled or unknown link gives 404;
   - no owner email or id anywhere in the response;
   - only the owner can publish or disable;
   - a republish swaps the id.
+- _Notes:_
+  - _The server publishes the **stored** tree, not the client body._
+  - _Publish and revoke both check `expectedRevision`, so they are refused while a save from this device is still in flight._
+  - _The public route sets noindex, no-store and no-referrer on every outcome._
+  - _Verified in the browser against a temporary local database: publish, open the link (no buttons, noindex), revoke, then "unavailable"._
+  - _Reviewed by Opus 5.5 (approved)._
+- [ ] Follow-up: generate the public id on the server (PUT without an id keeps or creates one; `regenerate: true` for a new one) instead of accepting the owner's id.
+- [ ] Follow-up (B7): remove the now-unreachable "cleanup pending" state and copy from `publishTree.ts` and `PublishDialog`.
+- [ ] Follow-up (Phase 5 share panel): disable the share actions while sync is saving or has pending operations.
 
 ## B5 — Photo upload
 

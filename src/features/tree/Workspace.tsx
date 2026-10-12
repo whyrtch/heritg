@@ -21,6 +21,7 @@ import { OwnerSession } from "@/features/auth/OwnerSession";
 import { HttpTreeRepository } from "./repository/HttpTreeRepository";
 import type { TreeRepository } from "./repository/TreeRepository";
 import type { PublicationRepository } from "./publishing/PublicationRepository";
+import { HttpPublicationRepository } from "./publishing/HttpPublicationRepository";
 import { LocalTreeCache } from "./repository/LocalTreeCache";
 import { SyncStatus } from "./components/SyncStatus";
 import { ConflictDialog } from "./components/ConflictDialog";
@@ -47,8 +48,7 @@ export function Workspace() {
   const online = Boolean(user);
   const cache = useMemo(() => typeof window !== "undefined" ? new LocalTreeCache(window.localStorage) : null, []);
   const treeRepository = useMemo(() => online ? new HttpTreeRepository() : null, [online]);
-  // Publishing moves to the API in B4; until then the Bagikan button stays disabled.
-  const publicationRepository: PublicationRepository | null = null;
+  const publicationRepository = useMemo<PublicationRepository | null>(() => online ? new HttpPublicationRepository() : null, [online]);
   const syncApi = useRef<{ mutate: (tree: FamilyTree) => void } | null>(null);
   const [onlineTree, setOnlineTree] = useState<OnlineTree | null>(null);
   const [onlineEpoch, setOnlineEpoch] = useState(0);
