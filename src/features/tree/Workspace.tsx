@@ -17,6 +17,8 @@ import { exportGedcom, importGedcom, looksLikeGedcom, type GedcomOptions } from 
 import { buildTreeSvg, downloadPng, downloadSvg, readTheme, type ImageOptions } from "./canvas/exportImage";
 import { SharePanel } from "./panels/SharePanel";
 import { TreeSidebar } from "./panels/TreeSidebar";
+import { UnlockFileDialog, type UnlockFailure } from "./panels/UnlockFileDialog";
+import { decryptText, encryptText, isEncryptedEnvelope, WrongPasswordError, type EncryptedEnvelope } from "./domain/secureFile";
 import { RenameTreeDialog } from "./panels/RenameTreeDialog";
 import { FamilyPlusDialog } from "./panels/FamilyPlusDialog";
 import { DeleteTreeDialog, type DeleteFailure } from "./panels/DeleteTreeDialog";
@@ -76,6 +78,8 @@ export function Workspace() {
   const [migrationVersion, setMigrationVersion] = useState(0);
   const [sidebar, setSidebar] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  // An opened encrypted backup waits here for its password; the password itself is never kept.
+  const [locked, setLocked] = useState<EncryptedEnvelope | null>(null);
   const [deleting, setDeleting] = useState<FamilyTree | null>(null);
   const [starting, setStarting] = useState(false);
   const [wizardFor, setWizardFor] = useState<string | null>(null);
@@ -212,7 +216,7 @@ export function Workspace() {
   const selectPerson = (id: string) => { const next = selected === id ? null : id; setSelected(next); setPanelFor(readOnly ? next : null); };
   const switchView = (next: "focus" | "full") => { setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
   // The backup embeds uploaded photos as data, so the file stays complete without this account.
-  const download = async () => { const blob = new Blob([exportTree(await withEmbeddedPhotos(active))], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
+  const download = async (password?: string) => { const plain = exportTree(await withEmbeddedPhotos(active)); const blob = new Blob([password ? JSON.stringify(await encryptText(plain, password)) : plain], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
   const downloadImage = async (format: "png" | "svg", options: ImageOptions) => {
     if (!layout) return;
     const source = options.photos ? await withEmbeddedPhotos(active) : active;
@@ -221,7 +225,15 @@ export function Workspace() {
     if (format === "png") await downloadPng(svg, `${base}.png`); else downloadSvg(svg, `${base}.svg`);
   };
   const downloadGedcom = (options: GedcomOptions) => { const blob = new Blob([exportGedcom(active, options)], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "silsilah"}.ged`; a.click(); URL.revokeObjectURL(url); };
-  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { const text = await file.text(); addTree(/.ged$/i.test(file.name) || looksLikeGedcom(text) ? importGedcom(text) : importTree(text)); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
+  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { const text = await file.text(); const envelope = parseEnvelope(text); if (envelope) setLocked(envelope); else { addTree(/.ged$/i.test(file.name) || looksLikeGedcom(text) ? importGedcom(text) : importTree(text)); setSidebar(false); } } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
+  const unlock = async (password: string): Promise<UnlockFailure | null> => {
+    if (!locked) return "damaged";
+    let tree: FamilyTree;
+    try { tree = importTree(await decryptText(locked, password)); }
+    catch (error) { return error instanceof WrongPasswordError ? "wrong-password" : "damaged"; }
+    addTree(tree); setLocked(null); setSidebar(false);
+    return null;
+  };
   const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
   const rename = readOnly ? undefined : () => setRenaming(true);
   const selectTree = (id: string) => { setData({ ...data, activeTreeId: id }); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); };
@@ -338,6 +350,7 @@ export function Workspace() {
 
     <input ref={importRef} type="file" accept=".heritg,.ged,application/json" hidden onChange={loadFile} />
     {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onCopy={copyTree} onRename={renameFromSidebar} onDelete={tree => { setSidebar(false); setDeleting(tree); }} onFamilyPlus={() => { setSidebar(false); setFamilyPlus(true); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
+    {locked && <UnlockFileDialog onClose={() => setLocked(null)} onUnlock={unlock} />}
     {renaming && !readOnly && <RenameTreeDialog name={active.name} onClose={() => setRenaming(false)} onSave={name => { setTree({ ...active, name }); setRenaming(false); }} />}
     {deleting && !isDemoTree(deleting) && <DeleteTreeDialog name={deleting.name} people={deleting.people.length} relationships={deleting.relationships.length} synced={Boolean(remoteIdOf(deleting))} onClose={() => setDeleting(null)} onConfirm={() => deleteTree(deleting)} />}
     {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => { setEditFor(panelPerson.id); setPanelFor(null); }} onAdd={() => { setWizardFor(panelPerson.id); setPanelFor(null); }} onDelete={() => { setEditFor(panelPerson.id); setPanelFor(null); }} />}
@@ -369,6 +382,12 @@ function mergeLocalTree(local: FamilyTree, current: OnlineTree): OnlineTree {
     createdAt: serialized.createdAt, updatedAt: serialized.updatedAt, publishedRevision: serialized.publishedRevision,
     people: serialized.people, relationships: serialized.relationships,
   };
+}
+
+/** The encrypted envelope in an opened file, or null for any other file (plain backup, GEDCOM). */
+function parseEnvelope(text: string): EncryptedEnvelope | null {
+  if (!text.trimStart().startsWith("{")) return null;
+  try { const value: unknown = JSON.parse(text); return isEncryptedEnvelope(value) ? value : null; } catch { return null; }
 }
 
 /** A copy of the tree with server photos fetched and embedded as data URLs (for a portable backup). */

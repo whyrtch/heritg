@@ -379,12 +379,12 @@
 - `model.ts` import (detect an encrypted file)
 - `SharePanel.tsx`, `Workspace.tsx` (a password prompt `Dialog` on import), i18n
 
-- [ ] **Format:**
+- [x] **Format:**
   - `{ "format": "heritg-encrypted", "version": 1, "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 600000, "salt": b64 }, "cipher": { "name": "AES-GCM", "iv": b64 }, "data": b64 }`;
   - the plaintext is the normal `.heritg` JSON.
-- [ ] **Password field:** optional, and it uses the same rules as the web link (5.6). Empty means a normal file.
-- [ ] **Import:** prompt for the password. A wrong password shows "Password salah" and changes nothing.
-- [ ] **Tests:** round-trip, a wrong password, a tampered ciphertext failing, and an unencrypted file still importing.
+- [x] **Password field:** optional, and it uses the same rules as the web link (5.6). Empty means a normal file.
+- [x] **Import:** prompt for the password. A wrong password shows "Password salah" and changes nothing.
+- [x] **Tests:** round-trip, a wrong password, a tampered ciphertext failing, and an unencrypted file still importing.
 
 ### Task 5.5 — Link privacy options and expiry (server; reviewer required)
 **Files:**

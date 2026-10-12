@@ -107,4 +107,49 @@ describe("SharePanel", () => {
     expect(screen.getByRole("button", { name: "Publish with link" })).toBeInTheDocument();
     expect(screen.getByText(/Anyone who has this link/i)).toBeInTheDocument();
   });
+
+  describe("backup password", () => {
+    const download = () => screen.getByRole("button", { name: "Download .heritg" });
+    const pw = (value: string) => fireEvent.change(screen.getByLabelText("Password backup (opsional)"), { target: { value } });
+    const confirm = (value: string) => fireEvent.change(screen.getByLabelText("Ulangi password backup"), { target: { value } });
+
+    it("downloads a plain backup when the password is empty", () => {
+      const props = setup();
+      expect(screen.getByText(/Kosongin kalau nggak pakai password/)).toBeInTheDocument();
+      expect(screen.queryByLabelText("Ulangi password backup")).not.toBeInTheDocument();
+      expect(download()).toBeEnabled();
+      fireEvent.click(download());
+      expect(props.onDownload).toHaveBeenCalledWith(undefined);
+    });
+
+    it("keeps the download disabled until the password passes the rules and the confirmation matches", () => {
+      const props = setup();
+      pw("lemah");
+      expect(download()).toBeDisabled();
+      expect(screen.getByRole("list", { name: "Syarat password" })).toBeInTheDocument();
+      pw("Sandi#1234");
+      expect(download()).toBeDisabled();
+      confirm("Sandi#12");
+      expect(screen.getByRole("alert")).toHaveTextContent("Password belum sama");
+      expect(download()).toBeDisabled();
+      confirm("Sandi#1234");
+      expect(download()).toBeEnabled();
+      fireEvent.click(download());
+      expect(props.onDownload).toHaveBeenCalledWith("Sandi#1234");
+    });
+
+    it("shows and hides the typed password", () => {
+      setup();
+      const input = screen.getByLabelText("Password backup (opsional)");
+      expect(input).toHaveAttribute("type", "password");
+      fireEvent.click(screen.getAllByRole("button", { name: "Lihat password" })[0]);
+      expect(input).toHaveAttribute("type", "text");
+    });
+
+    it("reports a backup that could not be made", async () => {
+      setup({ onDownload: vi.fn(async () => { throw new Error("x"); }) });
+      fireEvent.click(download());
+      expect(await screen.findByRole("alert")).toHaveTextContent("File backup belum bisa dibuat");
+    });
+  });
 });

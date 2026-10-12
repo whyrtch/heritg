@@ -7,6 +7,8 @@ import type { GedcomOptions } from "../domain/gedcom";
 import { PublishCard } from "../components/PublishDialog";
 import type { OnlineTree } from "../domain/onlineTypes";
 import type { PublicationRepository } from "../publishing/PublicationRepository";
+import { checkPassword } from "../domain/passwordRules";
+import { PasswordField } from "./PasswordField";
 import { SidePanel } from "./SidePanel";
 import styles from "./panels.module.css";
 
@@ -27,7 +29,8 @@ type Props = {
   signedIn: boolean;
   /** Set only when the tree is synced online and publishing is available. */
   publishing: { tree: OnlineTree; repository: PublicationRepository; onTreeChange: (tree: OnlineTree) => void } | null;
-  onDownload: () => void;
+  /** Downloads the backup; a password locks the file. May reject when the file cannot be made. */
+  onDownload: (password?: string) => void | Promise<void>;
   onDownloadGedcom: (options: GedcomOptions) => void;
   /** Renders the displayed layout and downloads it; rejects when the image cannot be made. */
   onDownloadImage: (format: "png" | "svg", options: ImageOptions) => Promise<void>;
@@ -43,6 +46,18 @@ export function SharePanel({ treeName, peopleCount, example, signedIn, publishin
   const [imagePhotos, setImagePhotos] = useState(true);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [backupPassword, setBackupPassword] = useState("");
+  const [backupConfirm, setBackupConfirm] = useState("");
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupFailed, setBackupFailed] = useState(false);
+  const locked = backupPassword !== "";
+  const mismatch = locked && backupConfirm !== "" && backupConfirm !== backupPassword;
+  const backupReady = !locked || (checkPassword(backupPassword).ok && backupConfirm === backupPassword);
+  const saveBackup = async () => {
+    if (!backupReady || backupBusy) return;
+    setBackupBusy(true); setBackupFailed(false);
+    try { await onDownload(locked ? backupPassword : undefined); } catch { setBackupFailed(true); } finally { setBackupBusy(false); }
+  };
   const [method, setMethod] = useState<Method>(publishing ? "link" : "backup");
   const saveImage = async (format: "png" | "svg") => {
     setImageBusy(true); setImageFailed(false);
@@ -69,7 +84,12 @@ export function SharePanel({ treeName, peopleCount, example, signedIn, publishin
         {method === "backup" && <>
           <div className={styles.detailHead}><h4>{t("share.backup")}</h4><span className={styles.badge}>{t("share.recommended")}</span></div>
           <p className={styles.detailText}>{t("share.backupText")}</p>
-          <button type="button" className={styles.shareAction} onClick={onDownload}>{t("share.backupAction")}</button>
+          <PasswordField label={t("share.backupPassword")} value={backupPassword} onChange={setBackupPassword} checklist hint={t("share.backupPasswordHelp")} />
+          {locked && <PasswordField label={t("share.backupConfirm")} value={backupConfirm} onChange={setBackupConfirm} invalid={mismatch} />}
+          {mismatch && <p className={styles.detailText} role="alert">{t("share.backupMismatch")}</p>}
+          {locked && backupReady && <p className={styles.detailText}>{t("share.backupLocked")}</p>}
+          <button type="button" className={styles.shareAction} disabled={!backupReady || backupBusy} onClick={() => void saveBackup()}>{t("share.backupAction")}</button>
+          {backupFailed && <p className={styles.detailText} role="alert">{t("share.backupError")}</p>}
         </>}
         {method === "gedcom" && <>
           <div className={styles.detailHead}><h4>{t("share.gedcom")}</h4><span className={styles.badge}>{t("share.gedcomBadge")}</span></div>

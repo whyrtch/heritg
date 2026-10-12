@@ -6,6 +6,8 @@ import { createJokowiDemoTree } from "./demoData";
 import { setLanguage } from "@/i18n";
 import { setDialect } from "./canvas/dialectSetting";
 import { LocalTreeCache } from "./repository/LocalTreeCache";
+import { encryptText } from "./domain/secureFile";
+import { exportTree, newTree } from "./model";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock("@/features/auth/useAuth", () => ({ useAuth: () => ({ user: null, status: "unauthenticated", signOut: vi.fn() }) }));
@@ -287,5 +289,30 @@ describe("Workspace sidebar", () => {
     expect(screen.getByRole("link", { name: "Masuk" })).toHaveAttribute("href", "/login");
     fireEvent.click(screen.getByRole("button", { name: "Mengerti" }));
     expect(screen.queryByRole("dialog", { name: "Heritg Family+" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Workspace opening a password-protected backup", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(cleanup);
+
+  it("asks for the password, rejects a wrong one and imports the tree with the right one", async () => {
+    const { container } = render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    const secretTree = { ...newTree("Rahasia Keluarga"), people: [{ id: "p1", firstName: "Siti", lastName: "", gender: "female" as const }] };
+    const envelope = await encryptText(exportTree(secretTree as never), "Sandi#1234", { iterations: 100_000 });
+    const body = JSON.stringify(envelope);
+    const file = new File([body], "rahasia.heritg", { type: "application/json" });
+    if (typeof file.text !== "function") Object.defineProperty(file, "text", { value: async () => body }); // older jsdom lacks Blob.text
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    const dialog = await screen.findByRole("dialog", { name: "Buka file terkunci" });
+    fireEvent.change(within(dialog).getByLabelText("Password"), { target: { value: "salah" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Buka" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Password salah");
+    expect(screen.queryByText(/Rahasia Keluarga/)).not.toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText("Password"), { target: { value: "Sandi#1234" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Buka" }));
+    expect(await screen.findByText("Rahasia Keluarga (Impor)")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Buka file terkunci" })).not.toBeInTheDocument();
   });
 });
