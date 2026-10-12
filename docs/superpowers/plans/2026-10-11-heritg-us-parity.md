@@ -579,7 +579,7 @@
 - [x] **Contrast:** check text and token pairs against WCAG AA, i.e. 4.5:1 for body text and 3:1 for large text and UI glyphs. Darken only the tokens that fail, document the change in globals.css, and stay in the Mori & Tarum / heritg.us palette.
 
 ### Task 7.4 — Side-by-side review and full verification (main session)
-- [ ] **Screens to compare** with heritg.us at desktop and 375 px:
+- [x] **Screens to compare** with heritg.us at desktop and 375 px:
   - the main screen;
   - the sidebar;
   - each panel;
@@ -587,8 +587,10 @@
   - Bagikan;
   - Kipas;
   - the public viewer.
-- [ ] **Fixes:** fix small differences inline; send larger ones back to the planner.
-- [ ] **Full verification:** `npm test -- --run`, `npm run test:api`, `npm run lint` and `npm run build`.
+- [x] **Fixes:** fix small differences inline; send larger ones back to the planner.
+- [x] **Full verification:** `npm test -- --run`, `npm run test:api`, `npm run lint` and `npm run build`.
+- _Done on 2026-10-13 in the browser against a temporary local PostgreSQL, at desktop and 375 px. Checked: the main screen, sidebar, panels, Family+, Bagikan, Kipas, and the public viewer, both plain and password-protected (wrong and right password). The viewer has zero buttons after unlock and is noindex. Verification: 367 unit tests, 96 API tests, lint and build all pass._
+- _Note: run `npm run build` only while no dev server is running. Both write `.next`, and a dev server left running ends up with a broken cache ("Cannot find module vendor-chunks")._
 
 ### Task 7.5 — Docs
 - [ ] **README:** features (panels, export formats, password links, Kipas), the UI languages, and the deployment note on body size.
