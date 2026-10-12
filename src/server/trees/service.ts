@@ -76,10 +76,11 @@ const relationshipValues = (treeId: string, now: Date) => (item: TreeInput["rela
 });
 
 /** Create a tree with a client-chosen id. The owner's own existing id is a conflict (resumable migrations). */
-export async function createTree(db: Database, ownerId: string, input: TreeInput): Promise<OnlineTree> {
+export async function createTree(db: Database, ownerId: string, input: TreeInput, options: { createdAt?: Date } = {}): Promise<OnlineTree> {
   const now = new Date();
   await db.transaction(async tx => {
-    const [inserted] = await tx.insert(trees).values({ id: input.id, ownerId, name: input.name, schemaVersion: input.schemaVersion, revision: 0, createdAt: now, updatedAt: now })
+    // createdAt is only chosen by the server, except when importing history (scripts/migrate-from-firestore.ts).
+    const [inserted] = await tx.insert(trees).values({ id: input.id, ownerId, name: input.name, schemaVersion: input.schemaVersion, revision: 0, createdAt: options.createdAt ?? now, updatedAt: now })
       .onConflictDoNothing({ target: trees.id }).returning({ id: trees.id });
     if (!inserted) {
       const [existing] = await tx.select({ ownerId: trees.ownerId }).from(trees).where(eq(trees.id, input.id)).limit(1);

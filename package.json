@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "owner:create": "tsx --conditions=react-server scripts/owner-create.ts",
-    "owner:reset-password": "tsx --conditions=react-server scripts/owner-reset-password.ts"
+    "owner:reset-password": "tsx --conditions=react-server scripts/owner-reset-password.ts",
+    "migrate:firestore": "tsx --conditions=react-server scripts/migrate-from-firestore.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
@@ -39,6 +40,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.0",
+    "firebase-admin": "^14.5.0",
     "firebase-tools": "^15.28.2",
     "jsdom": "^25.0.1",
     "tsx": "^4.23.15",

@@ -4,7 +4,7 @@ import { ask, askNewPassword, loadEnv } from "./owner-cli";
 
 async function main() {
   loadEnv();
-  const { getDb } = await import("@/server/db/client");
+  const { closeDb, getDb } = await import("@/server/db/client");
   const { AccountError, findUserByEmail, setPassword } = await import("@/server/auth/users");
 
   const email = process.argv[2] ?? await ask("Owner email: ");
@@ -17,9 +17,11 @@ async function main() {
   try {
     await setPassword(db, user.id, await askNewPassword());
     console.log(`Password reset for ${user.email}. Every device has been signed out.`);
+    await closeDb();
     process.exit(0);
   } catch (error) {
     console.error(error instanceof AccountError ? error.message : error);
+    await closeDb();
     process.exit(1);
   }
 }

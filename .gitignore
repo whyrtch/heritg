@@ -29,3 +29,9 @@ pnpm-debug.log*
 
 # Local skill links (Windows junctions); recreate with: npx skills add https://github.com/anthropics/skills --skill frontend-design
 .claude/skills/
+
+# Firebase migration (own backend B6): never commit service-account keys or exported family data
+*firebase-adminsdk*.json
+*service-account*.json
+firestore-export*.json
+backup*.json

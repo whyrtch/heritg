@@ -8,6 +8,7 @@ import * as schema from "./schema";
 export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 let instance: Database | null = null;
+let connection: ReturnType<typeof postgres> | null = null;
 
 /** The app's database, created on first use from DATABASE_URL (server environment only). */
 export function getDb(): Database {
@@ -16,8 +17,16 @@ export function getDb(): Database {
   if (!url) throw new Error("DATABASE_URL is not set. Copy it into .env.local (see README).");
   const max = Number.parseInt(process.env.DATABASE_POOL_MAX ?? "10", 10);
   const client = postgres(url, { max: Number.isSafeInteger(max) && max > 0 ? max : 10, prepare: false });
+  connection = client;
   instance = drizzle(client, { schema });
   return instance;
+}
+
+/** Close the pool (CLI scripts call this before exiting so connections are released cleanly). */
+export async function closeDb(): Promise<void> {
+  await connection?.end({ timeout: 5 });
+  connection = null;
+  instance = null;
 }
 
 export { schema };

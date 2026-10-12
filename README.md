@@ -53,6 +53,29 @@ npx -y firebase-tools@latest deploy --only firestore
 
 This repository does not deploy automatically. Review `firestore.rules` before production deployment. The current Next.js public route is dynamically rendered, so choose a Next.js-compatible free host or adapt the app to static export before using the `hosting.public: out` Firebase Hosting configuration.
 
+## Moving data from Firebase (one time)
+
+Heritg is moving from Firebase to its own backend (Next.js API + PostgreSQL). See `docs/superpowers/plans/2026-10-11-own-backend.md`. To copy your existing online trees:
+
+1. Create your account on the new backend: `npm run owner:create -- you@example.com`.
+2. In the Firebase Console, open *Project settings → Service accounts* and generate a private key (a JSON file). Keep it outside the repository, and delete it when you are done.
+3. Put these in `.env.local`:
+   - `DATABASE_URL`
+   - `OWNER_EMAIL` (the account from step 1)
+   - `FIREBASE_OWNER_UID` (your user id under *Authentication → Users*)
+   - `GOOGLE_APPLICATION_CREDENTIALS` (the path to that JSON file)
+4. Try it first: `npm run migrate:firestore -- --dry-run`. This only reads and reports.
+5. Import: `npm run migrate:firestore`. Add `--save-json backup.json` to keep a copy of what was read (`.gitignore` already excludes such files and service-account keys).
+
+What the import does:
+- Firebase is only read; nothing there is changed or deleted.
+- Old (v1) trees are upgraded on the way.
+- Shared links are re-created with the same address, showing exactly what was published.
+- Re-running skips trees that already exist, so edits made on the new backend are kept. Use `--overwrite` to replace their content (a shared link already made on the new backend is kept). A link that could not be restored is reported (exit code 1) and is restored on the next run.
+- `--from-json backup.json` imports a saved copy without contacting Firebase.
+
+Trees that only ever lived in a browser are offered by the app's **Import family trees** prompt after you sign in.
+
 ## Verification
 
 ```bash

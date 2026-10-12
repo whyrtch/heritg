@@ -204,12 +204,22 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - README section
 
 **Tasks**
-- [ ] `firebase-admin` as a temporary dev dependency. Inputs are `GOOGLE_APPLICATION_CREDENTIALS` (path to the owner's service-account JSON), `FIREBASE_OWNER_UID` and `OWNER_EMAIL`.
-- [ ] Read the trees for that uid with their people, relationships and members, and read their publications. Normalize through `fromOnlineTree`/`toOnlineTree`, which already reads v1 and v2. Upsert for the owner user.
-- [ ] `--dry-run` prints counts and validation problems. A real run is idempotent, and nothing in Firebase is modified.
-- [ ] Re-create enabled publications under the same `publicId`.
-- [ ] Tests: a fixture export (JSON) → PGlite gives the expected rows, and a rerun is a no-op.
-- [ ] The owner runs it. I never run it against real data without explicit approval in chat.
+- [x] `firebase-admin` as a temporary dev dependency. Inputs are `GOOGLE_APPLICATION_CREDENTIALS` (path to the owner's service-account JSON), `FIREBASE_OWNER_UID` and `OWNER_EMAIL`.
+- [x] Read the trees for that uid with their people, relationships and members, and read their publications. Normalize through `fromOnlineTree`/`toOnlineTree`, which already reads v1 and v2. Upsert for the owner user.
+- [x] `--dry-run` prints counts and validation problems. A real run is idempotent, and nothing in Firebase is modified.
+- [x] Re-create enabled publications under the same `publicId`.
+- [x] Tests: a fixture export (JSON) → PGlite gives the expected rows, and a rerun is a no-op.
+- [ ] **Owner action:** run it against the real Firebase project (see README "Moving data from Firebase"). I never run it against real data without explicit approval in chat.
+- _Notes:_
+  - _Split into a read-only Firestore reader (`scripts/firestore-reader.ts`, firebase-admin) and a database core (`src/server/migration/firestoreImport.ts`, tested on PGlite)._
+  - _CLI: `--dry-run`, `--overwrite`, `--save-json`, `--from-json`._
+  - _Shared links are re-created from the Firestore **public snapshot** (never later private edits) with the same id._
+  - _A re-run skips existing trees. It restores a missing link only while the tree is untouched since import, so a link the owner revoked is never brought back. A link made on the new backend is never replaced._
+  - _Every tree runs in its own try/catch; the export shape is validated first._
+  - _Exit code 1 when a tree or a link could not be imported._
+  - _Service-account keys and export files are git-ignored._
+  - _Verified with `--from-json` against a temporary local database: dry run, import, re-run (skipped), overwrite._
+  - _Reviewed by Opus 5.5 (approved after two rounds)._
 
 ## B7 — Remove Firebase
 
