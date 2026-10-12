@@ -454,13 +454,76 @@
 
 ## Phase 6 — Kipas (fan chart)
 
-- [ ] **Kipas page:**
-  - Kembali and Kembali ke pohon;
-  - Generasi and Ukuran bagan selects;
-  - an SVG semicircle of ancestors over a lower half of children, in gender colors;
-  - "Belum tercatat" placeholders;
-  - tap to re-root;
-  - the list below the chart.
+> Detailed on 2026-10-13 after measuring the heritg.us Kipas view (reference section "Kipas, measured 2026-10-13").
+> - The two tasks run sequentially.
+> - Each task ends with `npm test -- --run` and `npm run lint`, and is one commit.
+> - Copy is in our own words.
+
+### Task 6.1 — Fan layout (pure)
+**Files:** new `src/features/tree/canvas/fanLayout.ts` and `fanLayout.test.ts`.
+
+- [ ] **`layoutFan(tree, rootId, generations: 1..5)`** returns `{ viewBox, root, ancestors: FanSegment[], children: FanSegment[] }`.
+  - The centre is (cx, cy). The root circle has r 52, with text clipped to r 48.
+  - Ancestor ring g (g ≥ 1) has inner radius `72 + (g-1)*80` and outer `inner + 78`. It spans the upper half (180° → 360°), split into 2^g equal slots.
+  - Slot i of ring g is the parent of slot ⌊i/2⌋ of ring g-1. The first parent slot is the father side: a male parent, else the first parent by relationship order. The second slot is the other parent.
+  - With more than two parents (biological plus step or adoptive), use the two biological parents. If there are none, use the first two.
+- [ ] **Placeholders:**
+  - A missing parent of a *known* person becomes a `placeholder: true` segment ("Belum tercatat").
+  - Slots above a placeholder are not drawn.
+  - Rings beyond the requested generations are not drawn.
+- [ ] **Children:** the lower half (0° → 180°) holds one ring at radii 72–150, split equally among the root's children (all parent kinds), ordered by birth order, then birth date, then name.
+- [ ] **Each segment** carries:
+  - an SVG path (an annular sector: outer arc, line, inner arc, close);
+  - a label anchor point and a rotation that keeps text upright and readable (flip text that would be upside down);
+  - `personId | null`, `generation`, and the gender for the fill;
+  - a `relation` used in the accessible label: "Orang tua dari X", "Kakek/nenek…", or "Anak dari X".
+- [ ] **viewBox:**
+  - It is computed from the outermost drawn radius plus a 6-unit margin.
+  - Its height is only the top half plus the root when there are no children, or the full circle extent when there are children.
+- [ ] **Tests:**
+  - the example tree from Joko Widodo with 3 generations gives the right ancestors in the right slots;
+  - placeholders appear only for missing parents of known people;
+  - no slots appear above a placeholder;
+  - the children's count and order;
+  - the generation cap;
+  - the path strings are well-formed (no NaN);
+  - text rotation stays within -90..90.
+
+### Task 6.2 — Kipas page in the workspace
+**Files:**
+- new `src/features/tree/canvas/FanView.tsx`, `fanView.module.css` and their tests;
+- `Workspace.tsx` (view `"fan"`, enabling the segmented button);
+- i18n.
+
+- [ ] **Layout.** When the view is `"fan"`, the canvas area shows a scrollable page instead of the tree stage. It is centred, max width 1120, padding 16/32/48. The top bar, controls and bottom-left chips stay; the zoom and fit buttons are hidden in this view.
+- [ ] **Navigation.**
+  - A "Kembali" secondary button (ArrowLeft) walks back through the people previously explored; it is disabled when there is no history.
+  - A text button "Kembali ke pohon" switches back to the previous tree view.
+- [ ] **Heading.** "Kipas" (24/700), with an explanation line in our own words.
+- [ ] **Controls.**
+  - Generasi is a select of 1–5, default 3.
+  - Ukuran bagan has three choices: Sesuaikan layar (fit width), 150% and 200%. The chart sits in a scroll region labelled "Orang tua dan anak".
+- [ ] **Chart.**
+  - The root fill comes from the gender tokens (`--male-fill` etc.), with stroke `--brand-deep` 4.
+  - Known segments are filled by gender with stroke `--line` 1.5. Placeholders use `--base` with a muted label.
+  - Name text is 12/500 on rings and 16/500 in the root, wrapped to two lines and clipped.
+- [ ] **Interaction.**
+  - Known segments are `role="button"` with `tabindex=0`, and Enter or Space activates them.
+  - Each has an `aria-label` of "<nama> · <relasi>" and a `<title>`.
+  - Clicking or activating a segment re-roots on that person and pushes the previous root to the history.
+  - Placeholders are not interactive.
+- [ ] **Under the chart.**
+  - A status line: "Anak belum tercatat" when the root has no children; otherwise "N anak".
+  - A selection row for the current person: avatar, name, life dates. When the tree is not read-only it also has "Tambah kerabat" (+) and "Edit profil" (pencil) buttons, which open the existing wizard and editor.
+  - Two short notes: how to explore, and that only parent–child links are shown (partners and siblings are not).
+- [ ] **Starting person.** The initial root is the selected person, else the Fokus root, else the first person. Leaving the fan view keeps the selection.
+- [ ] **Public viewer.** It is not changed in this phase.
+- [ ] **Tests:**
+  - switching to Kipas renders the heading and the root;
+  - clicking a parent segment re-roots, and Kembali returns;
+  - the generations select changes the ring count;
+  - the read-only example tree has no add or edit buttons;
+  - keyboard activation works.
 
 ## Phase 7 — Mobile parity, polish, verification
 

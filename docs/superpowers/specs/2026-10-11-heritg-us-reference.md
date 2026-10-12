@@ -194,3 +194,27 @@ The panel is a SidePanel titled "Bagikan / Ekspor silsilah".
 - **Backup card:** has an optional password field with a help line and a "Download .heritg" secondary button.
 - **GEDCOM card:** has privacy checkboxes (dates, marriage dates) and a download button.
 - **Image card:** has privacy checkboxes (dates, marriage dates, photos, ages) and two secondary buttons, PNG HD and SVG.
+
+## Kipas, measured 2026-10-13 (desktop)
+
+- **Page.** It replaces the canvas: `.family-explorer-content`, max-width 1120, padding 16 32 48, centred.
+  - **Nav row** (`aria-label` "Tampilan pohon", 60 high, padding 8 0, gap 8):
+    - a secondary "Kembali" button with arrow-left, 44 high, radius 12, bg #fffdf8, border #d8ccbc, 14.72/600, disabled with no history;
+    - a right-aligned text button "Kembali ke pohon" in #795d3f, padding 8, radius 10.
+  - **Heading:** h2 24/700 (margin-bottom 8) and an explanation p 16 / lh 24 #796f63.
+  - **Controls:** flex with gap 16. Each label is a 14px #796f63 column with gap 6. The selects are 44 high, padding 8 12, radius 10, bg #fffdf8, border #d8ccbc.
+    - Generasi: 1–5, default 3.
+    - Ukuran bagan: "Sesuaikan layar" / 150% / 200%.
+  - **Chart:** a scroll region (`role=region`, tabindex 0, label "Orang tua dan anak"), bg #fffdf8, radius 12, margin 16 0. The SVG `.explorer-fan` fills the width.
+- **SVG geometry** (viewBox 0 0 428 250 for the root plus one ring):
+  - The centre is (214,174).
+  - The root circle has r 52, fill = gender fill (#ede5d8 for unspecified), stroke #795d3f width 4, with text clipped to r 48. The name is 16/500 on two lines (±9.6).
+  - Ancestor ring 1 runs from inner r 72 to outer r 150 across the upper half, split into two annular sectors.
+  - Segment fill is var(--base) for "Belum tercatat", stroke #d8ccbc 1.5. Labels are 12/500, rotated along the radius (-45 / 45 for ring 1).
+  - Each segment `<g>` has `aria-label` "<name> · Generasi N · Orang tua dari X" and a `<title>`. Known people are `role=button` with tabindex 0, and the root has `aria-current`.
+  - Placeholders appear only for the missing parents of a known person.
+  - The children group (`aria-label` "Anak dari X") takes the lower half.
+- **Below the chart:**
+  - a status p (14px #796f63) reading "Anak belum tercatat" when there are none;
+  - the selection row: a 64-high person button (bg #ede5d8, radius 10, padding 12 8, `aria-pressed`) with avatar, name and small text, plus 44 icon actions (plus / pencil, #795d3f, radius 10);
+  - two notes, 14 / lh 21 #796f63.
