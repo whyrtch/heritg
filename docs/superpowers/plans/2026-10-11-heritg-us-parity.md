@@ -527,10 +527,77 @@
 
 ## Phase 7 — Mobile parity, polish, verification
 
-- [ ] **Mobile.** Capture heritg.us at 390 px and match the layout: chrome, panels as sheets, dialogs full-screen.
-- [ ] **Reduced motion, keyboard and contrast pass.**
-- [ ] **Side-by-side screenshot review** of every screen. Then run the full test, lint, build and test:rules suite.
-- [ ] **Docs.** Update README, AGENTS.md (UI language, data v2) and the Figma file (optional, MCP quota permitting).
+> Detailed on 2026-10-13 after measuring heritg.us at 375 px (reference "Mobile, measured 2026-10-13") and checking our app in the browser.
+> - The tasks run sequentially: 7.1–7.3 touch shared CSS and `Workspace.tsx`.
+> - Each implementation task ends with `npm test -- --run` and `npm run lint`, and is one commit.
+
+### Task 7.1 — Mobile layout (< 600 px)
+**Files:** `workspace.module.css`, `panels.module.css`, `dialogs/dialogs.module.css`, `canvas/fanView.module.css`, `Workspace.tsx` (only if markup is needed), and tests where behaviour changes.
+
+- [ ] **Chrome**, following the reference "Mobile (375x812)":
+  - insets 10–12;
+  - the title card at 64,10, 44 high, with the name ellipsized;
+  - Family+, Bagikan and Setelan as round 44 icon-only buttons, keeping their accessible names;
+  - the controls column at right 12 / bottom 12 with gap 8;
+  - the privacy chip as a round 44 icon-only button next to Bantuan;
+  - the eye button and the view chip at the bottom left.
+- [ ] **Side panels:** fixed to the right, `width: calc(100% - 46px)`, full height.
+- [ ] **Sidebar:** 304 wide.
+- [ ] **Dialogs** (the `Dialog` shell, the conflict dialog, the unlock dialog): full screen, with radius 22 22 0 0, a sticky header and footer, and a scrolling body.
+- [ ] **Kipas page:** content starts below the top bar (top 76) with padding 12 12 64. On desktop it also gets enough bottom padding (≥ 96) that the bottom-left and bottom-right chips never cover the selection row or the notes. The right controls column is hidden in fan view on mobile, as on heritg.us.
+- [ ] **Tests:** keep the existing accessible names. Add a test that the icon-only buttons still have their names.
+
+### Task 7.2 — Polish and leftover English
+**Files:** `Workspace.tsx`, `model.ts` (date formatting helpers), `canvas/FanView.tsx`, `canvas/fanLayout.ts`, the components listed below, i18n, and tests.
+
+- [ ] **Leftover English** goes into the i18n catalog (id/en/ms), with tests updated in the same commit:
+  - the read-only `PersonPanel` ("Born", "Parents", "Partner", "Children", "Example tree", "Start your own tree", "Edit details", "Add a relative", "Delete person");
+  - `ConflictDialog`;
+  - `MigrationDialog`;
+  - `SyncStatus`;
+  - `RequireOwner`;
+  - the login page;
+  - the public viewer.
+  - Keep accessible names in sync with their tests.
+- [ ] **Localized life dates:** `lifeDatesLong` and similar helpers take the language ("Lahir 21 Juni 1961", "Born 21 June 1961", "Lahir 21 Jun 1961").
+- [ ] **Kipas fixes:**
+  - "Belum tercatat" placeholders on the outer rings show a short label, or "?", when the full text does not fit, with the full text in `<title>`;
+  - picking a view in the view popover closes the popover;
+  - in fan view, choosing someone never opens the example tree's person panel over the page.
+- [ ] **"Jumlah turunan cabang":** it stays disabled, with a clear tooltip "Segera hadir". Measuring it needs a large sample tree on heritg.us; that is a follow-up.
+
+### Task 7.3 — Reduced motion, keyboard and contrast
+**Files:** `globals.css`, the module CSS files, components as needed, and tests.
+
+- [ ] **Reduced motion:** with `@media (prefers-reduced-motion: reduce)`, turn off the slide and fade animations and the canvas transform transition.
+- [ ] **Keyboard:**
+  - every dialog and panel closes on Escape and returns focus to the control that opened it;
+  - the sidebar and kebab menus are reachable;
+  - fan segments are focusable;
+  - no focus trap leaks.
+  - Add tests for focus return on the side panels and the sidebar.
+- [ ] **Contrast:** check text and token pairs against WCAG AA, i.e. 4.5:1 for body text and 3:1 for large text and UI glyphs. Darken only the tokens that fail, document the change in globals.css, and stay in the Mori & Tarum / heritg.us palette.
+
+### Task 7.4 — Side-by-side review and full verification (main session)
+- [ ] **Screens to compare** with heritg.us at desktop and 375 px:
+  - the main screen;
+  - the sidebar;
+  - each panel;
+  - each dialog;
+  - Bagikan;
+  - Kipas;
+  - the public viewer.
+- [ ] **Fixes:** fix small differences inline; send larger ones back to the planner.
+- [ ] **Full verification:** `npm test -- --run`, `npm run test:api`, `npm run lint` and `npm run build`.
+
+### Task 7.5 — Docs
+- [ ] **README:** features (panels, export formats, password links, Kipas), the UI languages, and the deployment note on body size.
+- [ ] **AGENTS.md:**
+  - the UI language rule (Indonesian default; every string in the i18n catalog for id/en/ms);
+  - the layout of `src/features/tree/panels/`;
+  - the public-page exception for the password prompt;
+  - the export formats.
+- [ ] **Figma:** optional, only if the MCP quota allows. Skip otherwise and say so.
 
 ## Self-review
 

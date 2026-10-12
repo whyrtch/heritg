@@ -218,3 +218,14 @@ The panel is a SidePanel titled "Bagikan / Ekspor silsilah".
   - a status p (14px #796f63) reading "Anak belum tercatat" when there are none;
   - the selection row: a 64-high person button (bg #ede5d8, radius 10, padding 12 8, `aria-pressed`) with avatar, name and small text, plus 44 icon actions (plus / pencil, #795d3f, radius 10);
   - two notes, 14 / lh 21 #796f63.
+
+## Mobile, measured 2026-10-13 (375x812)
+
+- **Side panels** (e.g. Semua orang): fixed to the right, x 46, width 329 (`100% - 46px`), full height. Header 68.
+- **Modal dialogs** (e.g. Family+): full screen, 375x812, radius 22 22 0 0. Header 66; the body scrolls; footer 80.
+- **Sidebar:** 304 wide, full height, padding 22 18 18.
+- **Kipas page:**
+  - content starts at y 76, below the top bar, with padding 12 12 64;
+  - nav row 60, heading 24/700, controls, then a 205-high chart and the selection row;
+  - the right controls column is hidden in fan view;
+  - the bottom bar shows the eye button, the "Kipas" view chip (64,756, 103x44), the privacy icon and Bantuan.
