@@ -142,13 +142,13 @@
 - `Workspace.tsx` (wiring; remove `Directory`)
 - i18n catalogs
 
-- [ ] **`SidePanel`:**
+- [x] **`SidePanel`:**
   - fixed to the right, 390 wide, full height;
   - header 68 high with an h2 (17.28/700) and a "Tutup" close button;
   - body with padding 20 that scrolls;
   - Escape closes it;
   - under 600 px it is full width (the mobile sheet comes in Phase 7).
-- [ ] **`PeoplePanel` search and list:**
+- [x] **`PeoplePanel` search and list:**
   - The search input (type=search, label "Cari orang") filters case-insensitively.
   - Each row shows a 44 avatar in the gender tint. It shows the photo if there is one, unless privacy masking is on.
   - Each row shows the name and a subline:
@@ -156,10 +156,10 @@
     - "Dipilih" for the selected person;
     - otherwise "Anggota keluarga".
   - Each row ends with an arrow-right icon.
-- [ ] **`PeoplePanel` behaviour:**
+- [x] **`PeoplePanel` behaviour:**
   - Clicking a row closes the panel, selects the person and centres on them (`focusPerson`).
   - When nothing matches, it shows "Nggak ada yang cocok".
-- [ ] **Tests:**
+- [x] **Tests:**
   - the filter;
   - the subline labels;
   - a row click selects the person and closes the panel;

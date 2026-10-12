@@ -25,6 +25,17 @@ describe("Workspace with the example tree", () => {
     expect(screen.getByText("Contoh silsilah, cuma bisa dilihat")).toBeInTheDocument();
   });
 
+  it("opens Semua orang, picks a person and closes the panel", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(screen.getByRole("button", { name: "Semua orang" }));
+    const panel = screen.getByRole("dialog", { name: "Semua orang" });
+    fireEvent.change(within(panel).getByRole("searchbox", { name: "Cari orang" }), { target: { value: "kaesang" } });
+    fireEvent.click(within(panel).getByRole("button", { name: /Kaesang Pangarep/ }));
+    expect(screen.queryByRole("dialog", { name: "Semua orang" })).not.toBeInTheDocument();
+    expect(node("Kaesang Pangarep")).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("labels everyone relative to the selected person", async () => {
     render(<Workspace />);
     await screen.findByText("Keluarga Joko Widodo");

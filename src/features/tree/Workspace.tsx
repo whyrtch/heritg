@@ -9,6 +9,8 @@ import { CoachMarks } from "./components/CoachMarks";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
 import { TreeCanvas } from "./canvas/TreeCanvas";
+import { SidePanel } from "./panels/SidePanel";
+import { PeoplePanel } from "./panels/PeoplePanel";
 import { StartDialog } from "./dialogs/StartDialog";
 import { AddRelativeWizard } from "./dialogs/AddRelativeWizard";
 import { EditProfileDialog } from "./dialogs/EditProfileDialog";
@@ -70,8 +72,8 @@ export function Workspace() {
   const [wizardFor, setWizardFor] = useState<string | null>(null);
   const [editFor, setEditFor] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [directory, setDirectory] = useState(false);
-  const [settings, setSettings] = useState(false);
+  // Only one right-hand panel is open at a time.
+  const [rightPanel, setRightPanel] = useState<"people" | "settings" | "help" | "privacy" | null>(null);
   const [deferred, setDeferred] = useState<"Family+" | null>(null);
   const [privacy, setPrivacy] = useState(true);
   const [controlsHidden, setControlsHidden] = useState(false);
@@ -83,8 +85,6 @@ export function Workspace() {
   const [legend, setLegend] = useState(false);
   const [panelFor, setPanelFor] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [help, setHelp] = useState(false);
-  const [privacyPanel, setPrivacyPanel] = useState(false);
   const t = useT();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -194,7 +194,7 @@ export function Workspace() {
     if (view === "focus" && !nodes.some(node => node.id === id)) setFocusRoot(id);
     const centre = centreOf(id);
     if (centre) setPan(centre);
-    setSelected(id); setDirectory(false);
+    setSelected(id); setRightPanel(null);
     if (readOnly) setPanelFor(id);
   };
   // Clicking the selected person again clears the selection, like heritg.us.
@@ -206,6 +206,7 @@ export function Workspace() {
   const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
   const rename = readOnly ? undefined : () => { const name = prompt(t("shell.renamePrompt"), active.name); if (name?.trim()) setTree({ ...active, name: name.trim() }); };
   const isEmpty = active.people.length === 0;
+  const closeRightPanel = () => setRightPanel(null);
 
   return <div className={styles.workspace}>
     {!controlsHidden && <>
@@ -221,13 +222,13 @@ export function Workspace() {
         <div className={styles.topActions}>
           <button className={styles.familyPlusButton} aria-label={t("shell.familyPlus")} onClick={() => setDeferred("Family+")}><CirclePlus size={20} aria-hidden="true" /><span>{t("shell.familyPlus")}</span></button>
           <button className={styles.shareButton} aria-label={t("shell.shareTree")} disabled={!activeOnlineTree || !publicationRepository} onClick={() => setPublishOpen(true)}><Share2 size={17} aria-hidden="true" /><span>{t("shell.share")}</span></button>
-          <IconButton label={t("shell.settings")} onClick={() => setSettings(true)}><Settings2 size={19} /></IconButton>
+          <IconButton label={t("shell.settings")} onClick={() => setRightPanel("settings")}><Settings2 size={19} /></IconButton>
         </div>
       </header>
     </>}
 
     <div ref={canvasRef} className={styles.canvas} role="region" aria-label={t("canvas.label", { name: active.name })} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null}>
-      {isEmpty || !layout ? <EmptyState onAdd={() => setStarting(true)} onImport={() => importRef.current?.click()} onGuide={() => setHelp(true)} /> :
+      {isEmpty || !layout ? <EmptyState onAdd={() => setStarting(true)} onImport={() => importRef.current?.click()} onGuide={() => setRightPanel("help")} /> :
         <div className={styles.stage} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
           <TreeCanvas tree={active} layout={layout} labels={labels} selectedId={selected} actions={!readOnly} genderLabel={gender => t(`gender.${gender}`)} editLabel={name => t("canvas.edit", { name })} addLabel={name => t("canvas.add", { name })} onSelect={selectPerson} onEdit={setEditFor} onAdd={setWizardFor} style={{ position: "absolute", left: -(layout.bounds.maxX - layout.bounds.minX) / 2, top: -(layout.bounds.maxY - layout.bounds.minY) / 2 }} />
         </div>}
@@ -235,15 +236,15 @@ export function Workspace() {
 
     {isEmpty && !readOnly && !controlsHidden && <CoachMarks />}
     {!controlsHidden && <div className={styles.rightControls} role="group" aria-label={t("shell.controls")}>
-      <IconButton label={t("shell.allPeople")} onClick={() => setDirectory(true)}><Users size={19} /></IconButton>
+      <IconButton label={t("shell.allPeople")} onClick={() => setRightPanel("people")}><Users size={19} /></IconButton>
       {view === "full" && <IconButton label={t("shell.branchCount")} disabled><SlidersHorizontal size={18} /></IconButton>}
       <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => clampZoom(z * 1.15))}><ZoomIn size={18} /></IconButton>
       <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => clampZoom(z / 1.15))}><ZoomOut size={18} /></IconButton>
       <IconButton label={t("shell.fit")} onClick={fitLayout} disabled={isEmpty}><Maximize2 size={18} /></IconButton>
     </div>}
     {!controlsHidden && <div className={styles.bottomRight} role="group" aria-label={t("shell.privacyGroup")}>
-      <button className={styles.privacyChip} aria-label={t("shell.privacy", { state: t("shell.privacyProtected") })} onClick={() => setPrivacyPanel(true)}><ShieldCheck size={18} aria-hidden="true" /><span>{t("shell.privacyProtected")}</span></button>
-      <IconButton label={t("shell.help")} onClick={() => setHelp(true)}><CircleHelp size={18} /></IconButton>
+      <button className={styles.privacyChip} aria-label={t("shell.privacy", { state: t("shell.privacyProtected") })} onClick={() => setRightPanel("privacy")}><ShieldCheck size={18} aria-hidden="true" /><span>{t("shell.privacyProtected")}</span></button>
+      <IconButton label={t("shell.help")} onClick={() => setRightPanel("help")}><CircleHelp size={18} /></IconButton>
     </div>}
     <div className={styles.bottomLeft}>
       <IconButton label={controlsHidden ? t("shell.showControls") : t("shell.hideControls")} onClick={() => { setControlsHidden(value => !value); setViewMenu(false); }}>{controlsHidden ? <EyeOff size={18} /> : <Eye size={18} />}</IconButton>
@@ -285,10 +286,10 @@ export function Workspace() {
     {starting && !readOnly && <StartDialog onClose={() => setStarting(false)} onSave={person => { setTree({ ...active, people: [...active.people, person], updatedAt: new Date().toISOString() }); setSelected(person.id); setStarting(false); }} />}
     {wizardFor && !readOnly && active.people.some(p => p.id === wizardFor) && <AddRelativeWizard tree={active} anchorId={wizardFor} onClose={() => setWizardFor(null)} onSubmit={input => { const result = addRelative(active, wizardFor, input); setTree(result.tree); setSelected(wizardFor); setWizardFor(null); }} />}
     {editFor && !readOnly && active.people.some(p => p.id === editFor) && <EditProfileDialog key={editFor} tree={active} personId={editFor} onClose={() => setEditFor(null)} onSave={next => { setTree(next); setEditFor(null); }} onDelete={id => { setTree(removePerson(active, id)); setSelected(null); setEditFor(null); }} />}
-    {directory && <Directory tree={active} privacy={privacy && !readOnly} onClose={() => setDirectory(false)} onFocus={focusPerson} />}
-    {settings && <Panel title="Settings" onClose={() => setSettings(false)}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></Panel>}
-    {help && <Panel title={t("shell.help")} onClose={() => setHelp(false)}><p className={styles.helpText}>{t("help.short")}</p></Panel>}
-    {privacyPanel && <Panel title={t("privacy.title")} onClose={() => setPrivacyPanel(false)}><p className={styles.helpText}>{t("privacy.body")}</p><div className={styles.settingRow}><div><strong>{t("privacy.maskTitle")}</strong><p>{t("privacy.maskBody")}</p></div><button className={styles.toggle} aria-pressed={privacy} aria-label={t("privacy.maskTitle")} onClick={() => setPrivacy(v => !v)}><span /></button></div></Panel>}
+    {rightPanel === "people" && <PeoplePanel tree={active} selectedId={selected} labels={labels} privacy={privacy && !readOnly} onPick={focusPerson} onClose={closeRightPanel} />}
+    {rightPanel === "settings" && <SidePanel title="Settings" onClose={closeRightPanel}><div className={styles.settingRow}><div><strong>Privacy protection</strong><p>Mask dates and photos while viewing this device.</p></div><button className={styles.toggle} aria-pressed={privacy} onClick={() => setPrivacy(v => !v)}><span /></button></div><div className={styles.settingRow}><div><strong>Owner account</strong><p>{user?.email ?? "Sign in to sync your trees online."}</p></div><OwnerSession /></div><div className={styles.infoBox}><ShieldCheck /> Online trees sync securely to your owner account. Offline changes remain on this device until connection returns.</div><button className={styles.danger} onClick={() => { if (confirm("Reset cached family trees on this device? Online trees will not be deleted.")) { localStorage.clear(); location.reload(); } }}>Reset device cache</button></SidePanel>}
+    {rightPanel === "help" && <SidePanel title={t("shell.help")} onClose={closeRightPanel}><p className={styles.helpText}>{t("help.short")}</p></SidePanel>}
+    {rightPanel === "privacy" && <SidePanel title={t("privacy.title")} onClose={closeRightPanel}><p className={styles.helpText}>{t("privacy.body")}</p><div className={styles.settingRow}><div><strong>{t("privacy.maskTitle")}</strong><p>{t("privacy.maskBody")}</p></div><button className={styles.toggle} aria-pressed={privacy} aria-label={t("privacy.maskTitle")} onClick={() => setPrivacy(v => !v)}><span /></button></div></SidePanel>}
     {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
     {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); }} />}
     {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
@@ -421,6 +422,5 @@ function PersonPanel({ person, relatives, readOnly, onFocus, onStartOwn, onClose
   </Panel>;
 }
 
-function Directory({ tree, privacy, onClose, onFocus }: { tree: FamilyTree; privacy: boolean; onClose: () => void; onFocus: (id: string) => void }) { const [query, setQuery] = useState(""); const people = tree.people.filter(p => displayName(p).toLowerCase().includes(query.toLowerCase())); return <Panel title="All people" onClose={onClose}><label className={styles.search}><Search /><input autoFocus placeholder="Search people" value={query} onChange={e => setQuery(e.target.value)} /></label><div className={styles.peopleList}>{people.map(p => <button key={p.id} onClick={() => onFocus(p.id)}><span className={styles.smallAvatar}>{(p.photoUrl || p.photo) && !privacy ? <img src={p.photoUrl || p.photo} alt="" /> : displayName(p)[0]}</span><span><strong>{displayName(p)}</strong><small>{privacy ? "Private" : p.birthDate || "Date unknown"}</small></span></button>)}{!people.length && <p className={styles.noResults}>No people found.</p>}</div></Panel>; }
 function Panel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <aside className={styles.panel}><div className={styles.panelHead}><h2>{title}</h2><IconButton label="Close panel" onClick={onClose}><X /></IconButton></div>{children}</aside>; }
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <div className={styles.modalBackdrop} onMouseDown={e => e.target === e.currentTarget && onClose()}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className={styles.panelHead}><h2 id="modal-title">{title}</h2><IconButton label="Close dialog" onClick={onClose}><X /></IconButton></div>{children}</section></div>; }

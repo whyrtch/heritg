@@ -207,6 +207,11 @@ export const id = {
 
   // Help (temporary until the Bantuan panel lands)
   "help.short": "Tahan dan geser di area kosong buat pindah posisi, pakai tombol zoom, terus pilih satu orang buat nambahin keluarganya.",
+  // Panels
+  "people.search": "Cari orang",
+  "people.selected": "Dipilih",
+  "people.member": "Anggota keluarga",
+  "people.none": "Nggak ada yang cocok",
 } as const;
 
 export type Messages = { [K in keyof typeof id]: string };

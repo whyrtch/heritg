@@ -1,0 +1,25 @@
+.sidePanel{position:fixed;right:0;top:0;bottom:0;width:390px;max-width:100%;display:flex;flex-direction:column;background:rgba(247,243,236,.96);border-left:1px solid var(--line);box-shadow:-18px 0 46px rgba(62,48,34,.12);z-index:28}
+.head{flex:none;height:68px;display:flex;align-items:center;justify-content:space-between;padding:10px 14px 10px 22px;border-bottom:1px solid var(--line)}
+.head h2{margin:0;font-size:17.28px;font-weight:700}
+.close{width:44px;height:44px;border:0;border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.close:hover{background:var(--recessed)}
+.body{flex:1;min-height:0;overflow:auto;padding:20px}
+@media (max-width:600px){.sidePanel{width:100%}}
+
+.searchBlock{position:sticky;top:-20px;z-index:1;background:var(--paper);padding:4px 0 10px;margin:-4px 0 14px}
+.search{position:relative;display:block}
+.search svg{position:absolute;left:13px;top:13px;color:var(--muted);pointer-events:none}
+.search input{width:100%;height:44px;padding:0 12px 0 40px;border:1px solid transparent;border-radius:11px;background:var(--recessed);font-size:14.72px;color:var(--ink)}
+.list{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:44px 1fr 17px;align-items:center;gap:12px;padding:10px 13px;border-radius:13px;background:var(--base);border:1px solid var(--line);text-align:left;cursor:pointer;color:var(--ink)}
+.row:hover{background:var(--elevated)}
+.row>svg{color:var(--muted)}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;overflow:hidden;font-size:16px;font-weight:700;color:var(--initials);background:var(--unspecified-fill);border:2px solid var(--unspecified-stroke)}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.male{background:var(--male-fill);border-color:var(--male-stroke)}
+.female{background:var(--female-fill);border-color:var(--female-stroke)}
+.unspecified{background:var(--unspecified-fill);border-color:var(--unspecified-stroke)}
+.who{display:grid;min-width:0}
+.who strong{font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who small{font-size:12.16px;color:var(--muted);margin-top:3px}
+.none{margin:12px 0;color:var(--muted);text-align:center}

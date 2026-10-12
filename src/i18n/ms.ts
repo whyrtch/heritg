@@ -183,4 +183,8 @@ export const ms: Partial<Messages> = {
   "relEdit.member": "Ahli keluarga",
   "relEdit.save": "Simpan hubungan",
   "help.short": "Tahan dan seret di ruang kosong untuk bergerak, guna butang zum, kemudian pilih seseorang untuk menambah saudaranya.",
+  "people.search": "Cari orang",
+  "people.selected": "Dipilih",
+  "people.member": "Ahli keluarga",
+  "people.none": "Tiada yang sepadan",
 };

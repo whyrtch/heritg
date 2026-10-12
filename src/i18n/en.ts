@@ -183,4 +183,8 @@ export const en: Partial<Messages> = {
   "relEdit.member": "Family member",
   "relEdit.save": "Save relationship",
   "help.short": "Hold and drag on empty space to move around, use the zoom buttons, then select a person to add their relatives.",
+  "people.search": "Search people",
+  "people.selected": "Selected",
+  "people.member": "Family member",
+  "people.none": "No one matches",
 };
