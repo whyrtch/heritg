@@ -68,9 +68,8 @@ export const id = {
 
   // Privacy panel
   "privacy.title": "Perlindungan privasi",
-  "privacy.body": "Silsilahmu cuma bisa dibuka dan diedit sama akun pemilik. Selama belum kamu bagikan lewat link, orang lain nggak bisa lihat apa pun.",
-  "privacy.maskTitle": "Samarkan tanggal di layar",
-  "privacy.maskBody": "Tanggal lahir dan wafat disamarkan pas kamu lagi lihat silsilah di perangkat ini.",
+  "privacy.maskTitle": "Samarkan tanggal dan foto di daftar",
+  "privacy.maskBody": "Tanggal lahir dan wafat disamarkan di layar, dan foto disembunyikan di daftar Semua orang, di perangkat ini.",
 
   // Relationship statuses, groups and genders
   "rel.father": "Ayah",
@@ -206,7 +205,6 @@ export const id = {
   "relEdit.save": "Simpan hubungan",
 
   // Help (temporary until the Bantuan panel lands)
-  "help.short": "Tahan dan geser di area kosong buat pindah posisi, pakai tombol zoom, terus pilih satu orang buat nambahin keluarganya.",
   // Panels
   "people.search": "Cari orang",
   "people.selected": "Dipilih",
@@ -241,6 +239,31 @@ export const id = {
   "settings.reset": "Reset cache perangkat",
   "settings.resetConfirm": "Reset cache silsilah di perangkat ini? Perubahan yang belum tersinkron ikut hilang. Silsilah yang sudah online tidak dihapus.",
   "settings.note": "Silsilah online tersinkron aman ke akun pemilik. Perubahan saat offline tetap di perangkat ini sampai koneksi kembali.",
+  "help.intro": "Singkat aja, ini cara ngoprek silsilahmu di Heritg.",
+  "help.panTitle": "Geser dan zoom kanvas",
+  "help.panBody": "Seret area kosong buat pindah posisi. Roda mouse menggeser tampilan, dan Ctrl/⌘ + roda mouse buat zoom.",
+  "help.editTitle": "Tambah dan ubah keluarga",
+  "help.editBody": "Pilih satu orang, lalu pakai tombol + atau pensil di dekatnya buat nambah kerabat atau ngubah datanya.",
+  "help.treesTitle": "Atur silsilah",
+  "help.treesBody": "Menu di kiri atas dipakai buat bikin silsilah baru, ganti nama, salin, dan impor.",
+  "help.findTitle": "Cari orang",
+  "help.findBody": "Tombol \"Semua orang\" di atas tombol zoom nampilin daftar semua orang di silsilah. Ketuk salah satu buat loncat ke sana.",
+  "help.viewsTitle": "Tampilan Fokus dan Lengkap",
+  "help.viewsBody": "Chip di kiri bawah ganti tampilan antara Fokus dan Lengkap. Tombol leluhur dan keturunan nambah kedalamannya.",
+  "help.syncTitle": "Sinkron dan offline",
+  "help.syncBody": "Pas offline, perubahanmu disimpan di perangkat ini dan dikirim begitu koneksi balik. Kalau ada bentrok, kamu diminta milih versi mana yang dipakai.",
+  "privacy.cardTitle": "Data pribadimu cuma buat akun pemilik",
+  "privacy.cardBody": "Silsilah pribadi nggak bisa dibuka siapa pun selain pemilik, kecuali kamu sendiri yang bagikan lewat link.",
+  "privacy.ownerTitle": "Hanya pemilik yang bisa akses",
+  "privacy.ownerBody": "Silsilah pribadi cuma bisa dibaca dan diubah sama akun pemilik, dan server memeriksa setiap permintaan.",
+  "privacy.passwordTitle": "Kata sandi dan sesi",
+  "privacy.passwordBody": "Kata sandi disimpan sebagai hash Argon2id, dan sesi login pakai cookie HttpOnly yang nggak bisa dibaca skrip halaman.",
+  "privacy.deviceTitle": "Salinan di perangkat ini",
+  "privacy.deviceBody": "Browser ini nyimpen salinan offline yang TIDAK dienkripsi. Pakai perangkat yang kamu percaya, dan keluar akun kalau perangkatnya dipakai bareng.",
+  "privacy.linkTitle": "Link publik",
+  "privacy.linkBody": "Link publik itu baca-saja. Siapa pun yang pegang link-nya bisa lihat salinan yang dipublikasikan, tapi link bisa dibuat ulang atau dihentikan kapan aja.",
+  "privacy.exportTitle": "File ekspor",
+  "privacy.exportBody": "File .heritg yang diekspor bisa dibaca siapa pun yang memegangnya, jadi simpan baik-baik.",
 } as const;
 
 export type Messages = { [K in keyof typeof id]: string };

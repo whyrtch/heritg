@@ -9,9 +9,10 @@ import { CoachMarks } from "./components/CoachMarks";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
 import { TreeCanvas } from "./canvas/TreeCanvas";
-import { SidePanel } from "./panels/SidePanel";
 import { PeoplePanel } from "./panels/PeoplePanel";
 import { SettingsPanel, type SyncReport } from "./panels/SettingsPanel";
+import { HelpPanel } from "./panels/HelpPanel";
+import { PrivacyPanel } from "./panels/PrivacyPanel";
 import { useDialect } from "./canvas/dialectSetting";
 import { StartDialog } from "./dialogs/StartDialog";
 import { AddRelativeWizard } from "./dialogs/AddRelativeWizard";
@@ -291,8 +292,8 @@ export function Workspace() {
     {editFor && !readOnly && active.people.some(p => p.id === editFor) && <EditProfileDialog key={editFor} tree={active} personId={editFor} onClose={() => setEditFor(null)} onSave={next => { setTree(next); setEditFor(null); }} onDelete={id => { setTree(removePerson(active, id)); setSelected(null); setEditFor(null); }} />}
     {rightPanel === "people" && <PeoplePanel tree={active} selectedId={selected} labels={labels} privacy={privacy && !readOnly} onPick={focusPerson} onClose={closeRightPanel} />}
     {rightPanel === "settings" && <SettingsPanel syncReport={remoteTreeId ? syncReport : null} onFamilyPlus={() => setDeferred("Family+")} onClose={closeRightPanel} />}
-    {rightPanel === "help" && <SidePanel title={t("shell.help")} onClose={closeRightPanel}><p className={styles.helpText}>{t("help.short")}</p></SidePanel>}
-    {rightPanel === "privacy" && <SidePanel title={t("privacy.title")} onClose={closeRightPanel}><p className={styles.helpText}>{t("privacy.body")}</p><div className={styles.settingRow}><div><strong>{t("privacy.maskTitle")}</strong><p>{t("privacy.maskBody")}</p></div><button className={styles.toggle} aria-pressed={privacy} aria-label={t("privacy.maskTitle")} onClick={() => setPrivacy(v => !v)}><span /></button></div></SidePanel>}
+    {rightPanel === "help" && <HelpPanel onClose={closeRightPanel} />}
+    {rightPanel === "privacy" && <PrivacyPanel masked={privacy} onToggleMask={() => setPrivacy(v => !v)} onClose={closeRightPanel} />}
     {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
     {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); }} />}
     {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}

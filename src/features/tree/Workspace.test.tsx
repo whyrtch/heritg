@@ -177,3 +177,26 @@ describe("Workspace settings panel", () => {
     expect(screen.queryByText("Istri")).not.toBeInTheDocument();
   });
 });
+
+describe("Workspace help and privacy panels", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => { cleanup(); setLanguage("id"); window.localStorage.clear(); });
+
+  it("opens Bantuan from its chrome button", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(screen.getByRole("button", { name: "Bantuan" }));
+    expect(within(screen.getByRole("dialog", { name: "Bantuan" })).getAllByRole("heading", { level: 3 })).toHaveLength(6);
+  });
+
+  it("opens Perlindungan privasi from the chip and flips the masking toggle", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(screen.getByRole("button", { name: /Perlindungan privasi/ }));
+    const panel = screen.getByRole("dialog", { name: "Perlindungan privasi" });
+    const toggle = within(panel).getByRole("button", { name: "Samarkan tanggal dan foto di daftar" });
+    const before = toggle.getAttribute("aria-pressed");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).not.toBe(before);
+  });
+});

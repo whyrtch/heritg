@@ -194,22 +194,22 @@
 ### Task 4.3 — Bantuan and Perlindungan privasi
 **Files:** new `src/features/tree/panels/{HelpPanel.tsx, PrivacyPanel.tsx}` and their tests, `Workspace.tsx`, i18n.
 
-- [ ] **Bantuan.** An intro paragraph, then six help items. Each has a 38 icon tile, a title and text, all in our own words:
+- [x] **Bantuan.** An intro paragraph, then six help items. Each has a 38 icon tile, a title and text, all in our own words:
   - pan and zoom the canvas (drag, wheel, Ctrl/⌘ + wheel);
   - add and edit relatives (the + and the pencil next to a person);
   - manage trees (the menu at the top left: new, rename, copy, import);
   - find people (Semua orang);
   - the Fokus and Lengkap views, with the depth buttons;
   - sync and offline: edits wait on this device and are sent once back online.
-- [ ] **Perlindungan privasi.** A green status card, then help items that describe **our** model honestly:
+- [x] **Perlindungan privasi.** A green status card, then help items that describe **our** model honestly:
   - only the owner account can read or change private trees, and the server checks every request;
   - passwords are hashed (Argon2id) and sessions are HTTP-only cookies;
   - this browser keeps an **unencrypted** offline copy, so use a trusted device and sign out on shared ones;
   - a public link is read-only, anyone who has it can view it, and it can be revoked;
   - exported `.heritg` files are readable by anyone who has them.
-- [ ] **Masking toggle.** Keep the existing toggle here, labelled "Samarkan tanggal dan foto di daftar".
-- [ ] **Privacy chip.** The canvas chip keeps "Dilindungi", but its panel must not claim device encryption.
-- [ ] **Tests:**
+- [x] **Masking toggle.** Keep the existing toggle here, labelled "Samarkan tanggal dan foto di daftar".
+- [x] **Privacy chip.** The canvas chip keeps "Dilindungi", but its panel must not claim device encryption.
+- [x] **Tests:**
   - both panels open from their chrome buttons;
   - both open from the sidebar rows (after 4.4);
   - the copy makes no claim that this device is encrypted ("enkripsi" / "encrypted").
