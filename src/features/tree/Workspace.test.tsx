@@ -105,6 +105,14 @@ describe("Workspace with the example tree", () => {
     click.mockRestore();
   });
 
+  it("keeps accessible names on the icon-only top bar buttons", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    for (const name of ["Heritg Family+", "Bagikan silsilah", "Setelan", "Bantuan"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
   it("restores the canonical example even if an old edited copy is cached", async () => {
     const edited = createJokowiDemoTree();
     new LocalTreeCache(window.localStorage).saveWorkspace({ version: 1, activeTreeId: edited.id, trees: [{ ...edited, name: "Edited copy", people: edited.people.slice(0, 1), relationships: [] }] });

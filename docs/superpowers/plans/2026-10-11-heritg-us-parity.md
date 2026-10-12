@@ -534,18 +534,18 @@
 ### Task 7.1 — Mobile layout (< 600 px)
 **Files:** `workspace.module.css`, `panels.module.css`, `dialogs/dialogs.module.css`, `canvas/fanView.module.css`, `Workspace.tsx` (only if markup is needed), and tests where behaviour changes.
 
-- [ ] **Chrome**, following the reference "Mobile (375x812)":
+- [x] **Chrome**, following the reference "Mobile (375x812)":
   - insets 10–12;
   - the title card at 64,10, 44 high, with the name ellipsized;
   - Family+, Bagikan and Setelan as round 44 icon-only buttons, keeping their accessible names;
   - the controls column at right 12 / bottom 12 with gap 8;
   - the privacy chip as a round 44 icon-only button next to Bantuan;
   - the eye button and the view chip at the bottom left.
-- [ ] **Side panels:** fixed to the right, `width: calc(100% - 46px)`, full height.
-- [ ] **Sidebar:** 304 wide.
-- [ ] **Dialogs** (the `Dialog` shell, the conflict dialog, the unlock dialog): full screen, with radius 22 22 0 0, a sticky header and footer, and a scrolling body.
-- [ ] **Kipas page:** content starts below the top bar (top 76) with padding 12 12 64. On desktop it also gets enough bottom padding (≥ 96) that the bottom-left and bottom-right chips never cover the selection row or the notes. The right controls column is hidden in fan view on mobile, as on heritg.us.
-- [ ] **Tests:** keep the existing accessible names. Add a test that the icon-only buttons still have their names.
+- [x] **Side panels:** fixed to the right, `width: calc(100% - 46px)`, full height.
+- [x] **Sidebar:** 304 wide.
+- [x] **Dialogs** (the `Dialog` shell, the conflict dialog, the unlock dialog): full screen, with radius 22 22 0 0, a sticky header and footer, and a scrolling body.
+- [x] **Kipas page:** content starts below the top bar (top 76) with padding 12 12 64. On desktop it also gets enough bottom padding (≥ 96) that the bottom-left and bottom-right chips never cover the selection row or the notes. The right controls column is hidden in fan view on mobile, as on heritg.us.
+- [x] **Tests:** keep the existing accessible names. Add a test that the icon-only buttons still have their names.
 
 ### Task 7.2 — Polish and leftover English
 **Files:** `Workspace.tsx`, `model.ts` (date formatting helpers), `canvas/FanView.tsx`, `canvas/fanLayout.ts`, the components listed below, i18n, and tests.

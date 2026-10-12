@@ -313,7 +313,7 @@ export function Workspace() {
     </div>}
 
     {isEmpty && !readOnly && !controlsHidden && <CoachMarks />}
-    {!controlsHidden && <div className={styles.rightControls} role="group" aria-label={t("shell.controls")}>
+    {!controlsHidden && <div className={`${styles.rightControls} ${view === "fan" ? styles.fanHide : ""}`} role="group" aria-label={t("shell.controls")}>
       <IconButton label={t("shell.allPeople")} onClick={() => setRightPanel("people")}><Users size={19} /></IconButton>
       {view === "full" && <IconButton label={t("shell.branchCount")} disabled><SlidersHorizontal size={18} /></IconButton>}
       {view !== "fan" && <>

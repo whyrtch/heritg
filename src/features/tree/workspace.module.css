@@ -102,6 +102,13 @@
 .coachControls{display:none}
 }
 
+@media(max-width:599px){
+.panel{width:calc(100% - 46px);max-width:none}
+.fanHide{display:none}
+.conflictBackdrop{padding:0;place-items:end stretch}
+.conflictCard{width:100%;height:100dvh;overflow:auto;padding:22px 18px calc(22px + env(safe-area-inset-bottom));border:0;border-radius:22px 22px 0 0}
+}
+
 .legendWrap{position:absolute;left:0;bottom:54px}
 .legendChip{height:36px;display:flex;align-items:center;gap:6px;padding:0 11px;border:0;border-radius:11px;background:var(--base);box-shadow:var(--shadow-soft);color:var(--brand-deep);font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap}
 .legendChip[aria-expanded=true]{background:var(--elevated)}

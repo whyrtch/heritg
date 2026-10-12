@@ -4,7 +4,7 @@
 .close{width:44px;height:44px;border:0;border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
 .close:hover{background:var(--recessed)}
 .body{flex:1;min-height:0;overflow:auto;padding:20px}
-@media (max-width:600px){.sidePanel{width:100%}}
+@media (max-width:599px){.sidePanel{width:calc(100% - 46px);max-width:none}.sidebar{width:304px;max-width:calc(100% - 46px)}}
 
 .searchBlock{position:sticky;top:-20px;z-index:1;background:var(--paper);padding:4px 0 10px;margin:-4px 0 14px}
 .search{position:relative;display:block}

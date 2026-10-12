@@ -35,3 +35,4 @@
 .action:hover{background:var(--recessed)}
 .note{margin:0 0 8px;font-size:14px;line-height:21px;color:var(--subtle)}
 @media (max-width:640px){.content{padding:8px 0 32px}}
+@media (max-width:599px){.page{padding:76px 0 40px}.content{padding:12px 12px 64px}}
