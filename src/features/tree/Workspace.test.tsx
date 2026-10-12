@@ -85,6 +85,24 @@ describe("Workspace with the example tree", () => {
     expect(screen.queryByRole("button", { name: "Tambah anggota keluarga" })).not.toBeInTheDocument();
   });
 
+  it("opens Bagikan / Ekspor for the example tree and downloads a backup", async () => {
+    const create = vi.fn(() => "blob:x"), revoke = vi.fn();
+    Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(screen.getByRole("button", { name: "Bagikan silsilah" }));
+    const panel = screen.getByRole("dialog", { name: "Bagikan / Ekspor silsilah" });
+    expect(within(panel).getByText("Ada 20 orang di silsilah ini")).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: /^Bikin Link Web/ }));
+    expect(within(panel).getByText(/nggak bisa dibagikan/)).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: /^File Backup HERITG/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Download .heritg" }));
+    await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect(create).toHaveBeenCalledTimes(1);
+    click.mockRestore();
+  });
+
   it("restores the canonical example even if an old edited copy is cached", async () => {
     const edited = createJokowiDemoTree();
     new LocalTreeCache(window.localStorage).saveWorkspace({ version: 1, activeTreeId: edited.id, trees: [{ ...edited, name: "Edited copy", people: edited.people.slice(0, 1), relationships: [] }] });

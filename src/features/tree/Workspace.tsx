@@ -13,6 +13,7 @@ import { PeoplePanel } from "./panels/PeoplePanel";
 import { SettingsPanel, type SyncReport } from "./panels/SettingsPanel";
 import { HelpPanel } from "./panels/HelpPanel";
 import { PrivacyPanel } from "./panels/PrivacyPanel";
+import { SharePanel } from "./panels/SharePanel";
 import { TreeSidebar } from "./panels/TreeSidebar";
 import { RenameTreeDialog } from "./panels/RenameTreeDialog";
 import { FamilyPlusDialog } from "./panels/FamilyPlusDialog";
@@ -37,7 +38,6 @@ import { LocalTreeCache } from "./repository/LocalTreeCache";
 import { SyncStatus } from "./components/SyncStatus";
 import { ConflictDialog } from "./components/ConflictDialog";
 import { MigrationDialog } from "./components/MigrationDialog";
-import { PublishDialog } from "./components/PublishDialog";
 import { planMigration } from "./migration/planMigration";
 import { LocalCacheMigrationStateStore, runMigration, uploadNewTree } from "./migration/runMigration";
 import type { MigrationProgress, MigrationRunResult } from "./migration/types";
@@ -67,7 +67,6 @@ export function Workspace() {
   const syncApi = useRef<{ mutate: (tree: FamilyTree) => void } | null>(null);
   const [onlineTree, setOnlineTree] = useState<OnlineTree | null>(null);
   const [onlineEpoch, setOnlineEpoch] = useState(0);
-  const [publishOpen, setPublishOpen] = useState(false);
   const [migrationVisible, setMigrationVisible] = useState(true);
   const [migrationBusy, setMigrationBusy] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState<MigrationProgress | null>(null);
@@ -81,7 +80,7 @@ export function Workspace() {
   const [editFor, setEditFor] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   // Only one right-hand panel is open at a time.
-  const [rightPanel, setRightPanel] = useState<"people" | "settings" | "help" | "privacy" | null>(null);
+  const [rightPanel, setRightPanel] = useState<"people" | "settings" | "help" | "privacy" | "share" | null>(null);
   const [syncReport, setSyncReport] = useState<SyncReport | null>(null);
   const dialect = useDialect();
   const [familyPlus, setFamilyPlus] = useState(false);
@@ -268,7 +267,7 @@ export function Workspace() {
         </div>
         <div className={styles.topActions}>
           <button className={styles.familyPlusButton} aria-label={t("shell.familyPlus")} onClick={() => setFamilyPlus(true)}><CirclePlus size={20} aria-hidden="true" /><span>{t("shell.familyPlus")}</span></button>
-          <button className={styles.shareButton} aria-label={t("shell.shareTree")} disabled={!activeOnlineTree || !publicationRepository} onClick={() => setPublishOpen(true)}><Share2 size={17} aria-hidden="true" /><span>{t("shell.share")}</span></button>
+          <button className={styles.shareButton} aria-label={t("shell.shareTree")} onClick={() => setRightPanel("share")}><Share2 size={17} aria-hidden="true" /><span>{t("shell.share")}</span></button>
           <IconButton label={t("shell.settings")} onClick={() => setRightPanel("settings")}><Settings2 size={19} /></IconButton>
         </div>
       </header>
@@ -328,7 +327,7 @@ export function Workspace() {
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
-    {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onCopy={copyTree} onRename={renameFromSidebar} onDelete={tree => { setSidebar(false); setDeleting(tree); }} onFamilyPlus={() => { setSidebar(false); setFamilyPlus(true); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
+    {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onCopy={copyTree} onRename={renameFromSidebar} onDelete={tree => { setSidebar(false); setDeleting(tree); }} onFamilyPlus={() => { setSidebar(false); setFamilyPlus(true); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
     {renaming && !readOnly && <RenameTreeDialog name={active.name} onClose={() => setRenaming(false)} onSave={name => { setTree({ ...active, name }); setRenaming(false); }} />}
     {deleting && !isDemoTree(deleting) && <DeleteTreeDialog name={deleting.name} people={deleting.people.length} relationships={deleting.relationships.length} synced={Boolean(remoteIdOf(deleting))} onClose={() => setDeleting(null)} onConfirm={() => deleteTree(deleting)} />}
     {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => { setEditFor(panelPerson.id); setPanelFor(null); }} onAdd={() => { setWizardFor(panelPerson.id); setPanelFor(null); }} onDelete={() => { setEditFor(panelPerson.id); setPanelFor(null); }} />}
@@ -339,9 +338,9 @@ export function Workspace() {
     {rightPanel === "settings" && <SettingsPanel syncReport={remoteTreeId ? syncReport : null} onFamilyPlus={() => setFamilyPlus(true)} onClose={closeRightPanel} />}
     {rightPanel === "help" && <HelpPanel onClose={closeRightPanel} />}
     {rightPanel === "privacy" && <PrivacyPanel masked={privacy} onToggleMask={() => setPrivacy(v => !v)} onClose={closeRightPanel} />}
+    {rightPanel === "share" && <SharePanel treeName={active.name} peopleCount={active.people.length} example={readOnly} signedIn={online} publishing={activeOnlineTree && publicationRepository ? { tree: activeOnlineTree, repository: publicationRepository, onTreeChange: tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); } } : null} onDownload={download} onClose={closeRightPanel} />}
     {familyPlus && <FamilyPlusDialog onClose={() => setFamilyPlus(false)} />}
-    {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); }} />}
-    {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
+        {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
   </div>;
 }
 

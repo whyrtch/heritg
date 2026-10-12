@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { CircleHelp, Download, FileUp, Lock, Network, Plus, Search, Sparkles, X } from "lucide-react";
+import { CircleHelp, FileUp, Lock, Network, Plus, Search, Sparkles, X } from "lucide-react";
 import { getLanguage, useT } from "@/i18n";
 import { FlowerMark } from "../components/BrandMark";
 import { isDemoTree } from "../demoData";
@@ -17,7 +17,6 @@ type Props = {
   onSelect: (id: string) => void;
   onCreate: () => void;
   onImport: () => void;
-  onExport: () => void;
   onCopy: (tree: FamilyTree) => void;
   onRename: (tree: FamilyTree) => void;
   onDelete: (tree: FamilyTree) => void;
@@ -27,8 +26,8 @@ type Props = {
   onClose: () => void;
 };
 
-/** The family-tree sidebar: tree cards with a kebab, create/import/export, and the Family+, privacy and help rows. */
-export function TreeSidebar({ trees, activeId, onSelect, onCreate, onImport, onExport, onCopy, onRename, onDelete, onFamilyPlus, onPrivacy, onHelp, onClose }: Props) {
+/** The family-tree sidebar: tree cards with a kebab, create/import, and the Family+, privacy and help rows. */
+export function TreeSidebar({ trees, activeId, onSelect, onCreate, onImport, onCopy, onRename, onDelete, onFamilyPlus, onPrivacy, onHelp, onClose }: Props) {
   const t = useT();
   const [query, setQuery] = useState("");
   const asideRef = useRef<HTMLElement>(null);
@@ -78,7 +77,6 @@ export function TreeSidebar({ trees, activeId, onSelect, onCreate, onImport, onE
       <div className={styles.sidebarActions}>
         <button type="button" className={styles.sidebarPrimary} onClick={onCreate}><Plus size={18} aria-hidden="true" />{t("sidebar.new")}</button>
         <button type="button" className={styles.sidebarSecondary} onClick={onImport}><FileUp size={17} aria-hidden="true" />{t("sidebar.import")}</button>
-        <button type="button" className={styles.sidebarSecondary} onClick={onExport}><Download size={17} aria-hidden="true" />{t("sidebar.export")}</button>
       </div>
       <nav className={styles.sidebarMenu}>
         <button type="button" className={`${styles.menuRow} ${styles.menuPlus}`} onClick={onFamilyPlus}><Sparkles size={17} aria-hidden="true" /><span><strong>{t("shell.familyPlus")}</strong><small>{t("sidebar.plusHint")}</small></span></button>

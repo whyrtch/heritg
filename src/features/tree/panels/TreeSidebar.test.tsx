@@ -10,7 +10,7 @@ const other = newTree("Keluarga Sari");
 const demo = createJokowiDemoTree();
 
 const setup = (overrides: Partial<React.ComponentProps<typeof TreeSidebar>> = {}) => {
-  const props = { trees: [demo, mine, other], activeId: mine.id, onSelect: vi.fn(), onCreate: vi.fn(), onImport: vi.fn(), onExport: vi.fn(), onCopy: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onFamilyPlus: vi.fn(), onPrivacy: vi.fn(), onHelp: vi.fn(), onClose: vi.fn(), ...overrides };
+  const props = { trees: [demo, mine, other], activeId: mine.id, onSelect: vi.fn(), onCreate: vi.fn(), onImport: vi.fn(), onCopy: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onFamilyPlus: vi.fn(), onPrivacy: vi.fn(), onHelp: vi.fn(), onClose: vi.fn(), ...overrides };
   render(<TreeSidebar {...props} />);
   return props;
 };
@@ -79,10 +79,10 @@ describe("TreeSidebar", () => {
     expect(props.onClose).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getAllByRole("button", { name: "Silsilah baru" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Impor file" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ekspor file" }));
+    expect(screen.queryByRole("button", { name: "Ekspor file" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Heritg Family\+/ }));
     fireEvent.click(screen.getByRole("button", { name: /Perlindungan privasi/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Bantuan/ }));
-    for (const key of ["onCreate", "onImport", "onExport", "onFamilyPlus", "onPrivacy", "onHelp"] as const) expect(props[key]).toHaveBeenCalledTimes(1);
+    for (const key of ["onCreate", "onImport", "onFamilyPlus", "onPrivacy", "onHelp"] as const) expect(props[key]).toHaveBeenCalledTimes(1);
   });
 });

@@ -14,7 +14,10 @@ export type PublishDialogProps = {
   appUrl?: string;
 };
 
-export function PublishDialog({ tree, repository, onTreeChange, onClose, appUrl }: PublishDialogProps) {
+export type PublishCardProps = Omit<PublishDialogProps, "onClose">;
+
+/** The publish UI without any modal chrome: embedded in the Bagikan panel and wrapped by PublishDialog. */
+export function PublishCard({ tree, repository, onTreeChange, appUrl }: PublishCardProps) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -47,12 +50,7 @@ export function PublishDialog({ tree, repository, onTreeChange, onClose, appUrl 
 
   const isPublished = tree.visibility === "unlisted" && Boolean(tree.publicId);
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="publish-title" style={backdropStyle}>
-      <section style={dialogStyle}>
-        <header style={headerStyle}>
-          <h2 id="publish-title" style={titleStyle}>Share family tree</h2>
-          <button type="button" aria-label="Close sharing dialog" onClick={onClose} style={quietButtonStyle}><X size={20} aria-hidden="true" /></button>
-        </header>
+    <div>
         <div style={warningStyle}>
           Anyone who has this link can view every published name, date, residence, note, photo and family relationship. The link can be forwarded.
         </div>
@@ -77,6 +75,19 @@ export function PublishDialog({ tree, repository, onTreeChange, onClose, appUrl 
           </>
         )}
         {error && <p role="alert" style={errorStyle}>{error}</p>}
+    </div>
+  );
+}
+
+export function PublishDialog({ onClose, ...card }: PublishDialogProps) {
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="publish-title" style={backdropStyle}>
+      <section style={dialogStyle}>
+        <header style={headerStyle}>
+          <h2 id="publish-title" style={titleStyle}>Share family tree</h2>
+          <button type="button" aria-label="Close sharing dialog" onClick={onClose} style={quietButtonStyle}><X size={20} aria-hidden="true" /></button>
+        </header>
+        <PublishCard {...card} />
       </section>
     </div>
   );

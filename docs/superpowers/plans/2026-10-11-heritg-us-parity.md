@@ -313,19 +313,19 @@
 - `Workspace.tsx`, `TreeSidebar.tsx` (remove "Ekspor file")
 - i18n, `panels.module.css`
 
-- [ ] **Panel layout:**
+- [x] **Panel layout:**
   - A scope card shows the tree name and "Ada N orang di silsilah ini".
   - The heading is "Mau bagikan apa?".
   - A method picker holds four `aria-pressed` cards: Bikin Link Web, File Backup HERITG, File GEDCOM, Simpan Gambar. Each card has a 38 icon tile and a strong label with a small line under it.
   - Below the picker is a details card for the chosen method.
-- [ ] **Link Web card** (for now): the existing `PublishDialog` content, moved into the card.
+- [x] **Link Web card** (for now): the existing `PublishDialog` content, moved into the card.
   - It keeps its accessible names and tests.
   - It is shown only for a synced tree. Otherwise the card says "Link web butuh silsilah yang sudah online di akunmu" (or asks the owner to sign in).
-- [ ] **Backup card:**
+- [x] **Backup card:**
   - It shows a "Paling disarankan" badge and a short explanation.
   - Its button is "Download .heritg". This is the existing `download` with embedded photos.
-- [ ] **GEDCOM and Gambar cards:** placeholders that say "Segera" until 5.2 and 5.3.
-- [ ] **Tests:**
+- [x] **GEDCOM and Gambar cards:** placeholders that say "Segera" until 5.2 and 5.3.
+- [x] **Tests:**
   - the panel opens for a local-only tree;
   - the method switch works;
   - the backup download is called;
