@@ -9,7 +9,7 @@ import { BirthDateField, BirthOrderField, DeathDateField, NameField, ResidenceFi
 import { PhotoPicker } from "./PhotoPicker";
 import styles from "./dialogs.module.css";
 
-const isDirty = (person: Person) => Boolean(person.name.trim() || person.photoUrl || person.birthDate || person.deathDate || person.residence || person.birthOrder);
+const isDirty = (person: Person) => Boolean(person.name.trim() || person.photoUrl || person.photo || person.birthDate || person.deathDate || person.residence || person.birthOrder);
 
 /** "Mulai bikin silsilah": the first person of an empty tree. */
 export function StartDialog({ onClose, onSave }: { onClose: () => void; onSave: (person: Person) => void }) {
@@ -23,7 +23,7 @@ export function StartDialog({ onClose, onSave }: { onClose: () => void; onSave: 
       <button type="submit" form="start-person-form" className={`${styles.button} ${styles.primary}`} disabled={!person.name.trim()}>{t("start.submit")}</button>
     </>}>
       <form id="start-person-form" onSubmit={submit}>
-        <PhotoPicker person={person} gender={person.gender} size={76} layout="card" onChange={photoUrl => setPerson({ ...person, photoUrl })} />
+        <PhotoPicker person={person} gender={person.gender} size={76} layout="card" onChange={patch => setPerson({ ...person, ...patch })} />
         <NameField person={person} onChange={setPerson} big />
         <details className={styles.details}>
           <summary>{t("form.more")}<Plus size={16} aria-hidden="true" /></summary>

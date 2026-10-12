@@ -37,7 +37,7 @@ Next.js 15 (App Router) · React 19 · TypeScript · CSS Modules · Firebase Web
 - **No deploys.** Never run `firebase deploy` or touch production without explicit owner approval in chat.
 - **Never delete local user data** in migration/sync code paths.
 - **Public pages** stay read-only: no buttons, no "edit" wording (`PublicTree.test.tsx` guards this), `noindex, nofollow`.
-- **Photos are HTTPS URLs only**; no uploads.
+- **Photos** are HTTPS links or uploaded thumbnails only (owner decision 2026-10-11): JPEG/WebP, at most 256 px and 48 KB, shrunk in the browser and checked again on the server by magic bytes and size. They are stored in PostgreSQL and never travel inside a tree save.
 - Keep accessible names that tests assert (see the relevant plan's Global Constraints) unless the plan changes them together with the test.
 - Don't commit secrets; `.env.example` holds only public Firebase web identifiers.
 

@@ -49,12 +49,17 @@ function relationshipType(value: unknown): Relationship["type"] {
   throw new Error("relationship type is unsupported.");
 }
 
+/**
+ * A person shows an HTTPS photo link (`photoUrl`) or an uploaded thumbnail (`photo`: a local data URL
+ * waiting to upload, or the server's photo path). Thumbnails never travel inside the tree: they go through
+ * the photo endpoint (see sync/photoQueue.ts), so only a link is serialized here.
+ */
 function resolvePhoto(person: FamilyTree["people"][number]): { photoUrl: string; excluded: boolean } {
   const preferred = person.photoUrl?.trim() ?? "";
-  const legacy = person.photo?.trim() ?? "";
-  const candidate = preferred || legacy;
+  const uploaded = person.photo?.trim() ?? "";
+  const candidate = preferred || uploaded;
   if (!candidate) return { photoUrl: "", excluded: false };
-  if (isLegacyDataUrlPhoto(candidate)) return { photoUrl: "", excluded: true };
+  if (isLegacyDataUrlPhoto(candidate) || isServerPhotoPath(candidate)) return { photoUrl: "", excluded: false };
   const validation = validatePhotoUrl(candidate);
   if (!validation.ok) throw new Error(`Invalid photo URL for person ${person.id}: ${validation.error}`);
   return { photoUrl: candidate, excluded: false };
@@ -76,6 +81,8 @@ export function toOnlineTree(localTree: FamilyTree, options: OnlineTreeOptions =
       residence: stringValue(person.residence, "person.residence"),
       notes: stringValue(person.notes, "person.notes"),
       photoUrl: photo.photoUrl,
+      // Keep the server photo version on optimistic copies (the server ignores it on save).
+      photoVersion: photoVersionOf(person.photo),
       sortOrder,
       updatedAt,
     };
@@ -115,7 +122,18 @@ export function toOnlineTree(localTree: FamilyTree, options: OnlineTreeOptions =
   };
 }
 
-export function fromOnlineTree(value: unknown): FamilyTree {
+/** The owner's photo URL for a person; the version makes it immutable and cacheable. */
+export const ownerPhotoPath = (treeId: string, personId: string, version: string) =>
+  `/api/trees/${encodeURIComponent(treeId)}/people/${encodeURIComponent(personId)}/photo?v=${encodeURIComponent(version)}`;
+export const isServerPhotoPath = (value: string) => value.startsWith("/api/trees/") || value.startsWith("/api/public/");
+function photoVersionOf(photo: string | undefined): string | null {
+  if (!photo || !isServerPhotoPath(photo)) return null;
+  return /[?&]v=([0-9a-f]{16})(?:&|$)/.exec(photo)?.[1] ?? null;
+}
+
+export type FromOnlineOptions = { photoPath?: (personId: string, version: string) => string };
+
+export function fromOnlineTree(value: unknown, options: FromOnlineOptions = {}): FamilyTree {
   if (!isRecord(value)) throw new Error("Online tree must be an object.");
   if (!(READABLE_SCHEMA_VERSIONS as readonly number[]).includes(nonNegativeInteger(value.schemaVersion, "schemaVersion"))) throw new Error("Unsupported online tree schema version.");
   requiredString(value.ownerId, "ownerId");
@@ -136,7 +154,9 @@ export function fromOnlineTree(value: unknown): FamilyTree {
     requiredString(item.updatedAt, "person.updatedAt");
     requiredString(item.id, "person.id");
     // normalizePerson reads both v1 (firstName/lastName) and v2 (name) documents.
-    return { person: { ...normalizePerson(item), photoUrl }, sortOrder };
+    const version = typeof item.photoVersion === "string" && /^[0-9a-f]{16}$/.test(item.photoVersion) ? item.photoVersion : null;
+    const photoPath = options.photoPath ?? ((personId: string, v: string) => ownerPhotoPath(String(value.id), personId, v));
+    return { person: { ...normalizePerson(item), photoUrl, photo: version ? photoPath(String(item.id), version) : "" }, sortOrder };
   });
   const people = peopleWithOrder.sort((a, b) => a.sortOrder - b.sortOrder).map(item => item.person);
   const personIds = new Set(people.map(person => person.id));

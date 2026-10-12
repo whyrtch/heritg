@@ -41,7 +41,7 @@ export function AddRelativeWizard({ tree, anchorId, startMode, onClose, onSubmit
   const [marriedOn, setMarriedOn] = useState("");
   const [coParentId, setCoParentId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const dirty = Boolean(person.name.trim() || person.photoUrl || person.birthDate || person.residence || existingId || marriedOn || coParentId);
+  const dirty = Boolean(person.name.trim() || person.photoUrl || person.photo || person.birthDate || person.residence || existingId || marriedOn || coParentId);
   const { requestClose, confirm } = useDiscardGuard(dirty, onClose);
 
   const info = status ? statusByKey(status) : null;
@@ -97,7 +97,7 @@ export function AddRelativeWizard({ tree, anchorId, startMode, onClose, onSubmit
         <div className={styles.readout}><span>{t("wizard.statusReadout")}</span><strong>{statusLabel}</strong></div>
         {info?.direction === "partner" && <DatePicker label={t("wizard.marriedOn")} value={marriedOn} defaultYear={2000} onChange={setMarriedOn} />}
         {mode === "new" ? <>
-          <PhotoPicker person={person} gender={impliedGender} size={68} layout="row" onChange={photoUrl => setPerson({ ...person, photoUrl })} />
+          <PhotoPicker person={person} gender={impliedGender} size={68} layout="row" onChange={patch => setPerson({ ...person, ...patch })} />
           <NameField person={person} onChange={setPerson} big autoFocus />
           <details className={styles.details}>
             <summary>{t("form.more")}<Plus size={16} aria-hidden="true" /></summary>

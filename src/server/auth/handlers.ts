@@ -54,7 +54,8 @@ export function logout(request: Request, db: Database): Promise<Response> {
   return handle(async () => {
     assertSameOrigin(request);
     await deleteSession(db, sessionToken(request));
-    return json({ ok: true }, { headers: { "Set-Cookie": clearedSessionCookie() } });
+    // Also drop cached private photos so the next person on a shared computer cannot see them.
+    return json({ ok: true }, { headers: { "Set-Cookie": clearedSessionCookie(), "Clear-Site-Data": "\"cache\"" } });
   });
 }
 

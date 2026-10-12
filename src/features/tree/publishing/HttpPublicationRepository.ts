@@ -42,7 +42,7 @@ export class HttpPublicationRepository implements PublicationRepository {
         revision: snapshot.publishedRevision, schemaVersion: snapshot.schemaVersion, createdAt: at, updatedAt: at, publishedRevision: snapshot.publishedRevision,
         people: snapshot.people.map(person => ({ ...person, updatedAt: at })),
         relationships: snapshot.relationships.map(relationship => ({ ...relationship, updatedAt: at })),
-      });
+      }, { photoPath: (personId, version) => `/api/public/${encodeURIComponent(snapshot.publicId)}/photos/${encodeURIComponent(personId)}?v=${encodeURIComponent(version)}` });
       return { publicId: snapshot.publicId, name: snapshot.name, schemaVersion: snapshot.schemaVersion, publishedRevision: snapshot.publishedRevision, publishedAt: at, tree };
     } catch {
       // Unknown, disabled, malformed and offline links are deliberately indistinguishable.

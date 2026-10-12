@@ -11,10 +11,10 @@ const workspace: WorkspaceData = { version: 1, activeTreeId: "tree-a", trees: [
 ] };
 
 describe("planMigration", () => {
-  it("reports exact counts, writes, and excluded legacy data URLs", () => {
+  it("reports exact counts and writes; embedded photos upload afterwards instead of being excluded", () => {
     const plan = planMigration(workspace, { remoteIdsByLocalId: {}, completedTreeIds: [] }, { ownerId: "owner", idFactory: () => "remote" });
-    expect(plan.totals).toEqual({ treeCount: 2, personCount: 2, relationshipCount: 1, excludedPhotoCount: 1, estimatedWrites: 7 });
-    expect(plan.items[0].excludedPhotoIds).toEqual(["person-a"]);
+    expect(plan.totals).toEqual({ treeCount: 2, personCount: 2, relationshipCount: 1, excludedPhotoCount: 0, estimatedWrites: 7 });
+    expect(plan.items[0].excludedPhotoIds).toEqual([]);
   });
 
   it("keeps existing mappings stable and supports selection", () => {

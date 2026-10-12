@@ -112,7 +112,9 @@ export function importTree(raw: string): FamilyTree {
   if (tree.relationships.some(r => r.type !== "parent-child" && r.type !== "partner")) throw new Error("The family tree contains an unknown relationship type.");
   const people = tree.people.map(person => normalizePerson(person as unknown as Record<string, unknown>));
   const relationships = tree.relationships.map(relationship => normalizeRelationship(relationship as unknown as Record<string, unknown>));
-  return { id: uid(), name: `${tree.name} (Impor)`, people, relationships, updatedAt: new Date().toISOString() };
+  // Server photo paths belong to the account that exported the file; keep only embedded images and links.
+  const portable = people.map(person => person.photo?.startsWith("/api/") ? { ...person, photo: "" } : person);
+  return { id: uid(), name: `${tree.name} (Impor)`, people: portable, relationships, updatedAt: new Date().toISOString() };
 }
 
 export type NodeLayout = { id: string; x: number; y: number };

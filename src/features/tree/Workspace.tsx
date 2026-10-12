@@ -19,6 +19,9 @@ import { kinshipLabels } from "./canvas/kinship";
 import { useAuth } from "@/features/auth/useAuth";
 import { OwnerSession } from "@/features/auth/OwnerSession";
 import { HttpTreeRepository } from "./repository/HttpTreeRepository";
+import { HttpPhotoClient, PhotoRequestError } from "./repository/HttpPhotoClient";
+import { PhotoQueue, photoTasks, removedPeople, withPendingPhotos } from "./sync/photoQueue";
+import { prepareUpload, toThumbnailDataUrl } from "./domain/photoData";
 import type { TreeRepository } from "./repository/TreeRepository";
 import type { PublicationRepository } from "./publishing/PublicationRepository";
 import { HttpPublicationRepository } from "./publishing/HttpPublicationRepository";
@@ -49,6 +52,10 @@ export function Workspace() {
   const cache = useMemo(() => typeof window !== "undefined" ? new LocalTreeCache(window.localStorage) : null, []);
   const treeRepository = useMemo(() => online ? new HttpTreeRepository() : null, [online]);
   const publicationRepository = useMemo<PublicationRepository | null>(() => online ? new HttpPublicationRepository() : null, [online]);
+  // Uploaded photos wait in their own queue and go through the photo endpoint (never inside a tree save).
+  const photoQueue = useMemo(() => online && typeof window !== "undefined" ? new PhotoQueue(window.localStorage) : null, [online]);
+  const photoClient = useMemo(() => online ? new HttpPhotoClient() : null, [online]);
+  const [photoTick, setPhotoTick] = useState(0);
   const syncApi = useRef<{ mutate: (tree: FamilyTree) => void } | null>(null);
   const [onlineTree, setOnlineTree] = useState<OnlineTree | null>(null);
   const [onlineEpoch, setOnlineEpoch] = useState(0);
@@ -130,12 +137,54 @@ export function Workspace() {
 
   if (!data || !active) return <div className={styles.loading}><Brand /><span>{t("shell.loading")}</span></div>;
 
-  const setTree = (tree: FamilyTree) => { if (readOnly) return; updateActive(() => tree); syncApi.current?.mutate(tree); };
+  const setTree = (tree: FamilyTree) => {
+    if (readOnly) return;
+    if (photoQueue && remoteTreeId) {
+      photoQueue.forgetPeople(remoteTreeId, removedPeople(active, tree));
+      const queued = photoTasks(active, tree, remoteTreeId).map(task => photoQueue.set(task));
+      if (queued.includes(false)) alert(t("photo.storageFull"));
+      setPhotoTick(value => value + 1);
+    }
+    updateActive(() => tree);
+    syncApi.current?.mutate(tree);
+  };
+  /**
+   * Photos embedded in trees that just went online (migration, import, new tree) upload afterwards,
+   * same person ids. Only trees completed *in this run*: older ones may have changed on another device.
+   * Large images from the first app version are shrunk first so the queue fits in browser storage.
+   */
+  const queueUploadedTreePhotos = async (localTrees: FamilyTree[], completedBefore: Set<string>) => {
+    if (!photoQueue || !cache) return;
+    const { completedTreeIds, remoteIdsByLocalId } = cache.load().migration;
+    let full = false;
+    for (const local of localTrees) {
+      const remoteId = remoteIdsByLocalId[local.id];
+      if (!remoteId || !completedTreeIds.includes(local.id) || completedBefore.has(local.id)) continue;
+      for (const person of local.people) {
+        if (!person.photo?.startsWith("data:image/") || person.photoUrl) continue;
+        try {
+          if (!photoQueue.set({ treeId: remoteId, personId: person.id, action: "upload", dataUrl: await toThumbnailDataUrl(person.photo) })) full = true;
+        } catch { /* an unreadable legacy image stays only in the local copy */ }
+      }
+    }
+    if (full) alert(t("photo.storageFull"));
+    setPhotoTick(value => value + 1);
+  };
+  /** A tree from the server, shown with any photo uploads or removals that are still waiting. */
+  const localFromOnline = (tree: OnlineTree): FamilyTree => {
+    photoQueue?.settle(tree);
+    return { ...withPendingPhotos(fromOnlineTree(tree), photoQueue?.list(tree.id) ?? []), id: active.id };
+  };
   // Signed in: a new or imported tree goes online immediately. If that fails (e.g. offline) it stays on this device and is offered by the migration prompt next time the app opens.
   const addTree = (tree: FamilyTree) => {
     const next = { ...data, trees: [...data.trees, tree], activeTreeId: tree.id };
     setData(next);
-    if (user && treeRepository && cache) void uploadNewTree(next, tree.id, user.uid, treeRepository, new LocalCacheMigrationStateStore(cache)).catch(() => undefined).finally(() => setMigrationVersion(value => value + 1));
+    if (user && treeRepository && cache) {
+      const completedBefore = new Set(cache.load().migration.completedTreeIds);
+      void uploadNewTree(next, tree.id, user.uid, treeRepository, new LocalCacheMigrationStateStore(cache))
+        .then(() => queueUploadedTreePhotos([tree], completedBefore))
+        .catch(() => undefined).finally(() => setMigrationVersion(value => value + 1));
+    }
   };
   const createTree = () => { addTree(newTree(t("tree.newName", { number: data.trees.length + 1 }))); setSelected(null); setPanelFor(null); setFocusRoot(null); setSidebar(false); };
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest("button")) return; drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }; e.currentTarget.setPointerCapture(e.pointerId); };
@@ -151,7 +200,8 @@ export function Workspace() {
   // Clicking the selected person again clears the selection, like heritg.us.
   const selectPerson = (id: string) => { const next = selected === id ? null : id; setSelected(next); setPanelFor(readOnly ? next : null); };
   const switchView = (next: "focus" | "full") => { setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
-  const download = () => { const blob = new Blob([exportTree(active)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
+  // The backup embeds uploaded photos as data, so the file stays complete without this account.
+  const download = async () => { const blob = new Blob([exportTree(await withEmbeddedPhotos(active))], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
   const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { addTree(importTree(await file.text())); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
   const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
   const rename = readOnly ? undefined : () => { const name = prompt(t("shell.renamePrompt"), active.name); if (name?.trim()) setTree({ ...active, name: name.trim() }); };
@@ -226,7 +276,7 @@ export function Workspace() {
         </div>}
       </section>}
     </div>
-    {treeRepository && cache && remoteTreeId && <OnlineTreeBridge key={`${remoteTreeId}-${onlineEpoch}`} treeId={remoteTreeId} repository={treeRepository} cache={cache} apiRef={syncApi} onTree={tree => { setOnlineTree(tree); updateActive(() => ({ ...fromOnlineTree(tree), id: active.id })); }} />}
+    {treeRepository && cache && remoteTreeId && <OnlineTreeBridge key={`${remoteTreeId}-${onlineEpoch}`} treeId={remoteTreeId} repository={treeRepository} cache={cache} apiRef={syncApi} photoQueue={photoQueue} photoClient={photoClient} photoTick={photoTick} onTree={tree => { setOnlineTree(tree); updateActive(() => localFromOnline(tree)); }} />}
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
@@ -240,8 +290,8 @@ export function Workspace() {
     {help && <Panel title={t("shell.help")} onClose={() => setHelp(false)}><p className={styles.helpText}>{t("help.short")}</p></Panel>}
     {privacyPanel && <Panel title={t("privacy.title")} onClose={() => setPrivacyPanel(false)}><p className={styles.helpText}>{t("privacy.body")}</p><div className={styles.settingRow}><div><strong>{t("privacy.maskTitle")}</strong><p>{t("privacy.maskBody")}</p></div><button className={styles.toggle} aria-pressed={privacy} aria-label={t("privacy.maskTitle")} onClick={() => setPrivacy(v => !v)}><span /></button></div></Panel>}
     {deferred && <Modal title={deferred} onClose={() => setDeferred(null)}><div className={styles.deferredIcon}><Sparkles /></div><h3>Coming in the collaboration release</h3><p>Inviting family editors is planned for a future release. You remain the only owner.</p><button className={styles.primary} onClick={() => setDeferred(null)}>Got it</button></Modal>}
-    {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => ({ ...fromOnlineTree(tree), id: active.id })); setOnlineEpoch(value => value + 1); }} />}
-    {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
+    {publishOpen && activeOnlineTree && publicationRepository && <PublishDialog tree={activeOnlineTree} repository={publicationRepository} onClose={() => setPublishOpen(false)} onTreeChange={tree => { cache?.saveOnlineTree(tree); setOnlineTree(tree); updateActive(() => localFromOnline(tree)); setOnlineEpoch(value => value + 1); }} />}
+    {migrationVisible && hasPendingMigration && migrationPlan && treeRepository && cache && <MigrationDialog key={migrationPlan.items.map(item => item.localTreeId).join()} plan={migrationPlan} progress={migrationProgress} result={migrationResult} busy={migrationBusy} onPostpone={() => setMigrationVisible(false)} onMigrate={async treeIds => { setMigrationBusy(true); setMigrationResult(null); const completedBefore = new Set(cache.load().migration.completedTreeIds); try { const result = await runMigration(migrationPlan, treeRepository, new LocalCacheMigrationStateStore(cache), { selectedTreeIds: treeIds, onProgress: setMigrationProgress }); setMigrationResult(result); setMigrationVersion(value => value + 1); void queueUploadedTreePhotos(data.trees, completedBefore); if (!result.failed.length) setMigrationVisible(false); } finally { setMigrationBusy(false); } }} />}
   </div>;
 }
 
@@ -262,14 +312,69 @@ function mergeLocalTree(local: FamilyTree, current: OnlineTree): OnlineTree {
   };
 }
 
-function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree }: {
+/** A copy of the tree with server photos fetched and embedded as data URLs (for a portable backup). */
+async function withEmbeddedPhotos(tree: FamilyTree): Promise<FamilyTree> {
+  const people = await Promise.all(tree.people.map(async person => {
+    if (!person.photo?.startsWith("/api/")) return person;
+    try {
+      const response = await fetch(person.photo, { credentials: "same-origin" });
+      if (!response.ok) return { ...person, photo: "" };
+      const blob = await response.blob();
+      const photo = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); });
+      return { ...person, photo };
+    } catch {
+      return { ...person, photo: "" };
+    }
+  }));
+  return { ...tree, people };
+}
+
+function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree, photoQueue, photoClient, photoTick }: {
   treeId: string;
   repository: TreeRepository;
   cache: LocalTreeCache;
   apiRef: MutableRefObject<{ mutate: (tree: FamilyTree) => void } | null>;
   onTree: (tree: OnlineTree) => void;
+  photoQueue: PhotoQueue | null;
+  photoClient: HttpPhotoClient | null;
+  photoTick: number;
 }) {
   const { state, mutate, retry, resolveConflict } = useTreeSync({ treeId, repository, cache });
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoRun = useRef(false);
+  const reloadAfterPhotos = useRef(false);
+  const [reloadTick, setReloadTick] = useState(0);
+  const noPendingSave = state.pendingOperations.length === 0;
+
+  // Once the tree is saved (so every person exists on the server), send waiting photo uploads and
+  // removals, then reload the tree to pick up the new photo versions. Offline: stop and try again later.
+  useEffect(() => {
+    if (!photoQueue || !photoClient || state.status !== "saved" || !state.tree || photoRun.current) return;
+    // Reload for new photo versions only between saves, so it can never race a save of the user's own edit.
+    if (reloadAfterPhotos.current && noPendingSave) { reloadAfterPhotos.current = false; void retry(); return; }
+    const onServer = new Set(state.tree.people.map(person => person.id));
+    const tasks = photoQueue.list(treeId).filter(task => !task.done && onServer.has(task.personId));
+    if (!tasks.length) return;
+    photoRun.current = true;
+    void (async () => {
+      let changed = false;
+      for (const task of tasks) {
+        try {
+          if (task.action === "upload") photoQueue.markDone(task, await photoClient.upload(treeId, task.personId, await prepareUpload(task.dataUrl)));
+          else { await photoClient.remove(treeId, task.personId); photoQueue.markDone(task); }
+          changed = true;
+        } catch (error) {
+          if (error instanceof PhotoRequestError && error.code === "offline") break;
+          // Rejected or unreadable: drop it so it cannot block the queue, and say so.
+          photoQueue.discard(task);
+          setPhotoError(error instanceof Error ? error.message : "A photo could not be saved.");
+          changed = true;
+        }
+      }
+      photoRun.current = false;
+      if (changed) { reloadAfterPhotos.current = true; setReloadTick(value => value + 1); }
+    })();
+  }, [noPendingSave, photoClient, photoQueue, photoTick, reloadTick, retry, state.status, state.tree, treeId]);
   const onTreeRef = useRef(onTree);
   onTreeRef.current = onTree;
 
@@ -280,7 +385,7 @@ function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree }: {
   useEffect(() => { if (state.tree) onTreeRef.current(state.tree); }, [state.tree]);
 
   return <>
-    <div className={styles.syncStatus}><SyncStatus status={state.status} error={state.error} onRetry={() => void retry()} /></div>
+    <div className={styles.syncStatus}><SyncStatus status={state.status} error={state.error ?? photoError} onRetry={() => { setPhotoError(null); void retry(); }} /></div>
     {state.conflict && <div className={styles.conflictBackdrop}><div className={styles.conflictCard}><ConflictDialog conflict={state.conflict} replaceConfirmationRequired={state.replaceConfirmationRequired} error={state.error} onKeepRemote={() => void resolveConflict("keep-remote")} onReplaceRemote={() => void resolveConflict("replace-remote")} /></div></div>}
   </>;
 }

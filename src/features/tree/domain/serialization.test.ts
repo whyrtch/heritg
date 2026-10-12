@@ -33,12 +33,23 @@ describe("online tree serialization", () => {
     });
   });
 
-  it("excludes legacy embedded photos without losing the local value", () => {
+  it("never sends embedded or server photos inside the tree, and keeps the local value", () => {
     const tree: FamilyTree = { ...newTree(), people: [{ id: "p1", name: "Ada", gender: "female", birthDate: "", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "", photo: "data:image/png;base64,AAAA" }] };
     const online = toOnlineTree(tree, { ownerId: "owner-1" });
-    expect(online.excludedDataUrlPhotoIds).toContain("p1");
+    // Embedded images upload through the photo endpoint (sync/photoQueue.ts), so nothing is excluded.
+    expect(online.excludedDataUrlPhotoIds).toEqual([]);
     expect(online.people[0].photoUrl).toBe("");
     expect(tree.people[0].photo).toMatch(/^data:image/);
+    const server = toOnlineTree({ ...tree, people: [{ ...tree.people[0], photo: "/api/trees/t/people/p1/photo?v=0123456789abcdef" }] }, { ownerId: "owner-1" });
+    expect(server.people[0].photoUrl).toBe("");
+  });
+
+  it("turns the server photo version into a cacheable photo path", () => {
+    const online = toOnlineTree(createJokowiDemoTree(), { ownerId: "owner-1" });
+    const withPhoto = { ...online, people: online.people.map((person, index) => index === 0 ? { ...person, photoVersion: "0123456789abcdef" } : person) };
+    expect(fromOnlineTree(withPhoto).people[0].photo).toBe(`/api/trees/${online.id}/people/${online.people[0].id}/photo?v=0123456789abcdef`);
+    expect(fromOnlineTree(withPhoto, { photoPath: (id, v) => `/x/${id}/${v}` }).people[0].photo).toBe(`/x/${online.people[0].id}/0123456789abcdef`);
+    expect(fromOnlineTree({ ...withPhoto, people: withPhoto.people.map(person => ({ ...person, photoVersion: "../../evil" })) }).people[0].photo).toBe("");
   });
 
   it("reads schema v1 documents and upgrades them to v2", () => {

@@ -15,6 +15,8 @@ export type OnlinePerson = {
   residence: string;
   notes: string;
   photoUrl: string;
+  /** Version of the uploaded thumbnail on the server (read-only for clients), or null/absent when none. */
+  photoVersion?: string | null;
   sortOrder: number;
   updatedAt: string;
 };

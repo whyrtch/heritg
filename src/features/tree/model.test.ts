@@ -97,3 +97,11 @@ describe("relativesOf", () => {
     expect(names(relativesOf(tree, "iriana").partners)).toEqual(["jokowi"]);
   });
 });
+
+describe("portable .heritg photos", () => {
+  it("drops another account's server photo paths on import but keeps embedded images", () => {
+    const file = { version: 2, tree: { id: "x", name: "Foto", updatedAt: "2026-01-01T00:00:00.000Z", people: [{ id: "a", name: "A", photo: "/api/trees/other/people/a/photo?v=0123456789abcdef" }, { id: "b", name: "B", photo: "data:image/webp;base64,AAAA" }], relationships: [] } };
+    const imported = importTree(JSON.stringify(file));
+    expect(imported.people.map(person => person.photo)).toEqual(["", "data:image/webp;base64,AAAA"]);
+  });
+});

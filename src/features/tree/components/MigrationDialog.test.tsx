@@ -8,10 +8,10 @@ const plan = planMigration({ version: 1, activeTreeId: "tree", trees: [{ id: "tr
 
 describe("MigrationDialog", () => {
   afterEach(cleanup);
-  it("shows selection, counts, and excluded photo warning", () => {
+  it("shows selection and counts; embedded photos upload afterwards, so there is no exclusion warning", () => {
     render(<MigrationDialog plan={plan} onMigrate={vi.fn()} onPostpone={vi.fn()} />);
     expect(screen.getByRole("checkbox", { name: /my family/i })).toBeChecked();
-    expect(screen.getByText(/1 embedded photo/i)).toBeVisible();
+    expect(screen.queryByText(/embedded photo/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Migration summary")).toHaveTextContent("1 people");
   });
 

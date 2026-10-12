@@ -47,7 +47,7 @@ export function EditProfileDialog({ tree, personId, onClose, onSave, onDelete }:
       <button type="submit" form="person-editor-form" className={`${styles.button} ${styles.primary}`} disabled={!dirty || !person.name.trim()}>{t("common.save")}</button>
     </>}>
       <form id="person-editor-form" onSubmit={submit}>
-        <PhotoPicker person={person} gender={person.gender} size={76} layout="inline" onChange={photoUrl => setPerson({ ...person, photoUrl })} />
+        <PhotoPicker person={person} gender={person.gender} size={76} layout="inline" onChange={patch => setPerson({ ...person, ...patch })} />
         <section className={styles.card}>
           <h3>{t("edit.biodata")}</h3>
           <NameField person={person} onChange={setPerson} />

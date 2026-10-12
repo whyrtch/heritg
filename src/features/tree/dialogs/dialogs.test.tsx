@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { addRelationship, emptyPerson, newTree, type FamilyTree } from "../model";
 import { AddRelativeWizard } from "./AddRelativeWizard";
@@ -172,5 +172,34 @@ describe("DatePicker", () => {
     expect(within(calendar).getAllByRole("button", { name: /2026$/ })[0]).toHaveAccessibleName("28 September 2026");
     fireEvent.click(screen.getByRole("button", { name: "Bulan berikutnya" }));
     expect((screen.getByRole("combobox", { name: "Pilih bulan" }) as HTMLSelectElement).value).toBe("10");
+  });
+});
+
+describe("PhotoPicker", () => {
+  it("compresses a chosen image into the person's photo and can remove it", async () => {
+    const photoData = await import("../domain/photoData");
+    const compress = vi.spyOn(photoData, "compressPhoto").mockResolvedValue("data:image/webp;base64,AAAA");
+    const { PhotoPicker } = await import("./PhotoPicker");
+    const onChange = vi.fn();
+    const person = { ...emptyPerson(), name: "Budi" };
+    const { rerender } = render(<PhotoPicker person={person} gender="male" size={76} layout="card" onChange={onChange} />);
+    const file = new File([new Uint8Array([1, 2, 3])], "budi.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Pilih foto"), { target: { files: [file] } });
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith({ photo: "data:image/webp;base64,AAAA", photoUrl: "" }));
+    expect(compress).toHaveBeenCalledWith(file);
+    rerender(<PhotoPicker person={{ ...person, photo: "data:image/webp;base64,AAAA" }} gender="male" size={76} layout="card" onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Hapus foto" }));
+    expect(onChange).toHaveBeenLastCalledWith({ photo: "", photoUrl: "" });
+    compress.mockRestore();
+  });
+
+  it("shows why an image could not be used", async () => {
+    const photoData = await import("../domain/photoData");
+    const compress = vi.spyOn(photoData, "compressPhoto").mockRejectedValue(new Error("Choose a JPG, PNG or WebP image."));
+    const { PhotoPicker } = await import("./PhotoPicker");
+    render(<PhotoPicker person={{ ...emptyPerson(), name: "Budi" }} gender="male" size={76} layout="card" onChange={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Pilih foto"), { target: { files: [new File(["x"], "x.gif", { type: "image/gif" })] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Choose a JPG, PNG or WebP image.");
+    compress.mockRestore();
   });
 });

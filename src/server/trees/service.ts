@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { OnlinePerson, OnlineRelationship, OnlineTree } from "@/features/tree/domain/onlineTypes";
 import type { Database } from "../db/client";
-import { people, relationships, trees } from "../db/schema";
+import { people, photos, relationships, trees } from "../db/schema";
 import type { TreeInput } from "./validation";
 
 export class TreeServiceError extends Error {
@@ -21,7 +21,7 @@ type TreeRow = typeof trees.$inferSelect;
 type PersonRow = typeof people.$inferSelect;
 type RelationshipRow = typeof relationships.$inferSelect;
 
-function toOnline(tree: TreeRow, personRows: PersonRow[], relationshipRows: RelationshipRow[]): OnlineTree {
+function toOnline(tree: TreeRow, personRows: PersonRow[], relationshipRows: RelationshipRow[], versions: Map<string, string>): OnlineTree {
   const updatedAt = tree.updatedAt.toISOString();
   return {
     id: tree.id, ownerId: tree.ownerId, name: tree.name, visibility: tree.visibility, publicId: tree.publicId,
@@ -29,7 +29,8 @@ function toOnline(tree: TreeRow, personRows: PersonRow[], relationshipRows: Rela
     publishedRevision: tree.publishedRevision,
     people: personRows.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)).map((row): OnlinePerson => ({
       id: row.id, name: row.name, gender: row.gender, birthDate: row.birthDate, deathDate: row.deathDate, birthOrder: row.birthOrder,
-      residence: row.residence, notes: row.notes, photoUrl: row.photoUrl, sortOrder: row.sortOrder, updatedAt: row.updatedAt.toISOString(),
+      residence: row.residence, notes: row.notes, photoUrl: row.photoUrl, photoVersion: versions.get(`${row.treeId}/${row.id}`) ?? null,
+      sortOrder: row.sortOrder, updatedAt: row.updatedAt.toISOString(),
     })),
     relationships: relationshipRows.map((row): OnlineRelationship => ({
       id: row.id, type: row.type, fromPersonId: row.fromPersonId, toPersonId: row.toPersonId,
@@ -39,27 +40,30 @@ function toOnline(tree: TreeRow, personRows: PersonRow[], relationshipRows: Rela
 }
 
 async function children(db: Database, treeIds: string[]) {
-  if (!treeIds.length) return { personRows: [] as PersonRow[], relationshipRows: [] as RelationshipRow[] };
-  const [personRows, relationshipRows] = await Promise.all([
+  if (!treeIds.length) return { personRows: [] as PersonRow[], relationshipRows: [] as RelationshipRow[], versions: new Map<string, string>() };
+  const [personRows, relationshipRows, photoRows] = await Promise.all([
     db.select().from(people).where(inArray(people.treeId, treeIds)).orderBy(asc(people.sortOrder)),
     db.select().from(relationships).where(inArray(relationships.treeId, treeIds)),
+    db.select({ treeId: photos.treeId, personId: photos.personId, sha256: photos.sha256 }).from(photos).where(inArray(photos.treeId, treeIds)),
   ]);
-  return { personRows, relationshipRows };
+  // Same versioning as src/server/photos/service.ts photoVersion(): the first 16 hex digits of the SHA-256.
+  const versions = new Map(photoRows.map(row => [`${row.treeId}/${row.personId}`, row.sha256.slice(0, 16)]));
+  return { personRows, relationshipRows, versions };
 }
 
 /** Every tree of this owner, newest first. */
 export async function listOwned(db: Database, ownerId: string): Promise<OnlineTree[]> {
   const rows = await db.select().from(trees).where(eq(trees.ownerId, ownerId)).orderBy(desc(trees.updatedAt));
-  const { personRows, relationshipRows } = await children(db, rows.map(row => row.id));
-  return rows.map(row => toOnline(row, personRows.filter(item => item.treeId === row.id), relationshipRows.filter(item => item.treeId === row.id)));
+  const { personRows, relationshipRows, versions } = await children(db, rows.map(row => row.id));
+  return rows.map(row => toOnline(row, personRows.filter(item => item.treeId === row.id), relationshipRows.filter(item => item.treeId === row.id), versions));
 }
 
 /** One tree, only if this owner has it; another owner's tree is indistinguishable from a missing one. */
 export async function loadTree(db: Database, ownerId: string, treeId: string): Promise<OnlineTree> {
   const [row] = await db.select().from(trees).where(and(eq(trees.id, treeId), eq(trees.ownerId, ownerId))).limit(1);
   if (!row) throw NOT_FOUND();
-  const { personRows, relationshipRows } = await children(db, [row.id]);
-  return toOnline(row, personRows, relationshipRows);
+  const { personRows, relationshipRows, versions } = await children(db, [row.id]);
+  return toOnline(row, personRows, relationshipRows, versions);
 }
 
 const personValues = (treeId: string, now: Date) => (item: TreeInput["people"][number]) => ({

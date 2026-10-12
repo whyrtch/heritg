@@ -1,8 +1,8 @@
 import "server-only";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { OnlinePerson, OnlineRelationship, OnlineTree } from "@/features/tree/domain/onlineTypes";
 import type { Database } from "../db/client";
-import { publications, trees } from "../db/schema";
+import { publicPhotos, publications, trees } from "../db/schema";
 import { TreeServiceError, loadTree } from "../trees/service";
 
 export const PUBLIC_ID = /^[A-Za-z0-9_-]{20,128}$/;
@@ -44,6 +44,9 @@ export async function publishTree(db: Database, ownerId: string, treeId: string,
       .returning({ publicId: publications.publicId });
     // Another tree already owns this public id (practically impossible with 128 random bits).
     if (!saved) throw new TreeServiceError("conflict", "This link id is already in use. Try again.");
+    // Photos are copied too, so the public copy keeps working (and stays frozen) whatever happens to the tree.
+    await tx.delete(publicPhotos).where(eq(publicPhotos.publicId, publicId));
+    await tx.execute(sql`insert into public_photos (public_id, person_id, mime, bytes, sha256) select ${publicId}, person_id, mime, bytes, sha256 from photos where tree_id = ${row.id}`);
     await tx.update(trees).set({ visibility: "unlisted", publicId, revision, publishedRevision: revision, updatedAt: now }).where(eq(trees.id, row.id));
   });
   return loadTree(db, ownerId, treeId);

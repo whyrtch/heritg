@@ -169,23 +169,33 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - sync wiring
 
 **Tasks**
-- [ ] Restore the client compression from `stash@{0}` (`compressPhoto`, `encodeWithinLimit`, tests): 256 px WebP/JPEG targeting at most 30 KB, hard limit 48 KB. Drop its Firestore parts.
-- [ ] Server:
+- [x] Restore the client compression from `stash@{0}` (`compressPhoto`, `encodeWithinLimit`, tests): 256 px WebP/JPEG targeting at most 30 KB, hard limit 48 KB. Drop its Firestore parts.
+- [x] Server:
   - accept `image/jpeg` and `image/webp` only, checked by magic bytes and not only `Content-Type`;
   - at most 49,152 bytes;
   - store the bytes plus their sha256;
   - return `photoVersion`.
-- [ ] Serve with `ETag` and `Cache-Control: private, max-age=31536000, immutable` (the URL carries `?v=photoVersion`). Public photos are served only while the link is enabled.
-- [ ] `Person.photoVersion`:
+- [x] Serve with `ETag` and `Cache-Control: private, max-age=31536000, immutable` (the URL carries `?v=photoVersion`). Public photos are served only while the link is enabled.
+- [x] `Person.photoVersion`:
   - `TreeCanvas`, avatars and the public page build `/api/.../photo?v=` URLs;
   - an offline-picked photo stays in `person.photo` (data URL) until the next sync uploads it, then is cleared locally;
   - HTTPS `photoUrl` links keep working.
-- [ ] PhotoPicker:
+- [x] PhotoPicker:
   - "Pilih foto" opens a file chooser (`accept=image/jpeg,image/png,image/webp`), compresses, and previews;
   - "Pakai link" stays as a secondary option;
   - "Hapus foto".
-- [ ] AGENTS.md: replace the "Photos are HTTPS URLs only; no uploads" hard rule with the approved thumbnail rule (owner, 2026-10-11).
-- [ ] Tests: compression, type and size rejection (PNG body, SVG, oversize, a wrong magic number), owner-only reads, public photo only while enabled, cascade on person delete.
+- [x] AGENTS.md: replace the "Photos are HTTPS URLs only; no uploads" hard rule with the approved thumbnail rule (owner, 2026-10-11).
+- [x] Tests: compression, type and size rejection (PNG body, SVG, oversize, a wrong magic number), owner-only reads, public photo only while enabled, cascade on person delete.
+- _Notes:_
+  - _Photos never travel inside a tree save. A picked photo waits in a localStorage queue (`sync/photoQueue.ts`) until its person exists on the server, then uploads; removing one queues a DELETE._
+  - _Queue tasks carry ids. A finished task stays as "done" until a server tree reports exactly its version, so an older request never removes a newer change and photos never flicker._
+  - _After uploads, the tree is reloaded only when no tree save is pending._
+  - _Trees that just went online (migration, import, new tree) queue their embedded photos; old large images are shrunk first. A full browser storage is reported to the user._
+  - _`.heritg` export embeds server photos as data; import drops other accounts' server photo paths._
+  - _Logout sends `Clear-Site-Data: "cache"`._
+  - _Verified in the browser against a temporary local database: a 464 KB PNG became a ~1.4 KB WebP, uploaded, shown from the API, published, and shown on the public page._
+  - _Reviewed by Opus 5.5 (approved after two rounds)._
+- [ ] Follow-up: `pglite-socket` (the no-Docker test server) drops connections after a while under multiple pools. Use Docker Postgres for longer manual sessions.
 
 ## B6 — Firestore → Postgres migration script
 
