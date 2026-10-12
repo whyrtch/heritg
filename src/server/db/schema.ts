@@ -148,11 +148,16 @@ export const publications = pgTable("publications", {
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
   /** { people: OnlinePerson[], relationships: OnlineRelationship[] } without owner data. */
   snapshot: jsonb("snapshot").notNull(),
+  /** What the link shows: { dates, marriageDates, photos }. The snapshot is already filtered; this is kept so the owner's UI can show it. */
+  options: jsonb("options").notNull().default(sql`'{"dates":true,"marriageDates":true,"photos":true}'::jsonb`),
+  /** The link stops working at this moment (checked in SQL on every public read); null = never. */
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
 }, table => [
   uniqueIndex("publications_tree_key").on(table.treeId),
   check("publications_public_id_check", sql`${table.publicId} ~ '^[A-Za-z0-9_-]{20,128}$'`),
   check("publications_name_check", sql`char_length(${table.name}) between 1 and 120`),
   check("publications_revision_check", sql`${table.publishedRevision} >= 0`),
+  check("publications_options_check", sql`jsonb_typeof(${table.options}) = 'object'`),
 ]);
 
 export const publicPhotos = pgTable("public_photos", {

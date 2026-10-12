@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import type { Database } from "../db/client";
 import { PHOTO_MAX_BYTES, photos, publicPhotos, publications, trees } from "../db/schema";
+import { notExpired } from "../publications/service";
 import { TreeServiceError } from "../trees/service";
 
 export { PHOTO_MAX_BYTES };
@@ -58,6 +59,6 @@ export async function deletePhoto(db: Database, ownerId: string, treeId: string,
 export async function getPublicPhoto(db: Database, publicId: string, personId: string): Promise<StoredPhoto | null> {
   const [row] = await db.select({ mime: publicPhotos.mime, bytes: publicPhotos.bytes, sha256: publicPhotos.sha256 }).from(publicPhotos)
     .innerJoin(publications, eq(publications.publicId, publicPhotos.publicId))
-    .where(and(eq(publicPhotos.publicId, publicId), eq(publicPhotos.personId, personId), eq(publications.enabled, true))).limit(1);
+    .where(and(eq(publicPhotos.publicId, publicId), eq(publicPhotos.personId, personId), eq(publications.enabled, true), notExpired())).limit(1);
   return row ?? null;
 }

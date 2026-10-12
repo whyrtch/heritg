@@ -1,8 +1,11 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createSession } from "@/server/auth/session";
 import { createOwner } from "@/server/auth/users";
-import { publications } from "@/server/db/schema";
-import { deletePublication, getPublicSnapshot, putPublication } from "@/server/publications/handlers";
+import { publications, publicPhotos } from "@/server/db/schema";
+import { getPublicPersonPhoto } from "@/server/photos/handlers";
+import { putPhoto } from "@/server/photos/service";
+import { deletePublication, getPublicationSettings, getPublicSnapshot, putPublication } from "@/server/publications/handlers";
 import { postTree, putTree, removeTree } from "@/server/trees/handlers";
 import { createTestDb, type TestDb } from "./db";
 
@@ -113,5 +116,132 @@ describe("publishing", () => {
     await publish(owner.cookie, LINK, 0);
     await removeTree(call("DELETE", "/api/trees/tree-1", { cookie: owner.cookie }), t.db, "tree-1");
     expect((await view(LINK)).status).toBe(404);
+  });
+});
+
+describe("link privacy options and expiry", () => {
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new Array(50).fill(7)]);
+  const withBody = (body: Record<string, unknown>, cookie = owner.cookie, treeId = "tree-1") => putPublication(call("PUT", `/api/trees/${treeId}/publication`, { cookie, body: { publicId: LINK, expectedRevision: 0, ...body } }), t.db, treeId);
+  const settings = (cookie: string) => getPublicationSettings(call("GET", "/api/trees/tree-1/publication", { cookie }), t.db, "tree-1");
+  const photo = (publicId = LINK) => getPublicPersonPhoto(call("GET", `/api/public/${publicId}/photos/budi`), t.db, publicId, "budi");
+  const rich = () => tree({
+    people: [person("budi", { birthDate: "1950-01-02", deathDate: "2020-03-04", birthOrder: 2, photoUrl: "https://example.com/a.jpg", residence: "Solo" }), person("sari")],
+    relationships: [{ id: "r1", type: "partner", fromPersonId: "budi", toPersonId: "sari", kind: null, status: "married", marriedOn: "1975-05-06" }],
+  });
+  beforeEach(async () => {
+    await removeTree(call("DELETE", "/api/trees/tree-1", { cookie: owner.cookie }), t.db, "tree-1");
+    await postTree(call("POST", "/api/trees", { cookie: owner.cookie, body: { tree: rich() } }), t.db);
+    await putPhoto(t.db, owner.id, "tree-1", "budi", JPEG, "image/jpeg");
+  });
+  const snapshotOf = async () => (await (await view(LINK)).json()).snapshot;
+
+  it("keeps everything when no options are sent, and reports the defaults to the owner", async () => {
+    expect((await withBody({})).status).toBe(200);
+    const snapshot = await snapshotOf();
+    expect(snapshot.people[0]).toMatchObject({ birthDate: "1950-01-02", deathDate: "2020-03-04", birthOrder: 2, photoUrl: "https://example.com/a.jpg", photoVersion: expect.any(String) });
+    expect(snapshot.relationships[0].marriedOn).toBe("1975-05-06");
+    expect((await photo()).status).toBe(200);
+    expect((await (await settings(owner.cookie)).json()).publication).toEqual({ options: { dates: true, marriageDates: true, photos: true }, expiresAt: null });
+  });
+
+  it("dates off blanks birth, death and birth order only", async () => {
+    await withBody({ options: { dates: false, marriageDates: true, photos: true } });
+    const snapshot = await snapshotOf();
+    expect(snapshot.people[0]).toMatchObject({ name: "BUDI", residence: "Solo", birthDate: "", deathDate: "", birthOrder: null });
+    expect(snapshot.relationships[0].marriedOn).toBe("1975-05-06");
+  });
+
+  it("marriage dates off blanks marriedOn only", async () => {
+    await withBody({ options: { dates: true, marriageDates: false, photos: true } });
+    const snapshot = await snapshotOf();
+    expect(snapshot.relationships[0]).toMatchObject({ status: "married", marriedOn: "" });
+    expect(snapshot.people[0].birthDate).toBe("1950-01-02");
+  });
+
+  it("photos off removes photo fields and the public photo", async () => {
+    await withBody({ options: { dates: true, marriageDates: true, photos: false } });
+    expect((await snapshotOf()).people[0]).toMatchObject({ photoUrl: "", photoVersion: null });
+    expect((await photo()).status).toBe(404);
+    expect(await t.db.select().from(publicPhotos)).toHaveLength(0);
+    expect((await (await settings(owner.cookie)).json()).publication.options.photos).toBe(false);
+  });
+
+  it("expires in the database clock: expiresInDays sets it, and an expired link looks unknown", async () => {
+    await withBody({ expiresInDays: 7 });
+    const { expiresAt } = (await (await settings(owner.cookie)).json()).publication;
+    const days = (Date.parse(expiresAt) - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(6.9);
+    expect(days).toBeLessThan(7.1);
+    expect((await view(LINK)).status).toBe(200);
+    expect((await photo()).status).toBe(200);
+    await t.db.update(publications).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(publications.publicId, LINK));
+    const unknown = "never_published_link_12345";
+    const [expiredTree, unknownTree, expiredPhoto, unknownPhoto] = [await view(LINK), await view(unknown), await photo(), await photo(unknown)];
+    expect(expiredTree.status).toBe(404);
+    expect(await expiredTree.text()).toBe(await unknownTree.text());
+    expect([...expiredTree.headers].sort()).toEqual([...unknownTree.headers].sort());
+    expect(expiredPhoto.status).toBe(404);
+    expect(await expiredPhoto.text()).toBe(await unknownPhoto.text());
+    expect([...expiredPhoto.headers].sort()).toEqual([...unknownPhoto.headers].sort());
+  });
+
+  const stored = async () => (await (await settings(owner.cookie)).json()).publication;
+  const republish = (publicId: string, expectedRevision: number, body: Record<string, unknown> = {}) => putPublication(call("PUT", "/api/trees/tree-1/publication", { cookie: owner.cookie, body: { publicId, expectedRevision, ...body } }), t.db, "tree-1");
+  const NO_PHOTOS = { dates: false, marriageDates: true, photos: false };
+
+  it("an explicit null expiry clears it", async () => {
+    await withBody({ expiresInDays: 30 });
+    expect((await republish(LINK, 1, { expiresInDays: null })).status).toBe(200);
+    expect((await stored()).expiresAt).toBeNull();
+  });
+
+  it("an update that omits options and expiry keeps the stored ones", async () => {
+    await withBody({ options: NO_PHOTOS, expiresInDays: 30 });
+    const before = await stored();
+    expect((await republish(LINK, 1)).status).toBe(200);
+    expect(await stored()).toEqual(before);
+    const snapshot = await snapshotOf();
+    expect(snapshot.people[0]).toMatchObject({ birthDate: "", photoUrl: "" });
+    expect((await photo()).status).toBe(404);
+  });
+
+  it("regenerating keeps the stored options and expiry unless the request sets them", async () => {
+    await withBody({ options: NO_PHOTOS, expiresInDays: 30 });
+    const before = await stored();
+    expect((await republish(OTHER_LINK, 1)).status).toBe(200);
+    expect(await stored()).toEqual(before);
+    expect((await view(LINK)).status).toBe(404);
+    const snapshot = (await (await view(OTHER_LINK)).json()).snapshot;
+    expect(snapshot.people[0]).toMatchObject({ birthDate: "", photoUrl: "" });
+    expect((await republish(LINK, 2, { options: { dates: true, marriageDates: true, photos: true } })).status).toBe(200);
+    const after = await stored();
+    expect(after.options).toEqual({ dates: true, marriageDates: true, photos: true });
+    expect(after.expiresAt).toBe(before.expiresAt);
+  });
+
+  it("rejects invalid options and days with a 400", async () => {
+    for (const body of [
+      { options: { dates: "yes", marriageDates: true, photos: true } },
+      { options: { dates: true, marriageDates: true } },
+      { options: { dates: true, marriageDates: true, photos: true, extra: true } },
+      { expiresInDays: 5 }, { expiresInDays: "7" }, { expiresInDays: 0 }, { expiresInDays: -1 },
+      { surprise: 1 },
+    ]) expect((await withBody(body)).status, JSON.stringify(body)).toBe(400);
+    expect(await t.db.select().from(publications)).toHaveLength(0);
+  });
+
+  it("another owner cannot set options or read the settings", async () => {
+    expect((await withBody({ options: { dates: false, marriageDates: false, photos: false } }, other.cookie)).status).toBe(404);
+    expect((await withBody({})).status).toBe(200);
+    expect((await settings(other.cookie)).status).toBe(200);
+    expect((await (await settings(other.cookie)).json()).publication).toBeNull();
+    expect((await settings("")).status).toBe(401);
+  });
+
+  it("never exposes the settings on the public response", async () => {
+    await withBody({ expiresInDays: 90 });
+    const text = await (await view(LINK)).text();
+    expect(text).not.toContain("expiresAt");
+    expect(text).not.toContain("marriageDates");
   });
 });

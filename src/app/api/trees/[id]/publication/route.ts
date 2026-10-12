@@ -1,8 +1,12 @@
 import { getDb } from "@/server/db/client";
-import { deletePublication, putPublication } from "@/server/publications/handlers";
+import { deletePublication, getPublicationSettings, putPublication } from "@/server/publications/handlers";
 
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ id: string }> };
+
+export async function GET(request: Request, { params }: Context) {
+  return getPublicationSettings(request, getDb(), (await params).id);
+}
 
 export async function PUT(request: Request, { params }: Context) {
   return putPublication(request, getDb(), (await params).id);

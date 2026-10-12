@@ -394,23 +394,27 @@
 - `tests/api/publications.test.ts`
 - the client `HttpPublicationRepository`, the publishing UI, i18n
 
-- [ ] **Schema:** `publications` gains:
+- [x] **Schema:** `publications` gains:
   - `options jsonb not null default '{}'` (`{ dates, marriageDates, photos }`, all booleans, default true);
   - `expires_at timestamptz null`.
-- [ ] **Publish and update** accept `{ options, expiresInDays: 7 | 30 | 90 | null }`.
-- [ ] **Snapshot:** the server builds the snapshot honouring the options:
+- [x] **Publish and update** accept `{ options, expiresInDays: 7 | 30 | 90 | null }`.
+- [x] **Snapshot:** the server builds the snapshot honouring the options:
   - blank `birthDate`/`deathDate`/`birthOrder` when dates are off;
   - blank `marriedOn` when marriage dates are off;
   - no `public_photos` and blank photo fields when photos are off.
   - Zod validates the options.
-- [ ] **Public reads:**
+- [x] **Public reads:**
   - An expired link returns the same 404 as an unknown one, for both the tree and its photos.
   - The response sets `Cache-Control: no-store`, as now.
-- [ ] **API tests:** each option strips its fields; expiry turns into a 404, including for photos; invalid options give a 400; another owner gets a 404.
-- [ ] **UI:**
+- [x] **API tests:** each option strips its fields; expiry turns into a 404, including for photos; invalid options give a 400; another owner gets a 404.
+- [x] **UI:**
   - The Link Web card gets the "Yang bakal kelihatan di link" `<details>`, holding three checkboxes and a short note.
   - It also gets an expiry select (Tanpa batas / 7 / 30 / 90 hari) and shows "Berlaku sampai <tanggal>".
-- [ ] **Reviewer (Opus 5.5).**
+- [x] **Reviewer (Opus 5.5).** Approved after three rounds.
+- _Fixed during review:_
+  - _A field the owner did not send keeps its stored value, for options and expiry alike, and also across a regenerate._
+  - _Update and regenerate wait until the stored settings have loaded._
+  - _The "Tidak diubah" choice keeps the stored expiry._
 
 ### Task 5.6 — Password-protected link (server, client crypto and viewer; reviewer required)
 **Files:**

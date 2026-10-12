@@ -23,6 +23,17 @@ describe("HttpPublicationRepository", () => {
     expect(JSON.parse(String(fetch.mock.calls[1][1]?.body))).toEqual({ expectedRevision: 4 });
   });
 
+  it("sends the privacy options and expiry, and reads the stored settings", async () => {
+    const info = { options: { dates: false, marriageDates: true, photos: false }, expiresAt: "2026-11-11T00:00:00.000Z" };
+    const fetch = vi.fn((...args: [string, RequestInit?]) => { void args; return reply(200, { tree, publication: info }); });
+    const repository = new HttpPublicationRepository(fetch as typeof globalThis.fetch);
+    await repository.publish(tree, "public_identifier_abcdefghij", { options: info.options, expiresInDays: 30 });
+    expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({ publicId: "public_identifier_abcdefghij", expectedRevision: 4, options: info.options, expiresInDays: 30 });
+    expect(await repository.getPublication(tree)).toEqual(info);
+    expect(fetch.mock.calls[1][0]).toBe("/api/trees/tree-1/publication");
+    expect(fetch.mock.calls[1][1]).toMatchObject({ credentials: "same-origin" });
+  });
+
   it("surfaces the server's message when publishing fails", async () => {
     const repository = new HttpPublicationRepository((() => reply(409, { error: { message: "Reload it before sharing." } })) as typeof globalThis.fetch);
     await expect(repository.publish(tree, "public_identifier_abcdefghij")).rejects.toThrow("Reload it before sharing.");

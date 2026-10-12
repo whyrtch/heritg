@@ -5,10 +5,16 @@ import type { Database } from "../db/client";
 import { ApiProblem, handle, json, readJson } from "../http";
 import { TreeServiceError } from "../trees/service";
 import { ID } from "../trees/validation";
-import { PUBLIC_ID, loadPublicSnapshot, publishTree, unpublishTree } from "./service";
+import { PUBLIC_ID, getPublication, loadPublicSnapshot, publishTree, unpublishTree } from "./service";
 
 const revisionBody = z.object({ expectedRevision: z.number().int().min(0) });
-const publishBody = z.object({ publicId: z.string().regex(PUBLIC_ID, "Invalid link id."), expectedRevision: z.number().int().min(0) });
+const optionsBody = z.object({ dates: z.boolean(), marriageDates: z.boolean(), photos: z.boolean() }).strict();
+const publishBody = z.object({
+  publicId: z.string().regex(PUBLIC_ID, "Invalid link id."),
+  expectedRevision: z.number().int().min(0),
+  options: optionsBody.optional(),
+  expiresInDays: z.union([z.literal(7), z.literal(30), z.literal(90), z.null()]).optional(),
+}).strict();
 const NOT_FOUND = () => new ApiProblem(404, "not-found", "Family tree was not found.");
 
 function treeId(raw: string): string {
@@ -22,12 +28,20 @@ function serviceProblem(error: unknown): never {
   throw error;
 }
 
-/** PUT /api/trees/:id/publication — body { publicId, expectedRevision }; publishes the stored tree. */
+/** GET /api/trees/:id/publication — the owner's link settings { publication: { options, expiresAt } | null }. */
+export const getPublicationSettings = (request: Request, db: Database, id: string) => handle(async () => {
+  const { user } = await requireOwner(request, db);
+  return json({ publication: await getPublication(db, user.id, treeId(id)) });
+});
+
+/** PUT /api/trees/:id/publication — body { publicId, expectedRevision, options?, expiresInDays? }; publishes the stored tree. */
 export const putPublication = (request: Request, db: Database, id: string) => handle(async () => {
   const { user } = await requireOwner(request, db);
   const parsed = publishBody.safeParse(await readJson(request, 1024));
   if (!parsed.success) throw new ApiProblem(400, "invalid", "The link request is not valid.");
-  return json({ tree: await publishTree(db, user.id, treeId(id), parsed.data.publicId, parsed.data.expectedRevision).catch(serviceProblem) });
+  const { publicId, expectedRevision, options, expiresInDays } = parsed.data;
+  const tree = await publishTree(db, user.id, treeId(id), publicId, expectedRevision, { options, expiresInDays }).catch(serviceProblem);
+  return json({ tree, publication: await getPublication(db, user.id, tree.id) });
 });
 
 /** DELETE /api/trees/:id/publication — body { expectedRevision }; revokes the link and makes the tree private. */

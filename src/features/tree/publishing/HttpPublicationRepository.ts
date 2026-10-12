@@ -1,6 +1,6 @@
 import type { OnlineTree } from "../domain/onlineTypes";
 import { fromOnlineTree } from "../domain/serialization";
-import type { PublicationRepository, PublicTreeSnapshot } from "./PublicationRepository";
+import type { PublicationInfo, PublicationRepository, PublicTreeSnapshot, PublishSettings } from "./PublicationRepository";
 
 type Fetch = typeof fetch;
 type PublicSnapshotResponse = {
@@ -20,8 +20,15 @@ export class HttpPublicationRepository implements PublicationRepository {
     return body.tree;
   }
 
-  publish(tree: OnlineTree, publicId: string): Promise<OnlineTree> {
-    return this.tree(`/api/trees/${encodeURIComponent(tree.id)}/publication`, { method: "PUT", body: JSON.stringify({ publicId, expectedRevision: tree.revision }) });
+  publish(tree: OnlineTree, publicId: string, settings?: PublishSettings): Promise<OnlineTree> {
+    return this.tree(`/api/trees/${encodeURIComponent(tree.id)}/publication`, { method: "PUT", body: JSON.stringify({ publicId, expectedRevision: tree.revision, ...(settings ? { options: settings.options, expiresInDays: settings.expiresInDays } : {}) }) });
+  }
+
+  async getPublication(tree: OnlineTree): Promise<PublicationInfo | null> {
+    const response = await this.fetchImpl(`/api/trees/${encodeURIComponent(tree.id)}/publication`, { credentials: "same-origin", headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("The link settings could not be loaded.");
+    const body = await response.json().catch(() => null) as { publication?: PublicationInfo | null } | null;
+    return body?.publication ?? null;
   }
 
   disable(tree: OnlineTree): Promise<OnlineTree> {

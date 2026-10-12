@@ -21,6 +21,7 @@ function repository(events: string[]): PublicationRepository {
       return { ...value, visibility: "private", publicId: null, revision: value.revision + 1, publishedRevision: null };
     }),
     loadPublic: vi.fn(async () => null),
+    getPublication: vi.fn(async () => null),
   };
 }
 
