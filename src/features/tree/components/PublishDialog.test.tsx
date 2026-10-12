@@ -15,7 +15,6 @@ function mockRepository(): PublicationRepository {
   return {
     publish: vi.fn(async (tree, publicId) => ({ ...tree, visibility: "unlisted", publicId, revision: 2, publishedRevision: 2 })),
     disable: vi.fn(async tree => ({ ...tree, visibility: "private", publicId: null, revision: 3, publishedRevision: null })),
-    cleanupDisabled: vi.fn(async () => undefined),
     loadPublic: vi.fn(async () => null),
   };
 }

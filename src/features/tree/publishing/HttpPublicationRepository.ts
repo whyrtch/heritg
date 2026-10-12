@@ -28,9 +28,6 @@ export class HttpPublicationRepository implements PublicationRepository {
     return this.tree(`/api/trees/${encodeURIComponent(tree.id)}/publication`, { method: "DELETE", body: JSON.stringify({ expectedRevision: tree.revision }) });
   }
 
-  /** The server deletes the old snapshot in the same transaction, so there is nothing left to clean up. */
-  async cleanupDisabled(): Promise<void> {}
-
   async loadPublic(publicId: string): Promise<PublicTreeSnapshot | null> {
     try {
       const response = await this.fetchImpl(`/api/public/${encodeURIComponent(publicId)}`, { headers: { Accept: "application/json" }, credentials: "omit" });

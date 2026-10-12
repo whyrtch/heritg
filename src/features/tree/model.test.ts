@@ -30,7 +30,7 @@ describe("family model", () => {
     expect(normalizeRelationship({ id: "r", type: "partner", from: "a", to: "b", kind: "step", status: "ex", marriedOn: "1990-01-01" })).toEqual({ id: "r", type: "partner", from: "a", to: "b", kind: null, status: "ex", marriedOn: "1990-01-01" });
     expect(displayName({ name: "  " })).toBe("Tanpa nama");
   });
-  it("keeps upgraded and imported values inside the Firestore Rules limits", () => {
+  it("keeps upgraded and imported values inside the server limits", () => {
     expect(normalizePerson({ id: "p", firstName: "a".repeat(100), lastName: "b".repeat(30) }).name).toHaveLength(120);
     expect(normalizePerson({ id: "p", firstName: "   ", lastName: "" }).name).toBe("Tanpa nama");
     expect(normalizePerson({ id: "p", name: "X", birthOrder: 150 }).birthOrder).toBeNull();

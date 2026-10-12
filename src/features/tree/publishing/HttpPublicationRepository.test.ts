@@ -21,7 +21,6 @@ describe("HttpPublicationRepository", () => {
     await repository.disable(tree);
     expect(fetch.mock.calls[1][1]).toMatchObject({ method: "DELETE" });
     expect(JSON.parse(String(fetch.mock.calls[1][1]?.body))).toEqual({ expectedRevision: 4 });
-    await expect(repository.cleanupDisabled()).resolves.toBeUndefined();
   });
 
   it("surfaces the server's message when publishing fails", async () => {

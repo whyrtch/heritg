@@ -155,7 +155,7 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
   - _Verified in the browser against a temporary local database: publish, open the link (no buttons, noindex), revoke, then "unavailable"._
   - _Reviewed by Opus 5.5 (approved)._
 - [ ] Follow-up: generate the public id on the server (PUT without an id keeps or creates one; `regenerate: true` for a new one) instead of accepting the owner's id.
-- [ ] Follow-up (B7): remove the now-unreachable "cleanup pending" state and copy from `publishTree.ts` and `PublishDialog`.
+- [x] Follow-up (B7): remove the now-unreachable "cleanup pending" state and copy from `publishTree.ts` and `PublishDialog`.
 - [ ] Follow-up (Phase 5 share panel): disable the share actions while sync is saving or has pending operations.
 
 ## B5 — Photo upload
@@ -230,14 +230,20 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - `README.md`, `AGENTS.md`, `CLAUDE.md`, `.env.example`
 
 **Tasks**
-- [ ] Delete the Firebase code, config and Rules tests. Remove `firebase`, `firebase-tools` and `@firebase/rules-unit-testing`. Replace the `test:rules` script with `test:api`.
-- [ ] Update `AGENTS.md`:
+- [x] Delete the Firebase code, config and Rules tests. Remove `firebase`, `firebase-tools` and `@firebase/rules-unit-testing`. Replace the `test:rules` script with `test:api`.
+- [x] Update `AGENTS.md`:
   - stack;
   - commands;
   - the hard rules: "the security boundary is the server authorization layer + DB constraints; every tree query is scoped by owner; changes to `src/server/**` or `src/app/api/**` need API tests and a reviewer";
   - Postgres setup.
-- [ ] Update the README: setup with Docker Postgres, `db:migrate`, `owner:create`, and the env vars.
-- [ ] Final reviewer pass over the whole backend, then `npm run build`.
+- [x] Update the README: setup with Docker Postgres, `db:migrate`, `owner:create`, and the env vars.
+- [x] Final reviewer pass over the whole backend, then `npm run build`.
+- _Notes:_
+  - _`firebase-admin` and the migration script are kept until the owner has moved their data. Remove them (and the README section) afterwards._
+  - _`.env.example` is unchanged: the owner earlier asked not to commit changes to it. It still lists the Firebase web variables; waiting for the owner's decision._
+  - _The publishing interface was simplified (no cleanup step: the server deletes the snapshot in the same transaction)._
+  - _`drizzle.config.ts` loads `.env.local`, with no localhost fallback._
+  - _Reviewed by Opus 5.5 (approved)._
 
 ## After B7
 

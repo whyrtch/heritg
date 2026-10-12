@@ -20,7 +20,7 @@ The roles in AGENTS.md are defined as Claude Code sub-agents in `.claude/agents/
 
 - **Brainstorming and planning must run on Opus 5.5.** If the main session is not running Opus 5.5, delegate brainstorming, spec writing, and plan writing to the `planner` sub-agent instead of doing it inline. Don't pass a `model` override that changes this.
 - Executing an approved plan: one `implementer` per task. Run independent tasks in parallel with `isolation: "worktree"`; keep tasks that share files sequential.
-- After each implementer finishes: spawn `verifier`. Before declaring a branch ready: spawn `reviewer` (always for `firestore.rules`, `src/features/auth/`, `src/features/tree/{repository,sync,migration,publishing}/`).
+- After each implementer finishes: spawn `verifier`. Before declaring a branch ready: spawn `reviewer` (always for `src/server/**`, `src/app/api/**`, `src/features/auth/`, `src/features/tree/{repository,sync,migration,publishing}/`).
 - Use `explorer` for broad read-only searches instead of reading many files in the main context.
 - Use `designer` for Figma MCP work; it must batch calls because of the Starter-plan limit.
 - Multi-agent `Workflow` scripts are only run when the owner explicitly asks for one; otherwise use the Agent tool with these sub-agents.

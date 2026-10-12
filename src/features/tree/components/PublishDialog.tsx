@@ -18,25 +18,17 @@ export function PublishDialog({ tree, repository, onTreeChange, onClose, appUrl 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [cleanupPending, setCleanupPending] = useState(false);
   const publicUrl = useMemo(() => {
     if (!tree.publicId) return "";
     const base = appUrl ?? (typeof window === "undefined" ? "" : window.location.origin);
     return `${base.replace(/\/$/, "")}/tree/${tree.publicId}`;
   }, [appUrl, tree.publicId]);
 
-  const run = async (label: string, action: () => Promise<OnlineTree | { tree: OnlineTree; cleanupPending: boolean }>) => {
+  const run = async (label: string, action: () => Promise<OnlineTree>) => {
     setBusy(label);
     setError("");
     try {
-      const result = await action();
-      if ("tree" in result) {
-        setCleanupPending(result.cleanupPending);
-        onTreeChange(result.tree);
-      } else {
-        setCleanupPending(false);
-        onTreeChange(result);
-      }
+      onTreeChange(await action());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The publication could not be updated.");
     } finally {
@@ -84,7 +76,6 @@ export function PublishDialog({ tree, repository, onTreeChange, onClose, appUrl 
             </div>
           </>
         )}
-        {cleanupPending && <p role="status" style={metaStyle}>Access is revoked. Background cleanup can be retried later.</p>}
         {error && <p role="alert" style={errorStyle}>{error}</p>}
       </section>
     </div>

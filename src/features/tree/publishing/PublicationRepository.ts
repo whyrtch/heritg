@@ -11,17 +11,13 @@ export type PublicTreeSnapshot = {
 };
 
 export interface PublicationRepository {
-  /** Atomically writes the new snapshot and switches the private tree to it. */
-  publish(tree: OnlineTree, publicId: string, previousPublicId?: string): Promise<OnlineTree>;
-  /** Atomically disables public metadata before making the private tree private. */
-  disable(tree: OnlineTree, publicId: string): Promise<OnlineTree>;
-  /** Best-effort cleanup that runs only after the public metadata is disabled. */
-  cleanupDisabled(publicId: string): Promise<void>;
-  /** Reads only publicTrees/{publicId} and its two public subcollections. */
+  /**
+   * Snapshot the stored tree under `publicId` and switch the tree to it, atomically. A different id than
+   * the current one regenerates the link (the server deletes the old copy in the same transaction).
+   */
+  publish(tree: OnlineTree, publicId: string): Promise<OnlineTree>;
+  /** Revoke the link: the snapshot is deleted and the tree becomes private, atomically. */
+  disable(tree: OnlineTree): Promise<OnlineTree>;
+  /** Read an enabled public snapshot, or null for unknown, revoked and malformed links alike. */
   loadPublic(publicId: string): Promise<PublicTreeSnapshot | null>;
 }
-
-export type PublicationResult = {
-  tree: OnlineTree;
-  cleanupPending: boolean;
-};

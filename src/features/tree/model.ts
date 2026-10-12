@@ -25,7 +25,7 @@ export const initialData = (): WorkspaceData => { const tree = newTree(); return
 
 export const UNNAMED = "Tanpa nama";
 export function displayName(person: Pick<Person, "name">) { return person.name.trim() || UNNAMED; }
-/** Limits shared with firestore.rules (isValidPerson / isValidRelationship). */
+/** Limits shared with the server: src/server/trees/validation.ts and the CHECKs in src/server/db/schema.ts. */
 export const NAME_MAX = 120, RESIDENCE_MAX = 120, BIRTH_ORDER_MAX = 99;
 const ISO_DATE = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
 
