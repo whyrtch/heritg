@@ -9,6 +9,7 @@ import { CoachMarks } from "./components/CoachMarks";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
 import type { OnlineTree } from "./domain/onlineTypes";
 import { TreeCanvas } from "./canvas/TreeCanvas";
+import { FanView } from "./canvas/FanView";
 import { PeoplePanel } from "./panels/PeoplePanel";
 import { SettingsPanel, type SyncReport } from "./panels/SettingsPanel";
 import { HelpPanel } from "./panels/HelpPanel";
@@ -94,7 +95,8 @@ export function Workspace() {
   const [controlsHidden, setControlsHidden] = useState(false);
   const [viewMenu, setViewMenu] = useState(false);
   // heritg.us opens your own trees in Fokus; the example tree starts in Lengkap.
-  const [viewChoice, setView] = useState<"focus" | "full" | null>(null);
+  const [viewChoice, setView] = useState<"focus" | "full" | "fan" | null>(null);
+  const [beforeFan, setBeforeFan] = useState<"focus" | "full">("focus");
   const [focusRoot, setFocusRoot] = useState<string | null>(null);
   const [focusOptions, setFocusOptions] = useState<FocusOptions>(DEFAULT_FOCUS);
   const [legend, setLegend] = useState(false);
@@ -105,9 +107,12 @@ export function Workspace() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
-  const view = viewChoice ?? (active && isDemoTree(active) ? "full" : "focus");
+  // The Kipas page needs someone to centre on: an empty tree falls back to Fokus.
+  const view = viewChoice === "fan" && active && !active.people.length ? "focus" : viewChoice ?? (active && isDemoTree(active) ? "full" : "focus");
   // Fokus explores from the chosen person, else the selected one, else the first person in the tree.
   const rootId = active ? [focusRoot, selected, active.people[0]?.id].find(id => id && active.people.some(person => person.id === id)) ?? null : null;
+  // Kipas centres on the selected person (kept in sync while exploring), else the Fokus root, else the first person.
+  const fanRootId = active ? [selected, rootId].find(id => id && active.people.some(person => person.id === id)) ?? null : null;
   const layout = useMemo(() => !active ? null : view === "focus" && rootId ? layoutFocus(active, rootId, focusOptions) : layoutFull(active), [active, view, rootId, focusOptions]);
   const nodes = layout?.nodes ?? [];
   const labelFrom = selected ?? (view === "focus" ? rootId : null);
@@ -148,7 +153,9 @@ export function Workspace() {
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
-  }, [Boolean(data && active)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [Boolean(data && active), view === "fan"]); // eslint-disable-line react-hooks/exhaustive-deps
+  // An emptied tree has no fan to draw: leave the choice behind so adding a person later starts in Fokus.
+  useEffect(() => { if (viewChoice === "fan" && active && !active.people.length) setView(beforeFan); }, [viewChoice, active, beforeFan]);
 
   if (!data || !active) return <div className={styles.loading}><Brand /><span>{t("shell.loading")}</span></div>;
 
@@ -210,11 +217,13 @@ export function Workspace() {
     const centre = centreOf(id);
     if (centre) setPan(centre);
     setSelected(id); setRightPanel(null);
-    if (readOnly) setPanelFor(id);
+    if (readOnly && view !== "fan") setPanelFor(id);
   };
   // Clicking the selected person again clears the selection, like heritg.us.
   const selectPerson = (id: string) => { const next = selected === id ? null : id; setSelected(next); setPanelFor(readOnly ? next : null); };
-  const switchView = (next: "focus" | "full") => { setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
+  const switchView = (next: "focus" | "full" | "fan") => {
+    if (next === "fan") { if (view !== "fan") setBeforeFan(view); if (!selected || !active.people.some(person => person.id === selected)) setSelected(rootId); }
+    setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
   // The backup embeds uploaded photos as data, so the file stays complete without this account.
   const download = async (password?: string) => { const plain = exportTree(await withEmbeddedPhotos(active)); const blob = new Blob([password ? JSON.stringify(await encryptText(plain, password)) : plain], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
   const downloadImage = async (format: "png" | "svg", options: ImageOptions) => {
@@ -295,20 +304,23 @@ export function Workspace() {
       </header>
     </>}
 
+    {view === "fan" && fanRootId ? <FanView key={active.id} tree={active} rootId={fanRootId} readOnly={readOnly} onRoot={setSelected} onBackToTree={() => switchView(beforeFan)} onAdd={setWizardFor} onEdit={setEditFor} /> :
     <div ref={canvasRef} className={styles.canvas} role="region" aria-label={t("canvas.label", { name: active.name })} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null}>
       {isEmpty || !layout ? <EmptyState onAdd={() => setStarting(true)} onImport={() => importRef.current?.click()} onGuide={() => setRightPanel("help")} /> :
         <div className={styles.stage} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
           <TreeCanvas tree={active} layout={layout} labels={labels} selectedId={selected} actions={!readOnly} genderLabel={gender => t(`gender.${gender}`)} editLabel={name => t("canvas.edit", { name })} addLabel={name => t("canvas.add", { name })} onSelect={selectPerson} onEdit={setEditFor} onAdd={setWizardFor} style={{ position: "absolute", left: -(layout.bounds.maxX - layout.bounds.minX) / 2, top: -(layout.bounds.maxY - layout.bounds.minY) / 2 }} />
         </div>}
-    </div>
+    </div>}
 
     {isEmpty && !readOnly && !controlsHidden && <CoachMarks />}
     {!controlsHidden && <div className={styles.rightControls} role="group" aria-label={t("shell.controls")}>
       <IconButton label={t("shell.allPeople")} onClick={() => setRightPanel("people")}><Users size={19} /></IconButton>
       {view === "full" && <IconButton label={t("shell.branchCount")} disabled><SlidersHorizontal size={18} /></IconButton>}
-      <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => clampZoom(z * 1.15))}><ZoomIn size={18} /></IconButton>
-      <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => clampZoom(z / 1.15))}><ZoomOut size={18} /></IconButton>
-      <IconButton label={t("shell.fit")} onClick={fitLayout} disabled={isEmpty}><Maximize2 size={18} /></IconButton>
+      {view !== "fan" && <>
+        <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => clampZoom(z * 1.15))}><ZoomIn size={18} /></IconButton>
+        <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => clampZoom(z / 1.15))}><ZoomOut size={18} /></IconButton>
+        <IconButton label={t("shell.fit")} onClick={fitLayout} disabled={isEmpty}><Maximize2 size={18} /></IconButton>
+      </>}
     </div>}
     {!controlsHidden && <div className={styles.bottomRight} role="group" aria-label={t("shell.privacyGroup")}>
       <button className={styles.privacyChip} aria-label={t("shell.privacy", { state: t("shell.privacyProtected") })} onClick={() => setRightPanel("privacy")}><ShieldCheck size={18} aria-hidden="true" /><span>{t("shell.privacyProtected")}</span></button>
@@ -326,12 +338,12 @@ export function Workspace() {
             <li><svg width="34" height="10" aria-hidden="true"><path d="M2 5H32" className={`${styles.legendPartner} ${styles.legendDashed}`} /></svg>{t("legend.ex")}</li>
           </ul>}
         </div>}
-        <button className={styles.viewChip} aria-label={view === "focus" && rootId ? t("shell.viewModeFocusValue", { mode: t("shell.viewFocusLong"), name: displayName(active.people.find(person => person.id === rootId)!) }) : t("shell.viewModeValue", { mode: t(view === "focus" ? "shell.viewFocusLong" : "shell.viewFullLong") })} aria-expanded={viewMenu} onClick={() => { setViewMenu(value => !value); setLegend(false); }}><GitBranch size={16} aria-hidden="true" /><span>{t(view === "focus" ? "shell.viewFocus" : "shell.viewFull")}</span><ChevronDown size={15} aria-hidden="true" /></button>
+        <button className={styles.viewChip} aria-label={view === "focus" && rootId ? t("shell.viewModeFocusValue", { mode: t("shell.viewFocusLong"), name: displayName(active.people.find(person => person.id === rootId)!) }) : t("shell.viewModeValue", { mode: t(view === "fan" ? "shell.viewFanLong" : view === "focus" ? "shell.viewFocusLong" : "shell.viewFullLong") })} aria-expanded={viewMenu} onClick={() => { setViewMenu(value => !value); setLegend(false); }}><GitBranch size={16} aria-hidden="true" /><span>{t(view === "focus" ? "shell.viewFocus" : view === "fan" ? "shell.viewFan" : "shell.viewFull")}</span><ChevronDown size={15} aria-hidden="true" /></button>
         {viewMenu && <div className={styles.viewPopover}>
           <div className={styles.segmented} role="group" aria-label={t("shell.viewMode")}>
             <button aria-label={t("shell.viewFocusLong")} aria-pressed={view === "focus"} className={view === "focus" ? styles.segmentActive : ""} disabled={isEmpty} onClick={() => switchView("focus")}>{t("shell.viewFocus")}</button>
             <button aria-label={t("shell.viewFullLong")} aria-pressed={view === "full"} className={view === "full" ? styles.segmentActive : ""} onClick={() => switchView("full")}>{t("shell.viewFull")}</button>
-            <button disabled title={t("view.fanSoon")}>{t("shell.viewFan")}</button>
+            <button aria-label={t("shell.viewFanLong")} aria-pressed={view === "fan"} className={view === "fan" ? styles.segmentActive : ""} disabled={isEmpty} onClick={() => switchView("fan")}>{t("shell.viewFan")}</button>
           </div>
           {view === "focus" && rootId && <div className={styles.focusOptions}>
             <label className={styles.explore}><span>{t("view.exploreFrom")}</span><select value={rootId} onChange={event => { setFocusRoot(event.target.value); setSelected(event.target.value); }}>{active.people.map(person => <option key={person.id} value={person.id}>{displayName(person)}</option>)}</select></label>

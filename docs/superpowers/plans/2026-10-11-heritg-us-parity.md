@@ -495,30 +495,30 @@
 - `Workspace.tsx` (view `"fan"`, enabling the segmented button);
 - i18n.
 
-- [ ] **Layout.** When the view is `"fan"`, the canvas area shows a scrollable page instead of the tree stage. It is centred, max width 1120, padding 16/32/48. The top bar, controls and bottom-left chips stay; the zoom and fit buttons are hidden in this view.
-- [ ] **Navigation.**
+- [x] **Layout.** When the view is `"fan"`, the canvas area shows a scrollable page instead of the tree stage. It is centred, max width 1120, padding 16/32/48. The top bar, controls and bottom-left chips stay; the zoom and fit buttons are hidden in this view.
+- [x] **Navigation.**
   - A "Kembali" secondary button (ArrowLeft) walks back through the people previously explored; it is disabled when there is no history.
   - A text button "Kembali ke pohon" switches back to the previous tree view.
-- [ ] **Heading.** "Kipas" (24/700), with an explanation line in our own words.
-- [ ] **Controls.**
+- [x] **Heading.** "Kipas" (24/700), with an explanation line in our own words.
+- [x] **Controls.**
   - Generasi is a select of 1–5, default 3.
   - Ukuran bagan has three choices: Sesuaikan layar (fit width), 150% and 200%. The chart sits in a scroll region labelled "Orang tua dan anak".
-- [ ] **Chart.**
+- [x] **Chart.**
   - The root fill comes from the gender tokens (`--male-fill` etc.), with stroke `--brand-deep` 4.
   - Known segments are filled by gender with stroke `--line` 1.5. Placeholders use `--base` with a muted label.
   - Name text is 12/500 on rings and 16/500 in the root, wrapped to two lines and clipped.
-- [ ] **Interaction.**
+- [x] **Interaction.**
   - Known segments are `role="button"` with `tabindex=0`, and Enter or Space activates them.
   - Each has an `aria-label` of "<nama> · <relasi>" and a `<title>`.
   - Clicking or activating a segment re-roots on that person and pushes the previous root to the history.
   - Placeholders are not interactive.
-- [ ] **Under the chart.**
+- [x] **Under the chart.**
   - A status line: "Anak belum tercatat" when the root has no children; otherwise "N anak".
   - A selection row for the current person: avatar, name, life dates. When the tree is not read-only it also has "Tambah kerabat" (+) and "Edit profil" (pencil) buttons, which open the existing wizard and editor.
   - Two short notes: how to explore, and that only parent–child links are shown (partners and siblings are not).
-- [ ] **Starting person.** The initial root is the selected person, else the Fokus root, else the first person. Leaving the fan view keeps the selection.
-- [ ] **Public viewer.** It is not changed in this phase.
-- [ ] **Tests:**
+- [x] **Starting person.** The initial root is the selected person, else the Fokus root, else the first person. Leaving the fan view keeps the selection.
+- [x] **Public viewer.** It is not changed in this phase.
+- [x] **Tests:**
   - switching to Kipas renders the heading and the root;
   - clicking a parent segment re-roots, and Kembali returns;
   - the generations select changes the ring count;

@@ -316,3 +316,74 @@ describe("Workspace opening a password-protected backup", () => {
     expect(screen.queryByRole("dialog", { name: "Buka file terkunci" })).not.toBeInTheDocument();
   });
 });
+
+describe("Workspace Kipas view", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(cleanup);
+
+  const openKipas = async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(node("Joko Widodo"));
+    fireEvent.click(screen.getByRole("button", { name: /^Tampilan pohon:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Kipas" }));
+  };
+  const segment = (name: RegExp) => screen.getByRole("button", { name });
+
+  it("shows the heading and the selected person at the centre", async () => {
+    await openKipas();
+    expect(screen.getByRole("heading", { name: "Kipas" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kipas" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("region", { name: "Orang tua dan anak" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Bagan kipas Joko Widodo" })).toBeInTheDocument();
+    expect(document.querySelector('[aria-current="true"][aria-label="Joko Widodo"]')).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Perbesar" })).not.toBeInTheDocument();
+  });
+
+  it("re-roots on a parent segment, and Kembali returns", async () => {
+    await openKipas();
+    const back = screen.getByRole("button", { name: "Kembali" });
+    expect(back).toBeDisabled();
+    fireEvent.click(segment(/^Widjiatno Notomihardjo · Orang tua dari Joko Widodo$/));
+    expect(screen.getByRole("group", { name: "Bagan kipas Widjiatno Notomihardjo" })).toBeInTheDocument();
+    expect(back).toBeEnabled();
+    fireEvent.click(back);
+    expect(screen.getByRole("group", { name: "Bagan kipas Joko Widodo" })).toBeInTheDocument();
+    expect(back).toBeDisabled();
+  });
+
+  it("re-roots with the keyboard", async () => {
+    await openKipas();
+    fireEvent.keyDown(segment(/^Widjiatno Notomihardjo · /), { key: "Enter" });
+    expect(screen.getByRole("group", { name: "Bagan kipas Widjiatno Notomihardjo" })).toBeInTheDocument();
+    fireEvent.keyDown(segment(/^Joko Widodo · Anak dari Widjiatno Notomihardjo$/), { key: " " });
+    expect(screen.getByRole("group", { name: "Bagan kipas Joko Widodo" })).toBeInTheDocument();
+  });
+
+  it("changes the number of rings with Generasi", async () => {
+    await openKipas();
+    const ancestors = () => screen.queryAllByRole("button", { name: / · (Orang tua|Kakek\/Nenek|Leluhur) dari / }).length;
+    const three = ancestors();
+    fireEvent.change(screen.getByLabelText("Generasi"), { target: { value: "1" } });
+    expect(ancestors()).toBeLessThan(three);
+    fireEvent.change(screen.getByLabelText("Generasi"), { target: { value: "5" } });
+    expect(ancestors()).toBeGreaterThanOrEqual(three);
+  });
+
+  it("keeps the example read-only and returns to the previous view", async () => {
+    await openKipas();
+    expect(screen.queryByRole("button", { name: /^Tambah kerabatnya/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Edit profil/ })).not.toBeInTheDocument();
+    expect(screen.getByText("3 anak")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Kembali ke pohon" }));
+    expect(screen.queryByRole("heading", { name: "Kipas" })).not.toBeInTheDocument();
+    expect(node("Joko Widodo")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("re-roots from Semua orang", async () => {
+    await openKipas();
+    fireEvent.click(screen.getByRole("button", { name: "Semua orang" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Semua orang" })).getByRole("button", { name: /Kaesang Pangarep/ }));
+    expect(screen.getByRole("group", { name: "Bagan kipas Kaesang Pangarep" })).toBeInTheDocument();
+  });
+});
