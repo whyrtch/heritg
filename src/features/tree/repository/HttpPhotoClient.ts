@@ -17,7 +17,8 @@ export class HttpPhotoClient {
   private async send(url: string, init: RequestInit): Promise<Response> {
     let response: Response;
     try {
-      response = await this.fetchImpl(url, { ...init, credentials: "same-origin" });
+      // A hung upload counts as offline (the queue retries it later) instead of blocking the queue.
+      response = await this.fetchImpl(url, { ...init, signal: init.signal ?? AbortSignal.timeout(60_000), credentials: "same-origin" });
     } catch {
       throw new PhotoRequestError("offline", "The photo service is unavailable.");
     }

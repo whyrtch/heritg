@@ -3,6 +3,9 @@ import { TreeRepositoryError, type TreeRepository, type TreeRepositoryErrorCode 
 
 type Fetch = typeof fetch;
 
+/** A request that hangs this long is treated as offline, so the save queue behind it can move on. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
 /**
  * TreeRepository backed by our own API (/api/trees). The session cookie authenticates every call.
  * HTTP failures become the TreeRepositoryError codes useTreeSync and the migration already handle:
@@ -15,7 +18,7 @@ export class HttpTreeRepository implements TreeRepository {
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let response: Response;
     try {
-      response = await this.fetchImpl(`${this.base}${path}`, { ...init, credentials: "same-origin", headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers } });
+      response = await this.fetchImpl(`${this.base}${path}`, { ...init, signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS), credentials: "same-origin", headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers } });
     } catch (error) {
       throw new TreeRepositoryError("offline", "The family tree service is unavailable.", { cause: error });
     }

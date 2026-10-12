@@ -245,6 +245,11 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
   - _`drizzle.config.ts` loads `.env.local`, with no localhost fallback._
   - _Reviewed by Opus 5.5 (approved)._
 
+## Sync fix (after B7)
+
+- [x] Serialize tree saves through one queue per tree (`drain` in `useTreeSync`). Edits, Retry, the online event and operations left from a previous visit all go through it. A conflict shows the newest local edit. A lost acknowledgement is only accepted when the content is identical. Tree requests time out after 30 s and photo requests after 60 s.
+- _Follow-up (reviewer, medium):_ a save the server rejects (`invalid-data` or a lasting `not-found`) stays first in the queue and blocks later edits. The edits are safe in the cache. Offer the conflict-style choice (back up and drop, or replace) and show a distinct "failed" status instead of "saving".
+
 ## After B7
 
 Continue parity phases 4–7 on the new backend:
