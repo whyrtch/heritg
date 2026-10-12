@@ -240,7 +240,7 @@ Spec: `docs/superpowers/specs/2026-10-11-own-backend-design.md`. Branch: `feat/h
 - [x] Final reviewer pass over the whole backend, then `npm run build`.
 - _Notes:_
   - _`firebase-admin` and the migration script are kept until the owner has moved their data. Remove them (and the README section) afterwards._
-  - _`.env.example` is unchanged: the owner earlier asked not to commit changes to it. It still lists the Firebase web variables; waiting for the owner's decision._
+  - _`.env.example` was updated on 2026-10-12 with owner approval. It now lists the backend variables, with the one-time Firebase import variables commented out._
   - _The publishing interface was simplified (no cleanup step: the server deletes the snapshot in the same transaction)._
   - _`drizzle.config.ts` loads `.env.local`, with no localhost fallback._
   - _Reviewed by Opus 5.5 (approved)._
