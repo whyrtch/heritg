@@ -1,0 +1,231 @@
+# heritg.us Parity Reference
+
+> Measured from https://heritg.us on 2026-10-11 (desktop viewport 907x914, root font 16px) by inspecting computed styles, SVG attributes and visible copy. This is a measurement reference for re-implementing the look and flow, not copied source code. Sample data used during capture was fictional (Budi Santoso family).
+
+
+Stack: Vite PWA (index-*.js, registerSW.js), lang="id". Font: "Assistant", system-ui fallback.
+
+## Tokens (:root)
+--add #7e9b63; --base #fffdf8; --brand #a8875b; --brand-deep #795d3f; --canvas #f7f3ec; --danger #b95c4b;
+--elevated #fffaf2; --family-plus #73558a; --family-plus-deep #4d345b; --family-plus-hover #422a50;
+--family-plus-line #d8cddd; --family-plus-soft #f4eff6; --line #d8ccbc; --recessed #ede5d8;
+--shadow 0 18px 46px rgba(62,48,34,.13); --shadow-soft 0 8px 24px rgba(62,48,34,.09); --subtle #796f63;
+--text #302b25; --tree-canvas #f5f5f3. Privacy green text rgb(82,112,63) = #52703f.
+
+## Type scale (rem → px)
+.92rem 14.72 (buttons 600), .72rem 11.52 (meta, chip 700), .84rem 13.44 (coach 600, lh 16.8), .76rem 12.16 (coach small),
+.8rem 12.8 (menu strong 700), .68rem 10.88 (menu small, lh 13.6), .91rem 14.56 (tree list strong 700), .74rem 11.84 (tree list meta),
+1.55rem 24.8 (sidebar h1 700, ls -.015em), .79rem 12.64 (sidebar h2 700, ls .06em), .82rem 13.12 (view-mode chip 600).
+
+## Main screen (empty tree)
+- Body/main bg #f5f5f3 (tree-canvas). Text #302b25.
+- Menu button: abs top18 left22, 44x44 round, bg rgba(255,253,248,.94), 1px #d8ccbc, shadow-soft. Icon 19px (3 lines).
+- Header: abs top18 left78 right22, flex gap14, height 58.
+  - Title card: padding 8px 14px, bg rgba(255,253,248,.9), border 1px rgba(216,204,188,.88), radius 12, shadow-soft.
+    Row: title button (16px, radius 5) + pencil icon button 30x30 round (margin -5 -8 -5 0). Meta "0 orang · 0 hubungan" 11.52px #796f63 margin-top 2.
+  - Right actions flex gap 8 (margin-left auto):
+    - Family+ 44h, padding 0 14, gap 8, radius 12, linear-gradient(145deg,#73558a,#4d345b), border 1px #4d345b,
+      shadow 0 7px 20px rgba(77,52,91,.24), inset 0 1px 0 rgba(255,255,255,.16); icon 20 (circle-plus), text 14.72/600 white.
+    - Bagikan 44h, padding 0 14, gap 8, radius 12, bg #fffdf8, border 1px #d8ccbc, no shadow; icon share 17, text 14.72/600.
+    - Setelan round 44 icon button (sliders icon 19).
+- Canvas controls [Kontrol layar]: abs right18 bottom18, column gap10: Semua orang (users), Jumlah turunan cabang (disabled .45 when empty),
+  Zoom In, Zoom Out, Pas ke layar (expand arrows; disabled .45 when empty). All 44 round icon buttons, icons 18-19.
+- Bottom-right group [Perlindungan privasi · Bantuan]: right80 bottom18, gap8: privacy chip 44h padding 0 12 gap 6 radius 12 bg rgba(255,253,248,.94)
+  border #d8ccbc shadow-soft, shield-check icon 18 + "Dilindungi" 11.52/700 color #52703f; Bantuan round 44 (circle-help).
+- Bottom-left group: left18 bottom18 gap 8: Sembunyikan kontrol (eye icon) round 44; "Tampilan pohon" chip 44h padding 0 12 gap 8 radius 12
+  bg #fffdf8 NO border, shadow-soft, color #795d3f: git-branch icon 16 + "Lengkap" 13.12/600 + chevron-down 15.
+- Coach marks (color #795d3f, 600 weight, number badge 22x22 round 1px border 900 weight 11.52px, margin-right 6):
+  1 "Buka, impor, dan atur daftar silsilahmu" (13.44px) below menu with curved arrow pointing up-left to menu (svg 64x78).
+  2 "Bagikan · Setelan" right side under actions, arrow up-right.
+  3 "Pilih keluarga terfokus atau seluruh silsilah" (12.16px) above bottom-left, arrow down-left.
+  4 "Cari orang · saring generasi · zoom · pas ke layar" (12.16px) above controls, arrow down-right.
+- Empty state centered (390 wide): logo img (flower mark, brown square radius 22%, 40px in sidebar / larger here) + "Heritg" wordmark brown;
+  h "Mulai dari siapa aja bebas" (bold ~1.3rem); p "Pilih siapa aja buat dimasukin duluan: dirimu sendiri, ortu, kakek-nenek, bebas! Nanti bisa dilanjutin ke atas atau ke bawah."
+  Options (icon + strong + small): "Tambah anggota keluarga / Mulai dari diri sendiri atau leluhur"; "Buka atau impor file silsilah / Pilih silsilah lain atau masukkan file backup .heritg" (hover bg recessed);
+  "Panduan pemakaian / Cek cara geser layar, zoom, dan nambahin orang di silsilah"; hint "✋ Geser (drag) atau scroll untuk pindah posisi di layar" (hand icon).
+
+## Sidebar (aside[Silsilah keluarga], fixed left, 304 wide, slides in)
+- padding 22 18 18; bg #f7f3ec + radial-gradient(circle at 20% 3%, rgba(168,135,91,.12), transparent); shadow --shadow.
+- Head: logo img 40x40 radius 22% shadow 0 6px 16px rgba(62,48,34,.16); "Heritg" h1 24.8/700 ls -.015em; "Arsip keluarga pribadi" 10.88 ls .06em #796f63; close X round 44 (transparent border).
+- Section row: "Silsilah keluarga" h2 12.64/700 ls .06em + "Silsilah baru" plus round button.
+- Search: input 42h radius 12 bg rgba(255,253,248,.78) border #d8ccbc padding-left 39, search icon 17 #796f63 at left 13.
+- Tree item card: grid, padding 7 7 7 9, radius 14, bg #fffdf8, border #d8ccbc, shadow 0 7px 18px rgba(62,48,34,.08):
+  avatar 38 round bg #ede5d8 color #795d3f (tree icon 19) + strong 14.56/700 + "0 orang · 11 Okt" 11.84 #796f63; kebab "Atur Silsilah" round 44.
+- Buttons: "Silsilah baru" 44h radius 12 bg #795d3f white 14.72/600 shadow 0 5px 13px rgba(121,93,63,.2) icon plus; "Impor file" 44h radius 12 bg #fffdf8 border (upload icon).
+- Menu list (border-top, padding-top 10, gap 2), rows 50-60h radius 11 padding 7 8 gap 11, icon 17 #795d3f, strong 12.8/700, small 10.88 lh 13.6 #796f63:
+  Heritg Family+ (gradient purple bg, white, "Paket dan perangkat terhubung"); Perlindungan privasi ("Terenkripsi di perangkat ini", lock icon);
+  Bantuan ("Cek cara geser layar, zoom, dan nambahin orang di silsilah"); Laporin bug ("Kirim detail error ke kita lewat WhatsApp atau Telegram", bug icon).
+
+## Dialog (Mulai bikin silsilah / add person)
+- 620 wide, radius 22, bg #f7f3ec, border 1px rgba(216,204,188,.9), shadow 0 26px 70px rgba(48,43,37,.25).
+- Head title + X; photo card (gradient recessed box with avatar circle initial + "Pilih foto" pill); "Nama" field; collapsible "Tambah info (opsional)" (+);
+  footer Batal (outline) + "Tambah orang" (#795d3f, 44h radius 12, shadow 0 5px 13px rgba(121,93,63,.2)).
+- Discard confirm "Batal simpan?" small dialog: text "Biodata dan perubahan silsilah yang baru kamu ketik belum disimpan nih." buttons Batal / "Buang editan" (danger #b95c4b).
+
+## Tree canvas (SVG, not cards)
+- Nodes: circle r=32 + inner r=27 (photo area); initial 24/700 #302b25; name 14/700 at y=56; relation sub-label 13/500 #796f63 at y=77.
+- Gender palette: male fill #e2ebf2 stroke #56738d sw1; female #f4e4e8 / #985c6d sw1; unspecified #ede5d8 / #9c825f (sw2 seen on selected).
+- Grid: 260px column, 260px row. Lines: parent-child stroke #9c825f 2px round caps, orthogonal (drop 8px under parents' labels, bus line, down to child top r).
+  Partner line stroke #b47c76 2px straight between circles.
+- Selected node: two 28px action dots left of node (hit 44): edit = #a8875b with pencil, add = #7e9b63 (--add) with plus; shadow 0 3px 9px rgba(62,48,34,.2).
+- Relation labels relative to selected: Orang terpilih, Ayah, Ibu, Istri, Suami, Putra, Putri, Cucu laki-laki, ...
+- Invisible hit buttons: aria-label "<Name>, <Gender label>" (gender labels: Laki-laki, Perempuan, Nggak disebutin), aria-pressed when selected.
+
+## View modes (bottom-left chip "Tampilan pohon")
+- Popover 304w radius 16 bg #fffdf8 padding 10: segmented control (bg #ede5d8 radius 10 pad 3; active seg bg #fffdf8 radius 8 shadow) Fokus | Lengkap | Kipas;
+  "Jelajahi keluarga dari" person picker (avatar + name); "Menampilkan 6 dari 7 orang"; checkbox "Tampilkan saudara" (+ hint);
+  footer buttons "↑ Leluhur lainnya" / "↓ Keturunan lainnya".
+- Fokus: selected + parents + partner(s) + children. Lengkap: whole tree, extra "Hubungan" chip above (legend). Kipas: separate page (Kembali / Kembali ke pohon,
+  "Kipas" h, "Leluhur di atas, anak di bawah. Ketuk siapa pun untuk melanjutkan penjelajahan.", selects Generasi + Ukuran bagan, semicircle fan, "Belum tercatat" slots, list below).
+
+## Add-relative wizard ("Tambah kerabatnya <Name>", 620 dialog, stepper 1-2-3 "Langkah N dari 3")
+1. "Mau nambahinnya gimana?" cards: Bikin orang baru / Sambungin ke kerabat yang udah ada (disabled + note when nobody else).
+2. "Pilih status hubungan" / "Orang ini siapanya <Name>?" groups (2-col buttons 53h radius 12, round icon 31 bg #ede5d8, arrow up/down/heart):
+   Paling sering: Ayah, Ibu, Anak laki-laki, Anak perempuan, Istri, Suami.
+   Orang tua & Wali: Ayah tiri, Ibu tiri, Ayah angkat, Ibu angkat, Ayah asuh, Ibu asuh, Wali.
+   Suami/Istri & Pasangan: Pasangan, Mantan pasangan, Mantan suami, Mantan istri.
+   Anak: Anak tiri laki-laki/perempuan, Anak angkat laki-laki/perempuan, Anak asuh laki-laki/perempuan, Anak asuhan (Wali).
+   (likely more groups below: Saudara...). Footer Kembali / Batal.
+3. "Profil <Relasi> baru": Status Hubungan readout; Tanggal nikah (opsional) for spouses; photo row (68 avatar tinted by implied gender) + Pilih foto;
+   Nama (56h input, 17.28px); details "Tambah info (opsional)": Tanggal lahir, Domisili saat ini. Submit "Tambah anggota keluarga" (green #7e9b63).
+- Stepper: dots 25 round, done/current bg #795d3f white 11.52/700; connectors 64x2 (#795d3f done / #d8ccbc todo); pending dot bg #ede5d8 border #d8ccbc.
+
+## Edit profile ("Edit profil <Name>", 780 dialog)
+- Avatar 76 + Pilih foto. Section cards (bg #fffdf8, border, radius 15, pad 16): "Biodata lengkap": Nama; Gender select (Nggak disebutin/Perempuan/Laki-laki);
+  Domisili saat ini; Tanggal lahir (custom date button); Anak ke-berapa (number + hint); Tanggal wafat.
+  "Catatan tambahan" textarea. "Keluarga" + "Sambungin anggota keluarga" button; rows (avatar 44, name 16/700, relation 12): edit tanggal nikah, edit hubungan, hapus hubungan (danger).
+- Inputs inside cards: bg #ede5d8, transparent border, radius 11, pad 10 12, 14.72px.
+
+## Side panels (390 wide, full height): Semua orang (search + list with relation labels), Setelan, Bagikan / Ekspor, Bantuan, Perlindungan privasi.
+- Setelan: AKSES FAMILY+ (Belum aktif, Otomatis sinkron, Aktifkan), AKUN (optional login; data stays on device), BAHASA APLIKASI (ID/EN/MS),
+  SEBUTAN STATUS KELUARGA (EN/ID/MS/Jawa Yogyakarta/Jawa ...).
+- Bagikan / Ekspor: Bikin Link Web (password-protected, encrypted), File Backup HERITG (recommended), File GEDCOM, Simpan Gambar (PNG/SVG).
+- Family+ dialog 620: benefits list (sync across devices, longer share links, encrypted backup, everyday features stay free).
+- Bantuan: sections Geser-geser kanvas / Nambah dan ngedit keluarga / Ngatur silsilah / Nyari orang dengan cepat ...
+- Perlindungan privasi: AES-GCM local encryption explainer; local storage, no account needed.
+
+## Empty state (measured on a fresh empty tree)
+- A brand-new empty tree auto-opens the "Mulai bikin silsilah" dialog.
+- Column 390 wide, centered (text-align center): logo row (img 44 radius 22% shadow 0 6px 16px rgba(62,48,34,.16) + "Heritg" 24.8/700 ls -.03em #795d3f, gap 10, mb 20);
+  h3 21.6/700 mb 6; p 13.76 lh 19.95 #796f63 margin 0 30 18; options column margin 0 25, gap 3: buttons 340 wide, padding 8 12, gap 12, radius 11,
+  left-aligned, icon 19 #795d3f, strong 14.08/700, small 11.36 lh 14.2 #796f63 mt 3; hint row mt 17 gap 6, 11.52 #796f63 with hand icon 15.
+- Title card h2 17.92/700 ls -.01em.
+- Coach marks: #1/#2 svg 64x78 arrows (stroke 1.8, #795d3f), text 13.44/600; #3/#4 svg 76x58 arrows (stroke 1.7), text 12.16/600.
+  Positions (907 wide): #1 box left 22 top 140 (arrow above-left toward menu); #2 box right 22 top 140 (arrow toward Setelan);
+  #3 box left ~70 bottom ~72 (above view chip, arrow down-left); #4 box right ~48 bottom 280 (above controls, arrow down-right).
+
+## Mobile (375x812)
+- Inset 10-12px. Top row: menu 44 (12,10); title card (64,10, 299 wide, 44 high, name ellipsized) + round 44 icon buttons Family+ (purple gradient), Bagikan, Setelan.
+- Coach marks 1, 2 and 3 visible; 4 hidden. Empty-state options full width (340), left aligned.
+- Controls column right 12, bottom 12 (Semua orang ... Pas ke layar, 44 each, gap 8). Privacy chip becomes a round 44 icon-only button, with Bantuan next to it (row at y 700).
+- Bottom-left: eye (12,756) + view chip "Lengkap" (64,756, 122x44).
+
+## Panels, measured 2026-10-12 (desktop 1280x860)
+
+### Sidebar tree kebab ("<tree name>: Atur Silsilah", 44 round quiet button, aria-expanded)
+- Popover `position:absolute z 50`, about 145 wide, anchored under the kebab and right-aligned to the card. Padding 5, radius 12, bg #fffdf8, border 1px #d8ccbc, shadow --shadow.
+- Items are 44 high, padding 0 10, radius 8, gap 9, 13.6px, lucide icon 15. Three items: copy-plus "Bikin salinan keluarga", pencil "Ubah nama", trash-2 "Hapus" (danger text #b95c4b). No export item.
+- "Ubah nama" opens a small modal (430 wide): title "Ubah nama silsilah", one field "Nama silsilah keluarga" (maxlength 160), footer Batal (secondary) and Simpan (primary).
+- "Hapus" opens a small modal (430): title "Hapus <name>?", a copy line with the person and relationship counts, footer Batal and a danger "Hapus silsilah".
+
+### Shared side panel (role=dialog, aria-modal=false, aria-label = title)
+- Fixed right, 390 x full height. Bg rgba(247,243,236,.96), border-left 1px #d8ccbc, shadow -18px 0 46px rgba(62,48,34,.12).
+- Header 68 high, padding 10 14 10 22, border-bottom 1px #d8ccbc; h2 17.28/700; close "Tutup" round 44 quiet, x icon.
+- Body padding 20, scrolls.
+- Only one right panel is open at a time; opening another replaces it.
+
+### Semua orang
+- Search label sticky-ish block (bg #f7f3ec, padding 4 0 10, margin -4 0 14) with a search icon 18 #796f63 at left. The input is type=search, 44 high, padding-left 40, radius 11, bg #ede5d8, transparent border, 14.72px, placeholder "Cari orang" (sr-only label the same).
+- List is a grid with gap 8. Row button: grid 44px 1fr 17px, gap 12, padding 10 13, radius 13, bg #fffdf8, border 1px #d8ccbc.
+  - Avatar 44 round, border 2px, initial 16/700 #795d3f. Neutral is bg #ede5d8 / border #796f63; female is bg #f4e4e8 / border #985c6d. Male uses the canvas male tint.
+  - Name 16/700; subline 12.16 #796f63 margin-top 3 (relation label to the selected person, or a generic "family member" when none); arrow-right 17.
+- Clicking a row closes the panel, selects that person on the canvas (aria-pressed) and centres on them.
+
+### Setelan
+- Groups (margin-top 16, grid gap 10): h3 uppercase 12.48/700, letter-spacing .06em, margin 0 3.
+- Card: padding 15, radius 14, bg #fffdf8, border 1px #d8ccbc, grid gap 12. Card header is flex gap 12: icon 25 (#a8875b), strong 14.72/700, detail 13.76 #796f63.
+- Family+ card: gradient 160deg #faf7f7 → #fffdf8, border #d8cddd, icon in #73558a.
+  - Title line has a pill badge (padding 4 7, radius 999, 10.88/750, border #d8ccbc, #796f63).
+  - Sync sub-row (cloud icon) with its own pill status.
+  - Full-width gradient button (145deg #73558a → #4d345b, 40 high, radius 12, white 14.72/600).
+- Groups in order: Akses Family+, Akun, Bahasa aplikasi, Sebutan status keluarga.
+- Option grids are 2 columns, gap 7. Buttons are 44 high, padding 10 12, radius 10, 16/700, aria-pressed. Unselected: bg #f7f3ec, border #d8ccbc. Selected: bg #fffaf2, border #a8875b.
+- The footer is a note row (shield-check 17, 11.52 #796f63, padding-top 15) plus a version line (12.48 #796f63).
+
+### Bantuan
+- Intro paragraph 14.4 / lh 22.32 #796f63, margin-bottom 22.
+- Help list is a grid with gap 8. Each item: grid 38px 1fr, gap 12, padding 12 4.
+  - Icon tile 38, radius 11, bg #ede5d8, icon 19 #795d3f.
+  - h3 14.4/700; p 12.8 / lh 18.56 #796f63.
+- Six topics: pan the canvas, add/edit relatives, manage trees, find people, focus a branch, zoom/fit.
+- A closing report-bug card: padding 11, radius 14, bg #fffdf8, border #d8ccbc, grid 38px 1fr; strong 13.6/700, small 11.84.
+
+### Perlindungan privasi
+- Status card: padding 15, radius 15, bg ≈ #f0f1e6, border ≈ #b8bb9d, green #4f6d3d. Shield 22; strong 16/700; span 12.48 / lh 18.1 #796f63.
+- Then help-list items (same style as Bantuan) explaining storage, keys, local-only and exports.
+- A green link card: bg #4f6d3d, white, padding 15 17, radius 14, external-link icon.
+- Ends with the version line.
+
+### Heritg Family+ dialog (modal-medium 620)
+- Header 66 high, h2 19.84/700. Body padding 22.
+- Benefits box: padding 15, radius 14, gradient 145deg #f4eff6 → ~#fbf8f8, border #d8cddd, grid gap 14.
+  - Title row: sparkles 17 #4d345b.
+  - List grid gap 11. Each item has an icon tile 32 (padding 7, radius 9, bg ≈ #eee9eb, #4d345b) and strong 14.08/700 followed by text.
+- Free-tools note 12.48 / lh 20 #4d345b; a recovery note (info icon, bg ≈ #f8f3eb, radius 10).
+- Then plan pricing and checkout. Out of scope for us: no payments.
+
+## Bagikan / Ekspor, measured 2026-10-12
+
+The panel is a SidePanel titled "Bagikan / Ekspor silsilah".
+
+- **Scope card:** padding 13, radius 14, bg #f7f3ec, border #d8ccbc, flex gap 11. It holds a users-round icon 19 #795d3f, the tree name in strong, and a small line with the person count.
+- **Picker title:** 13.44/700, margin 0 2 -6.
+- **Method picker:** a grid with gap 8. Each choice is a button with `aria-pressed`, `aria-controls` pointing at the details card, padding 9 11, radius 14, and a grid of 38px 1fr with gap 11. The selected choice has bg #fffaf2 and border #a8875b.
+  - Icon tile: 38, radius 10, bg #f7f3ec, #795d3f.
+  - Strong text 16/700; small text 12.16 #796f63.
+- **Methods and icons:** link-2 (web link), hard-drive (backup), file-text (GEDCOM), file-image (image).
+- **Details card:** padding 15, radius 14, bg #fffdf8, border #d8ccbc, grid gap 16. It has a settings-card header and, optionally, a pill badge ("recommended" / "for other apps").
+  - h4 14.4/700.
+  - A `<details>` privacy block whose summary is padded 8 11, holding checkboxes.
+  - The warning row has a shield icon, 13.12px, in #795d3f.
+  - Inputs and selects are 44 high, radius 10, border #d8ccbc.
+  - Full-width buttons are 44 high, radius 12. Primary is bg #795d3f, white, 14.72/600.
+- **Web link card:** includes a password plus confirmation with a show toggle, a live requirements list (8+, lower case, upper case, digit, special; 12.48px, x/check icons), an expiry select, and a create button that stays disabled until valid.
+- **Backup card:** has an optional password field with a help line and a "Download .heritg" secondary button.
+- **GEDCOM card:** has privacy checkboxes (dates, marriage dates) and a download button.
+- **Image card:** has privacy checkboxes (dates, marriage dates, photos, ages) and two secondary buttons, PNG HD and SVG.
+
+## Kipas, measured 2026-10-13 (desktop)
+
+- **Page.** It replaces the canvas: `.family-explorer-content`, max-width 1120, padding 16 32 48, centred.
+  - **Nav row** (`aria-label` "Tampilan pohon", 60 high, padding 8 0, gap 8):
+    - a secondary "Kembali" button with arrow-left, 44 high, radius 12, bg #fffdf8, border #d8ccbc, 14.72/600, disabled with no history;
+    - a right-aligned text button "Kembali ke pohon" in #795d3f, padding 8, radius 10.
+  - **Heading:** h2 24/700 (margin-bottom 8) and an explanation p 16 / lh 24 #796f63.
+  - **Controls:** flex with gap 16. Each label is a 14px #796f63 column with gap 6. The selects are 44 high, padding 8 12, radius 10, bg #fffdf8, border #d8ccbc.
+    - Generasi: 1–5, default 3.
+    - Ukuran bagan: "Sesuaikan layar" / 150% / 200%.
+  - **Chart:** a scroll region (`role=region`, tabindex 0, label "Orang tua dan anak"), bg #fffdf8, radius 12, margin 16 0. The SVG `.explorer-fan` fills the width.
+- **SVG geometry** (viewBox 0 0 428 250 for the root plus one ring):
+  - The centre is (214,174).
+  - The root circle has r 52, fill = gender fill (#ede5d8 for unspecified), stroke #795d3f width 4, with text clipped to r 48. The name is 16/500 on two lines (±9.6).
+  - Ancestor ring 1 runs from inner r 72 to outer r 150 across the upper half, split into two annular sectors.
+  - Segment fill is var(--base) for "Belum tercatat", stroke #d8ccbc 1.5. Labels are 12/500, rotated along the radius (-45 / 45 for ring 1).
+  - Each segment `<g>` has `aria-label` "<name> · Generasi N · Orang tua dari X" and a `<title>`. Known people are `role=button` with tabindex 0, and the root has `aria-current`.
+  - Placeholders appear only for the missing parents of a known person.
+  - The children group (`aria-label` "Anak dari X") takes the lower half.
+- **Below the chart:**
+  - a status p (14px #796f63) reading "Anak belum tercatat" when there are none;
+  - the selection row: a 64-high person button (bg #ede5d8, radius 10, padding 12 8, `aria-pressed`) with avatar, name and small text, plus 44 icon actions (plus / pencil, #795d3f, radius 10);
+  - two notes, 14 / lh 21 #796f63.
+
+## Mobile, measured 2026-10-13 (375x812)
+
+- **Side panels** (e.g. Semua orang): fixed to the right, x 46, width 329 (`100% - 46px`), full height. Header 68.
+- **Modal dialogs** (e.g. Family+): full screen, 375x812, radius 22 22 0 0. Header 66; the body scrolls; footer 80.
+- **Sidebar:** 304 wide, full height, padding 22 18 18.
+- **Kipas page:**
+  - content starts at y 76, below the top bar, with padding 12 12 64;
+  - nav row 60, heading 24/700, controls, then a 205-high chart and the selection row;
+  - the right controls column is hidden in fan view;
+  - the bottom bar shows the eye button, the "Kipas" view chip (64,756, 103x44), the privacy icon and Bantuan.

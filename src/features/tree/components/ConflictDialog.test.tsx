@@ -16,11 +16,11 @@ describe("ConflictDialog", () => {
   it("communicates backup behavior and the second replace confirmation", () => {
     const replace = vi.fn();
     const { rerender } = render(<ConflictDialog conflict={{ local: tree(2), remote: tree(3) }} replaceConfirmationRequired={false} onKeepRemote={vi.fn()} onReplaceRemote={replace} />);
-    expect(screen.getByText(/downloads your local work/i)).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: /replace online with my version/i }));
+    expect(screen.getByText(/mengunduh pekerjaan lokalmu/i)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /ganti versi online dengan versiku/i }));
     expect(replace).toHaveBeenCalledOnce();
 
     rerender(<ConflictDialog conflict={{ local: tree(2), remote: tree(3) }} replaceConfirmationRequired onKeepRemote={vi.fn()} onReplaceRemote={replace} />);
-    expect(screen.getByRole("button", { name: /confirm replacing online version/i })).toBeVisible();
+    expect(screen.getByRole("button", { name: /konfirmasi ganti versi online/i })).toBeVisible();
   });
 });

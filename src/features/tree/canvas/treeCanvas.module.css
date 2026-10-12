@@ -1,0 +1,22 @@
+.stage{position:relative;flex:none}
+.svg{position:absolute;inset:0;overflow:visible;pointer-events:none}
+.familyLine,.partnerLine{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.familyLine{stroke:var(--line-family)}
+.partnerLine{stroke:var(--line-partner)}
+.dashed{stroke-dasharray:6 6}
+.node .ring{stroke-width:2}
+.node .inner{stroke:none}
+.female .ring{fill:var(--female-fill);stroke:var(--female-stroke)}.female .inner{fill:var(--female-fill)}
+.male .ring{fill:var(--male-fill);stroke:var(--male-stroke)}.male .inner{fill:var(--male-fill)}
+.unspecified .ring{fill:var(--unspecified-fill);stroke:var(--unspecified-stroke)}.unspecified .inner{fill:var(--unspecified-fill)}
+.selected .ring{stroke:var(--brand);stroke-width:3.5}
+.initial{font-size:24px;font-weight:700;fill:var(--text)}
+.name{font-size:14px;font-weight:700;fill:var(--text);paint-order:stroke;stroke:var(--tree-canvas);stroke-width:4px;stroke-linejoin:round}
+.relation{font-size:13px;font-weight:500;fill:var(--subtle);paint-order:stroke;stroke:var(--tree-canvas);stroke-width:4px;stroke-linejoin:round}
+.hit{position:absolute;padding:0;border:0;border-radius:22px;background:transparent;cursor:pointer}
+.hit:focus-visible{outline:3px solid rgba(168,135,91,.42);outline-offset:-2px}
+.dot{position:absolute;display:grid;place-items:center;padding:0;border:0;border-radius:50%;background:transparent;cursor:pointer}
+.dot span{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;box-shadow:0 3px 9px rgba(62,48,34,.2);transition:transform .15s ease}
+.dot:hover span{transform:scale(1.08)}
+.editDot span{background:var(--brand)}
+.addDot span{background:var(--add)}

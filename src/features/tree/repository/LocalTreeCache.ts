@@ -1,5 +1,6 @@
 import type { OnlineTree } from "../domain/onlineTypes";
-import type { WorkspaceData } from "../model";
+import { upgradeOnlineTree } from "../domain/serialization";
+import { normalizeTree, type WorkspaceData } from "../model";
 
 export const LEGACY_WORKSPACE_STORAGE_KEY = "heritg-workspace-v1";
 export const TREE_CACHE_STORAGE_KEY = "heritg-tree-cache-v2";
@@ -39,6 +40,27 @@ function isWorkspaceData(value: unknown): value is WorkspaceData {
   return candidate.version === 1 && typeof candidate.activeTreeId === "string" && Array.isArray(candidate.trees);
 }
 
+/** Data written before schema v2 (firstName/lastName, untyped relationships) is upgraded on read. */
+// Each item is upgraded on its own: a malformed entry is kept as it was instead of discarding the whole
+// cache, because an empty cache would then be written back over local trees and pending edits.
+function attempt<T>(upgrade: (value: T) => T, value: T): T {
+  try { return upgrade(value); } catch { return value; }
+}
+
+function normalizeWorkspaceTrees(workspace: WorkspaceData): WorkspaceData {
+  return { ...workspace, trees: workspace.trees.map(tree => attempt(normalizeTree, tree)) };
+}
+
+function upgradeCache(cache: LocalTreeCacheData): LocalTreeCacheData {
+  const onlineTrees = cache.onlineTrees && typeof cache.onlineTrees === "object" ? cache.onlineTrees : {};
+  return {
+    ...cache,
+    workspace: cache.workspace && isWorkspaceData(cache.workspace) ? normalizeWorkspaceTrees(cache.workspace) : cache.workspace,
+    onlineTrees: Object.fromEntries(Object.entries(onlineTrees).map(([id, tree]) => [id, attempt(upgradeOnlineTree, tree)])),
+    pendingOperations: cache.pendingOperations.map(operation => attempt(item => item?.tree ? { ...item, tree: upgradeOnlineTree(item.tree) } : item, operation)),
+  };
+}
+
 export class LocalTreeCache {
   constructor(private readonly storage: StorageLike, private readonly key = TREE_CACHE_STORAGE_KEY) {}
 
@@ -47,12 +69,12 @@ export class LocalTreeCache {
       const raw = this.storage.getItem(this.key);
       if (raw) {
         const value = JSON.parse(raw) as Partial<LocalTreeCacheData>;
-        if (value.version === 2 && Array.isArray(value.pendingOperations)) return { ...emptyCache(), ...value } as LocalTreeCacheData;
+        if (value.version === 2 && Array.isArray(value.pendingOperations)) return upgradeCache({ ...emptyCache(), ...value } as LocalTreeCacheData);
       }
       const legacyRaw = this.storage.getItem(LEGACY_WORKSPACE_STORAGE_KEY);
       if (legacyRaw) {
         const legacy = JSON.parse(legacyRaw) as unknown;
-        if (isWorkspaceData(legacy)) return { ...emptyCache(), workspace: legacy };
+        if (isWorkspaceData(legacy)) return { ...emptyCache(), workspace: normalizeWorkspaceTrees(legacy) };
       }
     } catch {
       // Corrupt browser data must not prevent the app from starting.
@@ -79,6 +101,28 @@ export class LocalTreeCache {
       ...cache,
       onlineTrees: { ...cache.onlineTrees, [tree.id]: structuredClone(tree) },
       lastSynchronizedRevisions: { ...cache.lastSynchronizedRevisions, [tree.id]: tree.revision },
+    });
+  }
+
+  /**
+   * The server confirmed the tree is gone: drop every cached trace of it in one write (online copy, revision,
+   * waiting operations, migration mapping). Never call this before that confirmation. The workspace tree
+   * itself is removed by the caller.
+   */
+  forgetTree(remoteId: string, localId: string): void {
+    const cache = this.load();
+    const { [remoteId]: _online, ...onlineTrees } = cache.onlineTrees;
+    const { [remoteId]: _revision, ...lastSynchronizedRevisions } = cache.lastSynchronizedRevisions;
+    void _online; void _revision;
+    this.save({
+      ...cache,
+      onlineTrees,
+      lastSynchronizedRevisions,
+      pendingOperations: cache.pendingOperations.filter(operation => operation.treeId !== remoteId),
+      migration: {
+        completedTreeIds: cache.migration.completedTreeIds.filter(id => id !== localId),
+        remoteIdsByLocalId: Object.fromEntries(Object.entries(cache.migration.remoteIdsByLocalId).filter(([local, remote]) => local !== localId && remote !== remoteId)),
+      },
     });
   }
 

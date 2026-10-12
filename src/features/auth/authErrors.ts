@@ -1,22 +1,20 @@
+import { t } from "@/i18n";
+
 export function getAuthErrorMessage(error: unknown): string {
   const code = typeof error === "object" && error !== null && "code" in error
     ? String((error as { code?: unknown }).code)
     : "";
 
   switch (code) {
-    case "auth/invalid-email":
-      return "Enter a valid email address.";
-    case "auth/too-many-requests":
-      return "Too many attempts. Wait a moment and try again.";
-    case "auth/network-request-failed":
-      return "Unable to connect. Check your internet connection and try again.";
-    case "auth/user-disabled":
-      return "This account is disabled.";
-    case "auth/invalid-credential":
-    case "auth/user-not-found":
-    case "auth/wrong-password":
-      return "The email or password is incorrect.";
+    case "invalid":
+      return t("authError.invalid");
+    case "rate-limited":
+      return t("authError.rateLimited");
+    case "offline":
+      return t("authError.offline");
+    case "invalid-credentials":
+      return t("authError.credentials");
     default:
-      return "Something went wrong. Please try again.";
+      return t("authError.generic");
   }
 }

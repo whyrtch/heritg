@@ -9,7 +9,8 @@ export function useWorkspaceData() {
   useEffect(() => {
     try {
       const current = new LocalTreeCache(window.localStorage).loadWorkspace() ?? initialData();
-      if (current.trees.some(tree => tree.id === JOKOWI_DEMO_TREE_ID)) { setData(current); return; }
+      // The example tree is read-only: always replace any cached copy with the canonical data.
+      if (current.trees.some(tree => tree.id === JOKOWI_DEMO_TREE_ID)) { setData({ ...current, trees: current.trees.map(tree => tree.id === JOKOWI_DEMO_TREE_ID ? createJokowiDemoTree() : tree) }); return; }
       const active = current.trees.find(tree => tree.id === current.activeTreeId);
       const demo = createJokowiDemoTree();
       setData({ ...current, trees: [demo, ...current.trees], activeTreeId: !active || active.people.length === 0 ? demo.id : current.activeTreeId });

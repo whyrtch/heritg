@@ -5,11 +5,10 @@ import LoginPage from "./page";
 
 const replace = vi.fn();
 const signIn = vi.fn();
-const resetPassword = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 vi.mock("@/features/auth/useAuth", () => ({
-  useAuth: () => ({ status: "unauthenticated", user: null, signIn, resetPassword, signOut: vi.fn() })
+  useAuth: () => ({ status: "unauthenticated", user: null, signIn, signOut: vi.fn() })
 }));
 
 describe("LoginPage", () => {
@@ -18,21 +17,30 @@ describe("LoginPage", () => {
 
   it("submits owner email and password without offering registration", async () => {
     render(<LoginPage />);
-    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "owner@example.test" } });
+    fireEvent.change(screen.getByLabelText("Alamat email"), { target: { value: "owner@example.test" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret-pass" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    fireEvent.click(screen.getByRole("button", { name: "Masuk" }));
 
     await waitFor(() => expect(signIn).toHaveBeenCalledWith("owner@example.test", "secret-pass"));
     expect(screen.queryByRole("link", { name: /register/i })).not.toBeInTheDocument();
   });
 
-  it("always displays a neutral password reset confirmation", async () => {
-    resetPassword.mockRejectedValueOnce({ code: "auth/user-not-found" });
+  it("shows a neutral error without revealing whether the account exists", async () => {
+    signIn.mockRejectedValueOnce({ code: "invalid-credentials" });
     render(<LoginPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Forgot your password?" }));
-    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "unknown@example.test" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send reset link" }));
+    fireEvent.change(screen.getByLabelText("Alamat email"), { target: { value: "unknown@example.test" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "whatever-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: "Masuk" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Email atau password salah.");
+    expect(replace).not.toHaveBeenCalled();
+  });
 
-    expect(await screen.findByText(/if an account exists/i)).toBeVisible();
+  it("explains the server-side password reset instead of sending email", () => {
+    render(<LoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Lupa password?" }));
+    expect(screen.getByText("owner:reset-password", { exact: false })).toBeVisible();
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Kembali ke halaman masuk" }));
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
   });
 });

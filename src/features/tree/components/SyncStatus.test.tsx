@@ -7,8 +7,8 @@ describe("SyncStatus", () => {
   it("announces offline persistence and exposes retry", () => {
     const retry = vi.fn();
     render(<SyncStatus status="offline" onRetry={retry} />);
-    expect(screen.getByRole("status")).toHaveTextContent(/saved on this device/i);
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(screen.getByRole("status")).toHaveTextContent(/disimpan di perangkat ini/i);
+    fireEvent.click(screen.getByRole("button", { name: /coba lagi/i }));
     expect(retry).toHaveBeenCalledOnce();
   });
 });

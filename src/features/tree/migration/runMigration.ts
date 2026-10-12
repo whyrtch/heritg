@@ -1,4 +1,6 @@
 import { toOnlineTree } from "../domain/serialization";
+import type { WorkspaceData } from "../model";
+import { planMigration } from "./planMigration";
 import type { OnlineTree } from "../domain/onlineTypes";
 import { TreeRepositoryError, type TreeRepository } from "../repository/TreeRepository";
 import type { LocalTreeCache } from "../repository/LocalTreeCache";
@@ -82,4 +84,20 @@ export async function runMigration(
   }
 
   return { completedTreeIds: [...mappings.completedTreeIds], failed, mappings };
+}
+
+/**
+ * Puts a tree the signed-in owner just created or imported online straight away,
+ * reusing the verified migration path, so it never shows up in the migration prompt.
+ */
+export async function uploadNewTree(
+  source: WorkspaceData,
+  localTreeId: string,
+  ownerId: string,
+  repository: TreeRepository,
+  state: MigrationStateStore,
+  idFactory?: () => string,
+): Promise<MigrationRunResult> {
+  const plan = planMigration(source, await state.load(), { ownerId, selectedTreeIds: [localTreeId], idFactory });
+  return runMigration(plan, repository, state, { selectedTreeIds: [localTreeId] });
 }

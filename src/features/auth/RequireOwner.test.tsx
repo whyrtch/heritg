@@ -13,7 +13,7 @@ describe("RequireOwner", () => {
   it("shows a neutral loading state while authentication resolves", () => {
     status = "loading";
     render(<RequireOwner><p>Private</p></RequireOwner>);
-    expect(screen.getByText(/opening your private archive/i)).toBeVisible();
+    expect(screen.getByText(/buka arsip pribadimu/i)).toBeVisible();
     expect(screen.queryByText("Private")).not.toBeInTheDocument();
   });
 

@@ -1,17 +1,22 @@
-import type { Gender, Relationship } from "../model";
+import type { Gender, ParentKind, PartnerStatus, Relationship } from "../model";
 
-export const ONLINE_TREE_SCHEMA_VERSION = 1;
+/** v2: single `name`, birth order, residence, relationship kind/status. v1 documents are still readable. */
+export const ONLINE_TREE_SCHEMA_VERSION = 2;
+export const READABLE_SCHEMA_VERSIONS = [1, 2] as const;
 export type TreeVisibility = "private" | "unlisted";
 
 export type OnlinePerson = {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   gender: Gender;
   birthDate: string;
   deathDate: string;
+  birthOrder: number | null;
+  residence: string;
   notes: string;
   photoUrl: string;
+  /** Version of the uploaded thumbnail on the server (read-only for clients), or null/absent when none. */
+  photoVersion?: string | null;
   sortOrder: number;
   updatedAt: string;
 };
@@ -21,6 +26,9 @@ export type OnlineRelationship = {
   type: Relationship["type"];
   fromPersonId: string;
   toPersonId: string;
+  kind: ParentKind | null;
+  status: PartnerStatus | null;
+  marriedOn: string;
   updatedAt: string;
 };
 
