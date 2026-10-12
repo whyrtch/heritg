@@ -75,3 +75,25 @@ describe("LocalTreeCache", () => {
     expect(new LocalTreeCache(storage).load()).toMatchObject({ version: 2, pendingOperations: [] });
   });
 });
+
+describe("LocalTreeCache.forgetTree", () => {
+  it("removes every trace of one remote tree and leaves the others untouched", () => {
+    const storage = new MemoryStorage();
+    const cache = new LocalTreeCache(storage);
+    const make = (id: string) => { const { excludedDataUrlPhotoIds: _x, ...tree } = toOnlineTree({ ...createJokowiDemoTree(), id }, { ownerId: "owner", revision: 1 }); void _x; return tree; };
+    const gone = make("remote-gone"), kept = make("remote-kept");
+    cache.saveOnlineTree(gone); cache.saveOnlineTree(kept);
+    cache.enqueue({ id: "op-gone", treeId: gone.id, kind: "save", expectedRevision: 1, tree: gone, createdAt: "2026-09-02T00:00:00.000Z" });
+    cache.enqueue({ id: "op-kept", treeId: kept.id, kind: "save", expectedRevision: 1, tree: kept, createdAt: "2026-09-02T00:00:00.000Z" });
+    const workspace = { version: 1 as const, activeTreeId: "local-kept", trees: [{ ...createJokowiDemoTree(), id: "local-kept" }] };
+    cache.save({ ...cache.load(), workspace, migration: { completedTreeIds: ["local-gone", "local-kept"], remoteIdsByLocalId: { "local-gone": gone.id, "local-kept": kept.id } } });
+
+    cache.forgetTree(gone.id, "local-gone");
+    const after = cache.load();
+    expect(Object.keys(after.onlineTrees)).toEqual([kept.id]);
+    expect(Object.keys(after.lastSynchronizedRevisions)).toEqual([kept.id]);
+    expect(after.pendingOperations.map(operation => operation.id)).toEqual(["op-kept"]);
+    expect(after.migration).toEqual({ completedTreeIds: ["local-kept"], remoteIdsByLocalId: { "local-kept": kept.id } });
+    expect(after.workspace?.trees).toHaveLength(1);
+  });
+});

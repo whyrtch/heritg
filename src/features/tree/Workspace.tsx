@@ -15,6 +15,7 @@ import { HelpPanel } from "./panels/HelpPanel";
 import { PrivacyPanel } from "./panels/PrivacyPanel";
 import { TreeSidebar } from "./panels/TreeSidebar";
 import { RenameTreeDialog } from "./panels/RenameTreeDialog";
+import { DeleteTreeDialog, type DeleteFailure } from "./panels/DeleteTreeDialog";
 import { useDialect } from "./canvas/dialectSetting";
 import { StartDialog } from "./dialogs/StartDialog";
 import { AddRelativeWizard } from "./dialogs/AddRelativeWizard";
@@ -28,7 +29,7 @@ import { HttpTreeRepository } from "./repository/HttpTreeRepository";
 import { HttpPhotoClient, PhotoRequestError } from "./repository/HttpPhotoClient";
 import { PhotoQueue, photoTasks, removedPeople, withPendingPhotos } from "./sync/photoQueue";
 import { prepareUpload, toThumbnailDataUrl } from "./domain/photoData";
-import type { TreeRepository } from "./repository/TreeRepository";
+import { TreeRepositoryError, type TreeRepository } from "./repository/TreeRepository";
 import type { PublicationRepository } from "./publishing/PublicationRepository";
 import { HttpPublicationRepository } from "./publishing/HttpPublicationRepository";
 import { LocalTreeCache } from "./repository/LocalTreeCache";
@@ -73,6 +74,7 @@ export function Workspace() {
   const [migrationVersion, setMigrationVersion] = useState(0);
   const [sidebar, setSidebar] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const [deleting, setDeleting] = useState<FamilyTree | null>(null);
   const [starting, setStarting] = useState(false);
   const [wizardFor, setWizardFor] = useState<string | null>(null);
   const [editFor, setEditFor] = useState<string | null>(null);
@@ -217,6 +219,37 @@ export function Workspace() {
   const copyTree = async (tree: FamilyTree) => { const copy = duplicateTree(await withEmbeddedPhotos(tree), t("tree.copyName", { name: tree.name })); addTree(copy); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); };
   // Renaming works on the active tree (it keeps sync): another tree's menu opens it first.
   const renameFromSidebar = (tree: FamilyTree) => { if (tree.id !== active.id) selectTree(tree.id); setSidebar(false); setRenaming(true); };
+  // The remote id of a tree this device synced (mapping present and completed), else null.
+  const remoteIdOf = (tree: FamilyTree) => { const migration = cache?.load().migration; return migration?.completedTreeIds.includes(tree.id) ? migration.remoteIdsByLocalId[tree.id] ?? null : null; };
+  /**
+   * A synced tree is deleted on the server first; only after that succeeds (or says it is already gone) is any
+   * local trace removed. Offline, signed out or any other failure changes nothing and is reported to the dialog.
+   */
+  const deleteTree = async (tree: FamilyTree): Promise<DeleteFailure | null> => {
+    if (isDemoTree(tree)) return "failed";
+    const remoteId = remoteIdOf(tree);
+    if (remoteId) {
+      if (!treeRepository || !cache) return "signed-out";
+      try { await treeRepository.delete(remoteId); }
+      catch (error) {
+        if (!(error instanceof TreeRepositoryError && error.code === "not-found")) return error instanceof TreeRepositoryError && error.code === "offline" ? "offline" : "failed";
+      }
+      // Pending operations go first, in the same write as the mapping, so nothing can save the deleted tree again.
+      cache.forgetTree(remoteId, tree.id);
+      photoQueue?.forgetTree(remoteId);
+    }
+    const wasActive = tree.id === data.activeTreeId;
+    setData(current => {
+      if (!current) return current;
+      const trees = current.trees.filter(item => item.id !== tree.id);
+      if (!wasActive) return { ...current, trees };
+      const next = trees.find(item => !isDemoTree(item)) ?? trees[0] ?? newTree(t("tree.newName", { number: 1 }));
+      return { ...current, trees: trees.length ? trees : [next], activeTreeId: next.id };
+    });
+    if (wasActive) { setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); }
+    setDeleting(null); setSidebar(false);
+    return null;
+  };
   const openPanel = (panel: "privacy" | "help") => { setSidebar(false); setRightPanel(panel); };
   const isEmpty = active.people.length === 0;
   const closeRightPanel = () => setRightPanel(null);
@@ -294,8 +327,9 @@ export function Workspace() {
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
-    {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onCopy={copyTree} onRename={renameFromSidebar} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
+    {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onCopy={copyTree} onRename={renameFromSidebar} onDelete={tree => { setSidebar(false); setDeleting(tree); }} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
     {renaming && !readOnly && <RenameTreeDialog name={active.name} onClose={() => setRenaming(false)} onSave={name => { setTree({ ...active, name }); setRenaming(false); }} />}
+    {deleting && !isDemoTree(deleting) && <DeleteTreeDialog name={deleting.name} people={deleting.people.length} relationships={deleting.relationships.length} synced={Boolean(remoteIdOf(deleting))} onClose={() => setDeleting(null)} onConfirm={() => deleteTree(deleting)} />}
     {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => { setEditFor(panelPerson.id); setPanelFor(null); }} onAdd={() => { setWizardFor(panelPerson.id); setPanelFor(null); }} onDelete={() => { setEditFor(panelPerson.id); setPanelFor(null); }} />}
     {starting && !readOnly && <StartDialog onClose={() => setStarting(false)} onSave={person => { setTree({ ...active, people: [...active.people, person], updatedAt: new Date().toISOString() }); setSelected(person.id); setStarting(false); }} />}
     {wizardFor && !readOnly && active.people.some(p => p.id === wizardFor) && <AddRelativeWizard tree={active} anchorId={wizardFor} onClose={() => setWizardFor(null)} onSubmit={input => { const result = addRelative(active, wizardFor, input); setTree(result.tree); setSelected(wizardFor); setWizardFor(null); }} />}

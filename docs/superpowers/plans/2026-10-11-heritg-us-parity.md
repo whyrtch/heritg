@@ -249,11 +249,11 @@
 ### Task 4.5 — Delete a tree (reviewer required: touches sync and the server)
 **Files:** `TreeMenu.tsx`, `Workspace.tsx`, i18n, tests. The server and API do not change: `DELETE /api/trees/:id` already exists and is owner-scoped.
 
-- [ ] **Confirmation dialog.** "Hapus" opens a 430 dialog titled "Hapus <name>?". It shows the person and relationship counts and says that:
+- [x] **Confirmation dialog.** "Hapus" opens a 430 dialog titled "Hapus <name>?". It shows the person and relationship counts and says that:
   - the tree is removed from the account and from this device;
   - its public link stops working.
   - The danger button reads "Hapus silsilah".
-- [ ] **Synced tree** (it has a remote id): call `HttpTreeRepository.delete` first.
+- [x] **Synced tree** (it has a remote id): call `HttpTreeRepository.delete` first.
   - **Only if that succeeds**, remove the local tree and everything tied to it:
     - its cached online copy;
     - its pending operations;
@@ -261,13 +261,17 @@
     - its photo queue entries.
   - Then switch to another tree, or to a new empty tree when none is left.
   - **When offline or on failure,** keep everything and show "Silsilah ini perlu online buat dihapus".
-- [ ] **Local-only tree:** remove it from this device.
-- [ ] **The example tree** cannot be deleted.
-- [ ] **Tests:**
+- [x] **Local-only tree:** remove it from this device.
+- [x] **The example tree** cannot be deleted.
+- [x] **Tests:**
   - a successful online delete removes the local data;
   - an offline failure keeps every local byte;
   - deleting the active tree selects another.
-- [ ] **Reviewer (Opus 5.5)** before the commit.
+- [x] **Reviewer (Opus 5.5)** before the commit. Approved.
+- _Follow-ups (reviewer, low):_
+  - _A save already in flight can write back a stale `onlineTrees` entry after the delete. Nothing reads it._
+  - _A mapping whose upload never completed is deleted locally only, which can leave an orphan tree on the server._
+  - _A 404 from another account signed in on the same device counts as success._
 
 ### Task 4.6 — Heritg Family+ dialog
 **Files:** new `src/features/tree/panels/FamilyPlusDialog.tsx` and its tests, `Workspace.tsx`, i18n.

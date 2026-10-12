@@ -20,6 +20,7 @@ type Props = {
   onExport: () => void;
   onCopy: (tree: FamilyTree) => void;
   onRename: (tree: FamilyTree) => void;
+  onDelete: (tree: FamilyTree) => void;
   onFamilyPlus: () => void;
   onPrivacy: () => void;
   onHelp: () => void;
@@ -27,7 +28,7 @@ type Props = {
 };
 
 /** The family-tree sidebar: tree cards with a kebab, create/import/export, and the Family+, privacy and help rows. */
-export function TreeSidebar({ trees, activeId, onSelect, onCreate, onImport, onExport, onCopy, onRename, onFamilyPlus, onPrivacy, onHelp, onClose }: Props) {
+export function TreeSidebar({ trees, activeId, onSelect, onCreate, onImport, onExport, onCopy, onRename, onDelete, onFamilyPlus, onPrivacy, onHelp, onClose }: Props) {
   const t = useT();
   const [query, setQuery] = useState("");
   const asideRef = useRef<HTMLElement>(null);
@@ -69,7 +70,7 @@ export function TreeSidebar({ trees, activeId, onSelect, onCreate, onImport, onE
               <span className={styles.treeAvatar}><Network size={19} aria-hidden="true" /></span>
               <span className={styles.treeText}><strong>{tree.name}</strong><small>{example ? t("sidebar.metaExample", { count: tree.people.length }) : t("sidebar.meta", { count: tree.people.length, date: dateOf(tree) })}</small></span>
             </button>
-            <TreeMenu name={tree.name} example={example} onCopy={() => onCopy(tree)} onRename={() => onRename(tree)} />
+            <TreeMenu name={tree.name} example={example} onCopy={() => onCopy(tree)} onRename={() => onRename(tree)} onDelete={() => onDelete(tree)} />
           </div>;
         })}
         {shown.length === 0 && <p className={styles.none}>{t("sidebar.noMatch")}</p>}

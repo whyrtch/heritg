@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { CopyPlus, EllipsisVertical, Pencil } from "lucide-react";
+import { CopyPlus, EllipsisVertical, Pencil, Trash2 } from "lucide-react";
 import { useT } from "@/i18n";
 import styles from "./panels.module.css";
 
-/** The kebab on a tree card: "Bikin salinan keluarga" and "Ubah nama" (the example tree only offers the copy). */
-export function TreeMenu({ name, example, onCopy, onRename }: { name: string; example: boolean; onCopy: () => void; onRename: () => void }) {
+/** The kebab on a tree card: "Bikin salinan keluarga" and "Ubah nama" and "Hapus" (the example tree only offers the copy). */
+export function TreeMenu({ name, example, onCopy, onRename, onDelete }: { name: string; example: boolean; onCopy: () => void; onRename: () => void; onDelete: () => void }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -32,6 +32,7 @@ export function TreeMenu({ name, example, onCopy, onRename }: { name: string; ex
     {open && <div className={styles.popover} role="menu">
       <button type="button" role="menuitem" autoFocus onClick={pick(onCopy)}><CopyPlus size={15} aria-hidden="true" />{t("sidebar.copy")}</button>
       {!example && <button type="button" role="menuitem" onClick={pick(onRename)}><Pencil size={15} aria-hidden="true" />{t("sidebar.rename")}</button>}
+      {!example && <button type="button" role="menuitem" className={styles.menuDanger} onClick={pick(onDelete)}><Trash2 size={15} aria-hidden="true" />{t("sidebar.delete")}</button>}
     </div>}
   </div>;
 }

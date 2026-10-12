@@ -104,3 +104,21 @@ describe("photo queue", () => {
     expect(withPendingPhotos(fromServer, [])).toBe(fromServer);
   });
 });
+
+describe("forgetTree", () => {
+  it("drops every task of one tree and keeps the others", () => {
+    const queue = new PhotoQueue(new MemoryStorage());
+    queue.set({ treeId: "gone", personId: "a", action: "upload", dataUrl: DATA });
+    queue.set({ treeId: "gone", personId: "b", action: "delete" });
+    queue.set({ treeId: "kept", personId: "a", action: "upload", dataUrl: DATA2 });
+    queue.forgetTree("gone");
+    expect(queue.list("gone")).toEqual([]);
+    expect(queue.list("kept")).toHaveLength(1);
+  });
+
+  it("does not write when the tree has no tasks", () => {
+    const storage = new MemoryStorage();
+    new PhotoQueue(storage).forgetTree("nothing");
+    expect(storage.values.size).toBe(0);
+  });
+});

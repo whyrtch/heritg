@@ -61,6 +61,13 @@ export class PhotoQueue {
     if (gone.size) this.write(this.list().filter(item => item.treeId !== treeId || !gone.has(item.personId)));
   }
 
+  /** The tree was deleted on the server: its waiting photo tasks have nowhere to go. */
+  forgetTree(treeId: string): void {
+    const tasks = this.list();
+    const remaining = tasks.filter(task => task.treeId !== treeId);
+    if (remaining.length !== tasks.length) this.write(remaining);
+  }
+
   /** Remove finished tasks that this server tree already reflects. */
   settle(tree: OnlineTree): void {
     const versions = new Map(tree.people.map(person => [person.id, person.photoVersion ?? null]));

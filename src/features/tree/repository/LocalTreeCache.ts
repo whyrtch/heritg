@@ -104,6 +104,28 @@ export class LocalTreeCache {
     });
   }
 
+  /**
+   * The server confirmed the tree is gone: drop every cached trace of it in one write (online copy, revision,
+   * waiting operations, migration mapping). Never call this before that confirmation. The workspace tree
+   * itself is removed by the caller.
+   */
+  forgetTree(remoteId: string, localId: string): void {
+    const cache = this.load();
+    const { [remoteId]: _online, ...onlineTrees } = cache.onlineTrees;
+    const { [remoteId]: _revision, ...lastSynchronizedRevisions } = cache.lastSynchronizedRevisions;
+    void _online; void _revision;
+    this.save({
+      ...cache,
+      onlineTrees,
+      lastSynchronizedRevisions,
+      pendingOperations: cache.pendingOperations.filter(operation => operation.treeId !== remoteId),
+      migration: {
+        completedTreeIds: cache.migration.completedTreeIds.filter(id => id !== localId),
+        remoteIdsByLocalId: Object.fromEntries(Object.entries(cache.migration.remoteIdsByLocalId).filter(([local, remote]) => local !== localId && remote !== remoteId)),
+      },
+    });
+  }
+
   enqueue(operation: PendingTreeOperation): void {
     const cache = this.load();
     if (cache.pendingOperations.some(item => item.id === operation.id)) return;

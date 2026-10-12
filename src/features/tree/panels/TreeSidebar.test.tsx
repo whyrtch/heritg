@@ -10,7 +10,7 @@ const other = newTree("Keluarga Sari");
 const demo = createJokowiDemoTree();
 
 const setup = (overrides: Partial<React.ComponentProps<typeof TreeSidebar>> = {}) => {
-  const props = { trees: [demo, mine, other], activeId: mine.id, onSelect: vi.fn(), onCreate: vi.fn(), onImport: vi.fn(), onExport: vi.fn(), onCopy: vi.fn(), onRename: vi.fn(), onFamilyPlus: vi.fn(), onPrivacy: vi.fn(), onHelp: vi.fn(), onClose: vi.fn(), ...overrides };
+  const props = { trees: [demo, mine, other], activeId: mine.id, onSelect: vi.fn(), onCreate: vi.fn(), onImport: vi.fn(), onExport: vi.fn(), onCopy: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onFamilyPlus: vi.fn(), onPrivacy: vi.fn(), onHelp: vi.fn(), onClose: vi.fn(), ...overrides };
   render(<TreeSidebar {...props} />);
   return props;
 };
@@ -42,10 +42,13 @@ describe("TreeSidebar", () => {
     expect(kebab).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(kebab);
     expect(kebab).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getAllByRole("menuitem").map(item => item.textContent)).toEqual(["Bikin salinan keluarga", "Ubah nama"]);
+    expect(screen.getAllByRole("menuitem").map(item => item.textContent)).toEqual(["Bikin salinan keluarga", "Ubah nama", "Hapus"]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Ubah nama" }));
     expect(props.onRename).toHaveBeenCalledWith(mine);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    fireEvent.click(kebab);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Hapus" }));
+    expect(props.onDelete).toHaveBeenCalledWith(mine);
 
     fireEvent.click(screen.getByRole("button", { name: "Keluarga Joko Widodo: Atur Silsilah" }));
     expect(screen.getAllByRole("menuitem").map(item => item.textContent)).toEqual(["Bikin salinan keluarga"]);
