@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { PublicTree } from "./PublicTree";
 
 export const metadata: Metadata = {
-  title: "Shared family tree — Heritg",
-  description: "An unlisted, read-only family tree shared through Heritg.",
+  title: "Silsilah keluarga yang dibagikan — Heritg",
+  description: "Silsilah keluarga yang dibagikan lewat Heritg, hanya untuk dilihat dan tidak terdaftar publik.",
   robots: { index: false, follow: false, nocache: true },
 };
 

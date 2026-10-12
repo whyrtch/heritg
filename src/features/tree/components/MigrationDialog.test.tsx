@@ -11,18 +11,18 @@ describe("MigrationDialog", () => {
   it("shows selection and counts; embedded photos upload afterwards, so there is no exclusion warning", () => {
     render(<MigrationDialog plan={plan} onMigrate={vi.fn()} onPostpone={vi.fn()} />);
     expect(screen.getByRole("checkbox", { name: /my family/i })).toBeChecked();
-    expect(screen.queryByText(/embedded photo/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Migration summary")).toHaveTextContent("1 people");
+    expect(screen.queryByText(/foto tertanam/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Ringkasan migrasi")).toHaveTextContent("1 orang");
   });
 
   it("supports postpone and safe retry", () => {
     const onPostpone = vi.fn();
     const onMigrate = vi.fn();
     render(<MigrationDialog plan={plan} result={{ completedTreeIds: [], mappings: plan.mappings, failed: [{ localTreeId: "tree", error: "offline" }] }} onMigrate={onMigrate} onPostpone={onPostpone} />);
-    fireEvent.click(screen.getByRole("button", { name: "Postpone" }));
-    fireEvent.click(screen.getByRole("button", { name: "Retry migration" }));
+    fireEvent.click(screen.getByRole("button", { name: "Nanti saja" }));
+    fireEvent.click(screen.getByRole("button", { name: "Coba migrasi lagi" }));
     expect(onPostpone).toHaveBeenCalledOnce();
     expect(onMigrate).toHaveBeenCalledWith(["tree"]);
-    expect(screen.getByText(/safe to retry/i)).toBeVisible();
+    expect(screen.getByText(/aman buat dicoba lagi/i)).toBeVisible();
   });
 });

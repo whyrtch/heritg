@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState, type FormEvent } from "rea
 import { Leaf, Link as LinkIcon, LockKeyhole } from "lucide-react";
 import { TreeCanvas } from "@/features/tree/canvas/TreeCanvas";
 import { layoutFull } from "@/features/tree/canvas/layoutFull";
-import { t } from "@/i18n";
+import { useT } from "@/i18n";
 import { loadPublicTree } from "@/features/tree/publishing/loadPublicTree";
 import { WrongPasswordError } from "@/features/tree/domain/secureFile";
 import { openProtected } from "@/features/tree/publishing/openProtected";
@@ -18,6 +18,7 @@ export function PublicTree({
   publicId: string;
   loader?: (publicId: string) => Promise<PublicTreeSnapshot | EncryptedPublicTree | null>;
 }) {
+  const t = useT();
   const [state, setState] = useState<{ status: "loading" | "ready" | "locked" | "unavailable"; snapshot?: PublicTreeSnapshot; locked?: EncryptedPublicTree }>({ status: "loading" });
 
   useEffect(() => {
@@ -29,9 +30,9 @@ export function PublicTree({
     return () => { current = false; };
   }, [loader, publicId]);
 
-  if (state.status === "loading") return <StatusPage title="Opening family tree…" detail="Loading the shared archive." />;
+  if (state.status === "loading") return <StatusPage title={t("pub.viewLoading")} detail={t("pub.viewLoadingDetail")} />;
   if (state.status === "locked" && state.locked) return <PasswordPrompt link={state.locked} onOpen={snapshot => setState({ status: "ready", snapshot })} />;
-  if (state.status === "unavailable" || !state.snapshot) return <StatusPage icon title="This family tree is unavailable" detail="The link may be invalid, expired, or no longer shared." />;
+  if (state.status === "unavailable" || !state.snapshot) return <StatusPage icon title={t("pub.viewUnavailable")} detail={t("pub.viewUnavailableDetail")} />;
   return <ReadOnlyCanvas snapshot={state.snapshot} />;
 }
 
@@ -40,6 +41,7 @@ export function PublicTree({
  * password is never sent anywhere (there is no request on submit) and is dropped once the tree opens.
  */
 function PasswordPrompt({ link, onOpen }: { link: EncryptedPublicTree; onOpen: (snapshot: PublicTreeSnapshot) => void }) {
+  const t = useT();
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -75,6 +77,7 @@ const MIN_SCALE = 0.6;
 const CANVAS_GUTTER = 48;
 
 function ReadOnlyCanvas({ snapshot }: { snapshot: PublicTreeSnapshot }) {
+  const t = useT();
   const layout = useMemo(() => layoutFull(snapshot.tree), [snapshot.tree]);
   const bounds = useMemo(() => layout.nodes.length ? { width: layout.bounds.maxX - layout.bounds.minX, height: layout.bounds.maxY - layout.bounds.minY } : null, [layout]);
   const canvasRef = useRef<HTMLElement>(null);
@@ -99,17 +102,17 @@ function ReadOnlyCanvas({ snapshot }: { snapshot: PublicTreeSnapshot }) {
     <main className={styles.page}>
       <header className={styles.header}>
         <Brand />
-        <div className={styles.title}><h1>{snapshot.name}</h1><p>{snapshot.publishedRevision > 0 ? `View only. Published version ${snapshot.publishedRevision}` : "View only."}</p></div>
-        <div className={styles.badge}>Shared by link</div>
+        <div className={styles.title}><h1>{snapshot.name}</h1><p>{snapshot.publishedRevision > 0 ? t("pub.viewOnlyVersion", { version: snapshot.publishedRevision }) : t("pub.viewOnly")}</p></div>
+        <div className={styles.badge}>{t("pub.viewBadge")}</div>
       </header>
-      <section ref={canvasRef} className={styles.canvas} aria-label={`${snapshot.name} family tree`}>
-        {!bounds ? <p className={styles.empty}>No family members have been published yet.</p> : (
+      <section ref={canvasRef} className={styles.canvas} aria-label={t("pub.viewTree", { name: snapshot.name })}>
+        {!bounds ? <p className={styles.empty}>{t("pub.viewEmpty")}</p> : (
           <div className={styles.stageFrame} style={{ width: bounds.width * scale, height: bounds.height * scale }}>
           <TreeCanvas tree={snapshot.tree} layout={layout} interactive={false} genderLabel={gender => t(`gender.${gender}`)} style={{ position: "absolute", left: 0, top: 0, transformOrigin: "0 0", transform: `scale(${scale})` }} />
           </div>
         )}
       </section>
-      <footer>You’re viewing a shared copy kept by the archive owner.</footer>
+      <footer>{t("pub.viewFooter")}</footer>
     </main>
   );
 }

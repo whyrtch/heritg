@@ -1,6 +1,10 @@
+"use client";
+
+import { useT } from "@/i18n";
 import { Workspace } from "@/features/tree/Workspace";
 import { RequireOwner } from "@/features/auth/RequireOwner";
 
 export default function Home() {
-  return <RequireOwner><main aria-label="Family tree workspace"><Workspace /></main></RequireOwner>;
+  const t = useT();
+  return <RequireOwner><main aria-label={t("app.workspace")}><Workspace /></main></RequireOwner>;
 }

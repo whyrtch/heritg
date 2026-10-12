@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 export function getAuthErrorMessage(error: unknown): string {
   const code = typeof error === "object" && error !== null && "code" in error
     ? String((error as { code?: unknown }).code)
@@ -5,14 +7,14 @@ export function getAuthErrorMessage(error: unknown): string {
 
   switch (code) {
     case "invalid":
-      return "Enter your email and password.";
+      return t("authError.invalid");
     case "rate-limited":
-      return "Too many attempts. Wait a moment and try again.";
+      return t("authError.rateLimited");
     case "offline":
-      return "Unable to connect. Check your internet connection and try again.";
+      return t("authError.offline");
     case "invalid-credentials":
-      return "The email or password is incorrect.";
+      return t("authError.credentials");
     default:
-      return "Something went wrong. Please try again.";
+      return t("authError.generic");
   }
 }

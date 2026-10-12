@@ -67,21 +67,6 @@ export function normalizeWorkspace(workspace: WorkspaceData): WorkspaceData {
   return { ...workspace, trees: workspace.trees.map(normalizeTree) };
 }
 
-const year = (iso: string) => iso.slice(0, 4);
-export function lifespanLabel(person: Person): string {
-  const born = year(person.birthDate), died = year(person.deathDate);
-  if (born && died) return `${born} – ${died}`;
-  if (born) return `Born ${born}`;
-  if (died) return `Died ${died}`;
-  return "Years unknown";
-}
-
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-const formatLongDate = (iso: string) => longDate.format(new Date(`${iso}T00:00:00Z`));
-export function lifeDatesLong(person: Person): string {
-  const parts = [person.birthDate && `Born ${formatLongDate(person.birthDate)}`, person.deathDate && `Died ${formatLongDate(person.deathDate)}`].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "Birth date unknown";
-}
 export function parentsOf(tree: FamilyTree, id: string) { return tree.relationships.filter(r => r.type === "parent-child" && r.to === id).map(r => r.from); }
 export function childrenOf(tree: FamilyTree, id: string) { return tree.relationships.filter(r => r.type === "parent-child" && r.from === id).map(r => r.to); }
 

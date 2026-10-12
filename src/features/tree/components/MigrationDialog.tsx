@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useT, type MessageKey } from "@/i18n";
 import type { MigrationPlan, MigrationProgress, MigrationRunResult } from "../migration/types";
 
 export function MigrationDialog({ plan, progress, result, busy = false, onMigrate, onPostpone }: {
@@ -11,26 +12,28 @@ export function MigrationDialog({ plan, progress, result, busy = false, onMigrat
   onMigrate: (treeIds: string[]) => void | Promise<void>;
   onPostpone: () => void;
 }) {
+  const t = useT();
   const available = useMemo(() => plan.items.filter(item => !item.alreadyCompleted && item.validationErrors.length === 0), [plan.items]);
   const [selected, setSelected] = useState(() => new Set(available.map(item => item.localTreeId)));
   const failedIds = new Set(result?.failed.map(item => item.localTreeId) ?? []);
 
   return <div role="presentation" style={backdrop}>
     <section role="dialog" aria-modal="true" aria-labelledby="migration-title" style={dialog}>
-      <h2 id="migration-title" style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, letterSpacing: "-.01em" }}>Import family trees</h2>
-      <p style={muted}>Choose which trees to copy securely to your owner account. Your original browser data will remain untouched.</p>
-      <div aria-label="Migration summary" style={summary}><strong>{plan.totals.treeCount} trees</strong><span>{plan.totals.personCount} people</span><span>{plan.totals.estimatedWrites} estimated writes</span></div>
-      {plan.totals.excludedPhotoCount > 0 && <p role="status" style={warning}>{plan.totals.excludedPhotoCount} embedded {plan.totals.excludedPhotoCount === 1 ? "photo" : "photos"} cannot be uploaded. Names and other details will still migrate.</p>}
+      <h2 id="migration-title" style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, letterSpacing: "-.01em" }}>{t("migration.title")}</h2>
+      <p style={muted}>{t("migration.intro")}</p>
+      <div aria-label={t("migration.summary")} style={summary}><strong>{t("migration.trees", { count: plan.totals.treeCount })}</strong><span>{t("migration.people", { count: plan.totals.personCount })}</span><span>{t("migration.writes", { count: plan.totals.estimatedWrites })}</span></div>
+      {plan.totals.excludedPhotoCount > 0 && <p role="status" style={warning}>{t("migration.photoWarning", { count: plan.totals.excludedPhotoCount })}</p>}
       <div style={list}>{plan.items.map(item => <label key={item.localTreeId} style={treeRow}>
         <input type="checkbox" style={checkbox} disabled={busy || item.alreadyCompleted || item.validationErrors.length > 0} checked={item.alreadyCompleted || selected.has(item.localTreeId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(item.localTreeId); else next.delete(item.localTreeId); return next; })} />
-        <span><strong>{item.name}</strong><small style={small}>{item.personCount} people, {item.relationshipCount} relationships{item.alreadyCompleted ? ". Already imported" : ""}</small>{item.validationErrors.map(error => <small key={error} role="alert" style={errorText}>{error}</small>)}{failedIds.has(item.localTreeId) && <small role="alert" style={errorText}>Could not import. It is safe to retry.</small>}</span>
+        <span><strong>{item.name}</strong><small style={small}>{t("migration.counts", { people: item.personCount, relationships: item.relationshipCount })}{item.alreadyCompleted ? `. ${t("migration.imported")}` : ""}</small>{item.validationErrors.map(error => <small key={error} role="alert" style={errorText}>{error}</small>)}{failedIds.has(item.localTreeId) && <small role="alert" style={errorText}>{t("migration.failed")}</small>}</span>
       </label>)}</div>
-      <div aria-live="polite" style={{ minHeight: 22 }}>{progress && <span>{progress.status === "failed" ? progress.error : `${progress.status} ${progress.completed} of ${progress.total}`}</span>}</div>
-      <div style={actions}><button type="button" disabled={busy} onClick={onPostpone} style={secondary}>Postpone</button><button type="button" disabled={busy || selected.size === 0} onClick={() => void onMigrate([...selected])} style={primary}>{result?.failed.length ? "Retry migration" : busy ? "Migrating…" : "Migrate selected"}</button></div>
+      <div aria-live="polite" style={{ minHeight: 22 }}>{progress && <span>{progress.status === "failed" ? progress.error : t("migration.progress", { status: t(PROGRESS_LABEL[progress.status]), completed: progress.completed, total: progress.total })}</span>}</div>
+      <div style={actions}><button type="button" disabled={busy} onClick={onPostpone} style={secondary}>{t("migration.postpone")}</button><button type="button" disabled={busy || selected.size === 0} onClick={() => void onMigrate([...selected])} style={primary}>{result?.failed.length ? t("migration.retry") : busy ? t("migration.busy") : t("migration.migrate")}</button></div>
     </section>
   </div>;
 }
 
+const PROGRESS_LABEL: Record<MigrationProgress["status"], MessageKey> = { mapping: "migration.mapping", uploading: "migration.uploading", verifying: "migration.verifying", completed: "migration.completed", failed: "migration.failedStatus" };
 const backdrop: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 100, display: "grid", placeItems: "center", padding: 20, background: "rgba(28,35,64,.4)" };
 const dialog: React.CSSProperties = { width: "min(100%, 560px)", maxHeight: "min(760px, 92vh)", overflow: "auto", padding: 30, borderRadius: 22, background: "var(--surface)", boxShadow: "var(--shadow-modal)" };
 const muted: React.CSSProperties = { color: "var(--muted)", lineHeight: 1.5 };

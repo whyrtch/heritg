@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRelationship, connectorPath, displayName, duplicateTree, normalizePerson, normalizeRelationship, emptyPerson, exportTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, relativesOf } from "./model";
+import { addRelationship, connectorPath, displayName, duplicateTree, normalizePerson, normalizeRelationship, emptyPerson, exportTree, generationCount, importTree, layoutTree, newTree, relativesOf } from "./model";
 import { createJokowiDemoTree } from "./demoData";
 
 describe("family model", () => {
@@ -61,18 +61,6 @@ describe("family model", () => {
 });
 
 describe("display helpers", () => {
-  const p = (birthDate = "", deathDate = "") => ({ ...emptyPerson(), birthDate, deathDate });
-  it("labels lifespans by year", () => {
-    expect(lifespanLabel(p("1961-06-21"))).toBe("Born 1961");
-    expect(lifespanLabel(p("1940-12-30", "2000-07-23"))).toBe("1940 – 2000");
-    expect(lifespanLabel(p("", "2015-10-23"))).toBe("Died 2015");
-    expect(lifespanLabel(p())).toBe("Years unknown");
-  });
-  it("writes long dates without timezone drift", () => {
-    expect(lifeDatesLong(p("1961-06-21"))).toBe("Born 21 June 1961");
-    expect(lifeDatesLong(p("1940-12-30", "2000-07-23"))).toBe("Born 30 December 1940 · Died 23 July 2000");
-    expect(lifeDatesLong(p())).toBe("Birth date unknown");
-  });
   it("counts generations from the layout", () => {
     expect(generationCount(createJokowiDemoTree())).toBe(5);
     expect(generationCount(newTree())).toBe(0);

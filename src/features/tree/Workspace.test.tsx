@@ -59,6 +59,7 @@ describe("Workspace with the example tree", () => {
     fireEvent.click(node("Gibran Rakabuming Raka"));
     fireEvent.click(screen.getByRole("button", { name: "Tampilan pohon: Pohon lengkap" }));
     fireEvent.click(screen.getByRole("button", { name: "Fokus keluarga" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Tampilan pohon:/ })); // choosing a view closes the popover
     const shown = () => nodeButtons().length;
     expect(screen.getByText(`Menampilkan ${shown()} dari 20 orang`)).toBeInTheDocument();
     const before = shown();
@@ -76,14 +77,14 @@ describe("Workspace with the example tree", () => {
     await screen.findByText("Keluarga Joko Widodo");
     fireEvent.click(node("Joko Widodo"));
     const panel = screen.getByRole("heading", { name: "Joko Widodo" }).closest("aside")!;
-    expect(within(panel).getByText("Born 21 June 1961")).toBeInTheDocument();
-    expect(within(panel).getByText("Parents")).toBeInTheDocument();
+    expect(within(panel).getByText("Lahir 21 Juni 1961")).toBeInTheDocument();
+    expect(within(panel).getByText("Orang tua")).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Widjiatno Notomihardjo" })).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Iriana Joko Widodo" })).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Kaesang Pangarep" })).toBeInTheDocument();
-    expect(within(panel).queryByRole("button", { name: /edit details/i })).not.toBeInTheDocument();
-    expect(within(panel).queryByRole("button", { name: /delete person/i })).not.toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: /start your own tree/i })).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /ubah detail/i })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /hapus orang ini/i })).not.toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: /mulai silsilahmu sendiri/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tambah anggota keluarga" })).not.toBeInTheDocument();
   });
 
@@ -103,6 +104,14 @@ describe("Workspace with the example tree", () => {
     await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(1));
     expect(create).toHaveBeenCalledTimes(1);
     click.mockRestore();
+  });
+
+  it("explains the disabled branch count button with a tooltip", async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    const button = screen.getByRole("button", { name: "Jumlah turunan cabang" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("title", "Segera hadir");
   });
 
   it("keeps accessible names on the icon-only top bar buttons", async () => {
@@ -341,6 +350,7 @@ describe("Workspace Kipas view", () => {
   it("shows the heading and the selected person at the centre", async () => {
     await openKipas();
     expect(screen.getByRole("heading", { name: "Kipas" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Tampilan pohon:/ }));
     expect(screen.getByRole("button", { name: "Kipas" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("region", { name: "Orang tua dan anak" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Bagan kipas Joko Widodo" })).toBeInTheDocument();
@@ -393,5 +403,28 @@ describe("Workspace Kipas view", () => {
     fireEvent.click(screen.getByRole("button", { name: "Semua orang" }));
     fireEvent.click(within(screen.getByRole("dialog", { name: "Semua orang" })).getByRole("button", { name: /Kaesang Pangarep/ }));
     expect(screen.getByRole("group", { name: "Bagan kipas Kaesang Pangarep" })).toBeInTheDocument();
+  });
+
+  it("shows a visible label on every placeholder segment, with the full text in its title", async () => {
+    await openKipas();
+    fireEvent.click(segment(/^Widjiatno Notomihardjo · /));
+    const placeholders = [...document.querySelectorAll('g[role="img"][aria-label^="Belum tercatat"]')];
+    expect(placeholders.length).toBeGreaterThan(0);
+    for (const placeholder of placeholders) {
+      expect(placeholder.querySelector("text")!.textContent).toMatch(/^(Belum tercatat|[?])$/);
+      expect(placeholder.querySelector("title")!.textContent).toMatch(/^Belum tercatat · /);
+    }
+    expect(placeholders.some(placeholder => placeholder.querySelector("text")!.textContent === "Belum tercatat")).toBe(true);
+  });
+
+  it("closes the view popover after choosing Kipas and never opens the example person panel", async () => {
+    await openKipas();
+    expect(screen.queryByRole("group", { name: "Tampilan pohon" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Silsilah contoh")).not.toBeInTheDocument();
+    fireEvent.click(segment(/^Widjiatno Notomihardjo · /));
+    expect(screen.queryByText("Silsilah contoh")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Semua orang" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Semua orang" })).getByRole("button", { name: /Kaesang Pangarep/ }));
+    expect(screen.queryByText("Silsilah contoh")).not.toBeInTheDocument();
   });
 });

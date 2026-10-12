@@ -1,9 +1,10 @@
 "use client";
 import React, { ChangeEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Network, Pencil, Plus, Settings2, Share2, ShieldCheck, SlidersHorizontal, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
-import { displayName, duplicateTree, exportTree, FamilyTree, importTree, lifeDatesLong, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
+import { displayName, duplicateTree, exportTree, FamilyTree, importTree, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
-import { useT } from "@/i18n";
+import { getLanguage, t as tNow, useT } from "@/i18n";
+import { lifeDatesLong } from "./lifeDates";
 import { FlowerMark } from "./components/BrandMark";
 import { CoachMarks } from "./components/CoachMarks";
 import { fromOnlineTree, toOnlineTree } from "./domain/serialization";
@@ -50,7 +51,7 @@ import { useTreeSync } from "./sync/useTreeSync";
 import { useWorkspaceData } from "./useWorkspace";
 import styles from "./workspace.module.css";
 
-const IconButton = ({ label, children, onClick, disabled, quiet, className = "" }: { label: string; children: React.ReactNode; onClick?: () => void; disabled?: boolean; quiet?: boolean; className?: string }) => <button className={`${styles.iconButton} ${quiet ? styles.quiet : ""} ${className}`} aria-label={label} title={label} onClick={onClick} disabled={disabled}>{children}</button>;
+const IconButton = ({ label, title, children, onClick, disabled, quiet, className = "" }: { label: string; title?: string; children: React.ReactNode; onClick?: () => void; disabled?: boolean; quiet?: boolean; className?: string }) => <button className={`${styles.iconButton} ${quiet ? styles.quiet : ""} ${className}`} aria-label={label} title={title ?? label} onClick={onClick} disabled={disabled}>{children}</button>;
 
 const MIN_ZOOM = .3, MAX_ZOOM = 1.8;
 const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
@@ -223,7 +224,8 @@ export function Workspace() {
   const selectPerson = (id: string) => { const next = selected === id ? null : id; setSelected(next); setPanelFor(readOnly ? next : null); };
   const switchView = (next: "focus" | "full" | "fan") => {
     if (next === "fan") { if (view !== "fan") setBeforeFan(view); if (!selected || !active.people.some(person => person.id === selected)) setSelected(rootId); }
-    setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); };
+    if (next === "fan") setPanelFor(null);
+    setView(next); if (next === "focus" && selected) setFocusRoot(selected); setLegend(false); setViewMenu(false); };
   // The backup embeds uploaded photos as data, so the file stays complete without this account.
   const download = async (password?: string) => { const plain = exportTree(await withEmbeddedPhotos(active)); const blob = new Blob([password ? JSON.stringify(await encryptText(plain, password)) : plain], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
   const downloadImage = async (format: "png" | "svg", options: ImageOptions) => {
@@ -234,7 +236,7 @@ export function Workspace() {
     if (format === "png") await downloadPng(svg, `${base}.png`); else downloadSvg(svg, `${base}.svg`);
   };
   const downloadGedcom = (options: GedcomOptions) => { const blob = new Blob([exportGedcom(active, options)], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "silsilah"}.ged`; a.click(); URL.revokeObjectURL(url); };
-  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { const text = await file.text(); const envelope = parseEnvelope(text); if (envelope) setLocked(envelope); else { addTree(/.ged$/i.test(file.name) || looksLikeGedcom(text) ? importGedcom(text) : importTree(text)); setSidebar(false); } } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
+  const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { const text = await file.text(); const envelope = parseEnvelope(text); if (envelope) setLocked(envelope); else { addTree(/.ged$/i.test(file.name) || looksLikeGedcom(text) ? importGedcom(text) : importTree(text)); setSidebar(false); } } catch (error) { alert(error instanceof Error ? error.message : t("error.importFailed")); } event.target.value = ""; };
   const unlock = async (password: string): Promise<UnlockFailure | null> => {
     if (!locked) return "damaged";
     let tree: FamilyTree;
@@ -315,7 +317,7 @@ export function Workspace() {
     {isEmpty && !readOnly && !controlsHidden && <CoachMarks />}
     {!controlsHidden && <div className={`${styles.rightControls} ${view === "fan" ? styles.fanHide : ""}`} role="group" aria-label={t("shell.controls")}>
       <IconButton label={t("shell.allPeople")} onClick={() => setRightPanel("people")}><Users size={19} /></IconButton>
-      {view === "full" && <IconButton label={t("shell.branchCount")} disabled><SlidersHorizontal size={18} /></IconButton>}
+      {view === "full" && <IconButton label={t("shell.branchCount")} title={t("shell.viewSoon")} disabled><SlidersHorizontal size={18} /></IconButton>}
       {view !== "fan" && <>
         <IconButton label={t("shell.zoomIn")} onClick={() => setZoom(z => clampZoom(z * 1.15))}><ZoomIn size={18} /></IconButton>
         <IconButton label={t("shell.zoomOut")} onClick={() => setZoom(z => clampZoom(z / 1.15))}><ZoomOut size={18} /></IconButton>
@@ -458,7 +460,7 @@ function OnlineTreeBridge({ treeId, repository, cache, apiRef, onTree, onStatus,
           if (error instanceof PhotoRequestError && error.code === "offline") break;
           // Rejected or unreadable: drop it so it cannot block the queue, and say so.
           photoQueue.discard(task);
-          setPhotoError(error instanceof Error ? error.message : "A photo could not be saved.");
+          setPhotoError(error instanceof Error ? error.message : tNow("error.photoFailed"));
           changed = true;
         }
       }
@@ -500,17 +502,18 @@ function EmptyState({ onAdd, onImport, onGuide }: { onAdd: () => void; onImport:
 }
 
 function PersonPanel({ person, relatives, readOnly, onFocus, onStartOwn, onClose, onEdit, onAdd, onDelete }: { person: Person; relatives: Relatives; readOnly: boolean; onFocus: (id: string) => void; onStartOwn: () => void; onClose: () => void; onEdit: () => void; onAdd: (relation: "parent-child" | "partner", reverse?: boolean) => void; onDelete: () => void }) {
-  const groups = [["Parents", relatives.parents], [relatives.partners.length > 1 ? "Partners" : "Partner", relatives.partners], ["Children", relatives.children]] as const;
+  const t = useT();
+  const groups = [[t("panel.parents"), relatives.parents], [t(relatives.partners.length > 1 ? "panel.partners" : "panel.partner"), relatives.partners], [t("panel.children"), relatives.children]] as const;
   return <Panel title={displayName(person)} onClose={onClose}>
-    <div className={styles.profile}><div className={styles.bigAvatar}>{person.photoUrl || person.photo ? <img src={person.photoUrl || person.photo} alt="" /> : displayName(person)[0]}</div><p>{lifeDatesLong(person)}</p>{person.notes && <p className={styles.profileNotes}>{person.notes}</p>}</div>
+    <div className={styles.profile}><div className={styles.bigAvatar}>{person.photoUrl || person.photo ? <img src={person.photoUrl || person.photo} alt="" /> : displayName(person)[0]}</div><p>{lifeDatesLong(person, getLanguage())}</p>{person.notes && <p className={styles.profileNotes}>{person.notes}</p>}</div>
     {groups.some(([, people]) => people.length > 0) && <dl className={styles.relatives}>{groups.filter(([, people]) => people.length > 0).map(([label, people]) => <div key={label}><dt>{label}</dt><dd>{people.map(relative => <button key={relative.id} onClick={() => onFocus(relative.id)}>{displayName(relative)}</button>)}</dd></div>)}</dl>}
     {readOnly ? <>
-      <div className={styles.readOnlyNote}><Lock size={18} aria-hidden="true" /><div><strong>Example tree</strong><p>This sample can’t be edited. Start your own tree to add your family.</p></div></div>
-      <button className={styles.primary} onClick={onStartOwn}><Plus size={17} aria-hidden="true" /> Start your own tree</button>
+      <div className={styles.readOnlyNote}><Lock size={18} aria-hidden="true" /><div><strong>{t("panel.exampleTitle")}</strong><p>{t("panel.exampleNote")}</p></div></div>
+      <button className={styles.primary} onClick={onStartOwn}><Plus size={17} aria-hidden="true" /> {t("panel.startOwn")}</button>
     </> : <>
-      <button className={styles.primary} onClick={onEdit}><Pencil size={17} aria-hidden="true" /> Edit details</button><h3 className={styles.panelLabel}>Add a relative</h3><div className={styles.relationGrid}><button onClick={() => onAdd("parent-child", true)}><Plus /> Parent</button><button onClick={() => onAdd("partner")}><Plus /> Partner</button><button onClick={() => onAdd("parent-child")}><Plus /> Child</button></div><button className={styles.danger} onClick={onDelete}>Delete person</button>
+      <button className={styles.primary} onClick={onEdit}><Pencil size={17} aria-hidden="true" /> {t("panel.editDetails")}</button><h3 className={styles.panelLabel}>{t("panel.addRelative")}</h3><div className={styles.relationGrid}><button onClick={() => onAdd("parent-child", true)}><Plus /> {t("panel.addParent")}</button><button onClick={() => onAdd("partner")}><Plus /> {t("panel.addPartner")}</button><button onClick={() => onAdd("parent-child")}><Plus /> {t("panel.addChild")}</button></div><button className={styles.danger} onClick={onDelete}>{t("panel.delete")}</button>
     </>}
   </Panel>;
 }
 
-function Panel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <aside className={styles.panel}><div className={styles.panelHead}><h2>{title}</h2><IconButton label="Close panel" onClick={onClose}><X /></IconButton></div>{children}</aside>; }
+function Panel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { const t = useT(); return <aside className={styles.panel}><div className={styles.panelHead}><h2>{title}</h2><IconButton label={t("panel.close")} onClick={onClose}><X /></IconButton></div>{children}</aside>; }

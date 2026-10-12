@@ -50,7 +50,7 @@ describe("PublicTree", () => {
 
   it("uses one generic unavailable state for inaccessible links", async () => {
     render(<PublicTree publicId="missing_public_identifier" loader={vi.fn(async () => null)} />);
-    await waitFor(() => expect(screen.getByText("This family tree is unavailable")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Silsilah ini nggak tersedia")).toBeInTheDocument());
   });
 });
 
@@ -109,5 +109,27 @@ describe("PublicTree with a password-protected link", () => {
     await screen.findByRole("heading", { name: "Keluarga Terkunci" });
     await open(PASSWORD);
     expect(await screen.findByRole("alert")).toHaveTextContent(/rusak/);
+  });
+});
+
+describe("PublicTree languages", () => {
+  afterEach(async () => { cleanup(); const { setLanguage } = await import("@/i18n"); setLanguage("id"); });
+  it("keeps the read-only page free of edit wording in every language", async () => {
+    const { setLanguage } = await import("@/i18n");
+    for (const language of ["id", "en", "ms"] as const) {
+      setLanguage(language);
+      const { container, unmount } = render(<PublicTree publicId={snapshot.publicId} loader={vi.fn(async () => snapshot)} />);
+      await screen.findByText("Budi Uji");
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/edit|ubah|sunting/i);
+      unmount();
+    }
+  });
+  it("shows the English chrome when the language is English", async () => {
+    const { setLanguage } = await import("@/i18n");
+    setLanguage("en");
+    render(<PublicTree publicId={snapshot.publicId} loader={vi.fn(async () => snapshot)} />);
+    expect(await screen.findByText("Shared by link")).toBeInTheDocument();
+    expect(screen.getByText("View only. Published version 4")).toBeInTheDocument();
   });
 });

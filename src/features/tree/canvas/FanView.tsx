@@ -1,8 +1,9 @@
 "use client";
 import React, { useId, useState } from "react";
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
-import { useT } from "@/i18n";
-import { displayName, lifeDatesLong, type FamilyTree, type Gender } from "../model";
+import { getLanguage, useT } from "@/i18n";
+import { lifeDatesLong } from "../lifeDates";
+import { displayName, type FamilyTree, type Gender } from "../model";
 import { FAN_MAX_GENERATIONS, FAN_MIN_GENERATIONS, layoutFan, type FanSegment } from "./fanLayout";
 import styles from "./fanView.module.css";
 
@@ -17,6 +18,12 @@ function fitLabel(name: string, arc: number) {
   const max = Math.floor((arc - 8) / CHAR_WIDTH);
   if (name.length <= max) return name;
   return clip(name.split(/\s+/)[0], max);
+}
+
+/** The placeholder text when the arc fits it, else a bare "?" (the full text stays in the segment title). */
+function placeholderLabel(text: string, arc: number) {
+  const max = Math.floor((arc - 8) / CHAR_WIDTH);
+  return text.length <= max ? text : max >= 1 ? "?" : "";
 }
 
 function rootLines(name: string): string[] {
@@ -64,10 +71,12 @@ export function FanView({ tree, rootId, readOnly, onRoot, onBackToTree, onAdd, o
     const arc = midR * (Math.PI / 180) * (180 / count);
     const relation = relationText(segment);
     if (!person) {
-      const label = `${t("fan.unrecorded")} · ${relation}`;
+      const unrecorded = t("fan.unrecorded");
+      const label = `${unrecorded} · ${relation}`;
       return <g key={segment.key} role="img" aria-label={label}>
         <title>{label}</title>
         <path d={segment.path} className={styles.placeholder} />
+        <text transform={`translate(${segment.labelX} ${segment.labelY}) rotate(${segment.rotate})`} className={`${styles.label} ${styles.placeholderLabel}`} textAnchor="middle" dominantBaseline="central" aria-hidden="true">{placeholderLabel(unrecorded, arc)}</text>
       </g>;
     }
     const name = displayName(person);
@@ -121,7 +130,7 @@ export function FanView({ tree, rootId, readOnly, onRoot, onBackToTree, onAdd, o
       <div className={styles.selection}>
         <div className={styles.person}>
           <span className={styles.avatar}>{root.photoUrl || root.photo ? <img src={root.photoUrl || root.photo} alt="" /> : rootName[0]}</span>
-          <span className={styles.personText}><strong>{rootName}</strong><small>{lifeDatesLong(root)}</small></span>
+          <span className={styles.personText}><strong>{rootName}</strong><small>{lifeDatesLong(root, getLanguage())}</small></span>
         </div>
         {!readOnly && <div className={styles.actions}>
           <button type="button" className={styles.action} aria-label={t("canvas.add", { name: rootName })} title={t("canvas.add", { name: rootName })} onClick={() => onAdd(root.id)}><Plus size={18} aria-hidden="true" /></button>

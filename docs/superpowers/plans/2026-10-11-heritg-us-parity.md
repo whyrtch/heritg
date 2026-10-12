@@ -550,7 +550,7 @@
 ### Task 7.2 — Polish and leftover English
 **Files:** `Workspace.tsx`, `model.ts` (date formatting helpers), `canvas/FanView.tsx`, `canvas/fanLayout.ts`, the components listed below, i18n, and tests.
 
-- [ ] **Leftover English** goes into the i18n catalog (id/en/ms), with tests updated in the same commit:
+- [x] **Leftover English** goes into the i18n catalog (id/en/ms), with tests updated in the same commit:
   - the read-only `PersonPanel` ("Born", "Parents", "Partner", "Children", "Example tree", "Start your own tree", "Edit details", "Add a relative", "Delete person");
   - `ConflictDialog`;
   - `MigrationDialog`;
@@ -559,12 +559,12 @@
   - the login page;
   - the public viewer.
   - Keep accessible names in sync with their tests.
-- [ ] **Localized life dates:** `lifeDatesLong` and similar helpers take the language ("Lahir 21 Juni 1961", "Born 21 June 1961", "Lahir 21 Jun 1961").
-- [ ] **Kipas fixes:**
+- [x] **Localized life dates:** `lifeDatesLong` and similar helpers take the language ("Lahir 21 Juni 1961", "Born 21 June 1961", "Lahir 21 Jun 1961").
+- [x] **Kipas fixes:**
   - "Belum tercatat" placeholders on the outer rings show a short label, or "?", when the full text does not fit, with the full text in `<title>`;
   - picking a view in the view popover closes the popover;
   - in fan view, choosing someone never opens the example tree's person panel over the page.
-- [ ] **"Jumlah turunan cabang":** it stays disabled, with a clear tooltip "Segera hadir". Measuring it needs a large sample tree on heritg.us; that is a follow-up.
+- [x] **"Jumlah turunan cabang":** it stays disabled, with a clear tooltip "Segera hadir". Measuring it needs a large sample tree on heritg.us; that is a follow-up.
 
 ### Task 7.3 — Reduced motion, keyboard and contrast
 **Files:** `globals.css`, the module CSS files, components as needed, and tests.
