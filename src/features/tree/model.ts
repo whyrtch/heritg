@@ -21,6 +21,16 @@ export const PARTNER_STATUSES: readonly PartnerStatus[] = ["married", "partner",
 export const uid = () => crypto.randomUUID();
 export const emptyPerson = (): Person => ({ id: uid(), name: "", gender: "unspecified", birthDate: "", deathDate: "", birthOrder: null, residence: "", notes: "", photoUrl: "", photo: "" });
 export const newTree = (name = "Silsilah Keluarga Saya"): FamilyTree => ({ id: uid(), name, people: [], relationships: [], updatedAt: new Date().toISOString() });
+/** An independent copy with fresh person and relationship ids; relationships are remapped to the new person ids. */
+export function duplicateTree(tree: FamilyTree, name: string): FamilyTree {
+  const ids = new Map(tree.people.map(person => [person.id, uid()]));
+  return {
+    id: uid(), name: name.slice(0, NAME_MAX), // the server rejects longer tree names
+    people: tree.people.map(person => ({ ...person, id: ids.get(person.id)! })),
+    relationships: tree.relationships.map(rel => ({ ...rel, id: uid(), from: ids.get(rel.from) ?? rel.from, to: ids.get(rel.to) ?? rel.to })),
+    updatedAt: new Date().toISOString(),
+  };
+}
 export const initialData = (): WorkspaceData => { const tree = newTree(); return { version: 1, activeTreeId: tree.id, trees: [tree] }; };
 
 export const UNNAMED = "Tanpa nama";

@@ -1,7 +1,7 @@
 "use client";
 import React, { ChangeEvent, MutableRefObject, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FileUp, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Network, Pencil, Plus, Search, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
-import { displayName, exportTree, FamilyTree, importTree, lifeDatesLong, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
+import { ArrowDown, ArrowUp, ChevronDown, CircleHelp, CirclePlus, Eye, EyeOff, FolderOpen, GitBranch, Hand, Maximize2, Lock, Menu, Network, Pencil, Plus, Settings2, Share2, ShieldCheck, SlidersHorizontal, Sparkles, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { displayName, duplicateTree, exportTree, FamilyTree, importTree, lifeDatesLong, newTree, Person, relativesOf, type Relatives, removePerson } from "./model";
 import { isDemoTree } from "./demoData";
 import { useT } from "@/i18n";
 import { FlowerMark } from "./components/BrandMark";
@@ -13,6 +13,8 @@ import { PeoplePanel } from "./panels/PeoplePanel";
 import { SettingsPanel, type SyncReport } from "./panels/SettingsPanel";
 import { HelpPanel } from "./panels/HelpPanel";
 import { PrivacyPanel } from "./panels/PrivacyPanel";
+import { TreeSidebar } from "./panels/TreeSidebar";
+import { RenameTreeDialog } from "./panels/RenameTreeDialog";
 import { useDialect } from "./canvas/dialectSetting";
 import { StartDialog } from "./dialogs/StartDialog";
 import { AddRelativeWizard } from "./dialogs/AddRelativeWizard";
@@ -70,6 +72,7 @@ export function Workspace() {
   const [migrationResult, setMigrationResult] = useState<MigrationRunResult | null>(null);
   const [migrationVersion, setMigrationVersion] = useState(0);
   const [sidebar, setSidebar] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [starting, setStarting] = useState(false);
   const [wizardFor, setWizardFor] = useState<string | null>(null);
   const [editFor, setEditFor] = useState<string | null>(null);
@@ -208,7 +211,13 @@ export function Workspace() {
   const download = async () => { const blob = new Blob([exportTree(await withEmbeddedPhotos(active))], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${active.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.heritg`; a.click(); URL.revokeObjectURL(url); };
   const loadFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; try { addTree(importTree(await file.text())); setSidebar(false); } catch (error) { alert(error instanceof Error ? error.message : "Unable to import this file."); } event.target.value = ""; };
   const summary = t("shell.summary", { people: active.people.length, relationships: active.relationships.length });
-  const rename = readOnly ? undefined : () => { const name = prompt(t("shell.renamePrompt"), active.name); if (name?.trim()) setTree({ ...active, name: name.trim() }); };
+  const rename = readOnly ? undefined : () => setRenaming(true);
+  const selectTree = (id: string) => { setData({ ...data, activeTreeId: id }); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); };
+  // The copy embeds server photos first, so a signed-in owner uploads it with its photos queued (addTree).
+  const copyTree = async (tree: FamilyTree) => { const copy = duplicateTree(await withEmbeddedPhotos(tree), t("tree.copyName", { name: tree.name })); addTree(copy); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); };
+  // Renaming works on the active tree (it keeps sync): another tree's menu opens it first.
+  const renameFromSidebar = (tree: FamilyTree) => { if (tree.id !== active.id) selectTree(tree.id); setSidebar(false); setRenaming(true); };
+  const openPanel = (panel: "privacy" | "help") => { setSidebar(false); setRightPanel(panel); };
   const isEmpty = active.people.length === 0;
   const closeRightPanel = () => setRightPanel(null);
 
@@ -285,7 +294,8 @@ export function Workspace() {
     {!remoteTreeId && !controlsHidden && <div className={styles.localStatus}>{readOnly ? t("status.example") : t("status.localOnly")}</div>}
 
     <input ref={importRef} type="file" accept=".heritg,application/json" hidden onChange={loadFile} />
-    {sidebar && <TreeSidebar data={data} onClose={() => setSidebar(false)} onSelect={id => { setData({ ...data, activeTreeId: id }); setSelected(null); setPanelFor(null); setFocusRoot(null); setView(null); setSidebar(false); }} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} />}
+    {sidebar && <TreeSidebar trees={data.trees} activeId={data.activeTreeId} onClose={() => setSidebar(false)} onSelect={selectTree} onCreate={createTree} onImport={() => importRef.current?.click()} onExport={download} onCopy={copyTree} onRename={renameFromSidebar} onFamilyPlus={() => { setSidebar(false); setDeferred("Family+"); }} onPrivacy={() => openPanel("privacy")} onHelp={() => openPanel("help")} />}
+    {renaming && !readOnly && <RenameTreeDialog name={active.name} onClose={() => setRenaming(false)} onSave={name => { setTree({ ...active, name }); setRenaming(false); }} />}
     {panelPerson && <PersonPanel person={panelPerson} relatives={relativesOf(active, panelPerson.id)} readOnly={readOnly} onFocus={focusPerson} onStartOwn={createTree} onClose={() => setPanelFor(null)} onEdit={() => { setEditFor(panelPerson.id); setPanelFor(null); }} onAdd={() => { setWizardFor(panelPerson.id); setPanelFor(null); }} onDelete={() => { setEditFor(panelPerson.id); setPanelFor(null); }} />}
     {starting && !readOnly && <StartDialog onClose={() => setStarting(false)} onSave={person => { setTree({ ...active, people: [...active.people, person], updatedAt: new Date().toISOString() }); setSelected(person.id); setStarting(false); }} />}
     {wizardFor && !readOnly && active.people.some(p => p.id === wizardFor) && <AddRelativeWizard tree={active} anchorId={wizardFor} onClose={() => setWizardFor(null)} onSubmit={input => { const result = addRelative(active, wizardFor, input); setTree(result.tree); setSelected(wizardFor); setWizardFor(null); }} />}
@@ -413,8 +423,6 @@ function EmptyState({ onAdd, onImport, onGuide }: { onAdd: () => void; onImport:
     <div className={styles.dragHint}><Hand size={15} aria-hidden="true" /><span>{t("empty.drag")}</span></div>
   </section>;
 }
-
-function TreeSidebar({ data, onClose, onSelect, onCreate, onImport, onExport, onFamilyPlus }: { data: ReturnType<typeof useWorkspaceData>["data"] & {}; onClose: () => void; onSelect: (id: string) => void; onCreate: () => void; onImport: () => void; onExport: () => void; onFamilyPlus: () => void }) { return <div className={styles.backdrop} onMouseDown={e => e.target === e.currentTarget && onClose()}><aside className={styles.sidebar}><div className={styles.sidebarHead}><Brand /><p>Your private family archive</p><IconButton label="Close family trees" onClick={onClose}><X /></IconButton></div><div className={styles.sectionTitle}><strong>Family trees</strong><Plus /></div><label className={styles.search}><Search size={18} /><input placeholder="Search trees" /></label><div className={styles.treeList}>{data.trees.map(tree => <button key={tree.id} className={tree.id === data.activeTreeId ? styles.activeTree : ""} onClick={() => onSelect(tree.id)}><strong>{tree.name}</strong><small>{isDemoTree(tree) ? `${tree.people.length} people, example tree` : `${tree.people.length} ${tree.people.length === 1 ? "person" : "people"}, edited ${new Date(tree.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</small></button>)}</div><button className={styles.sidebarPrimary} onClick={onCreate}><Plus /> New tree</button><button className={styles.sidebarAction} onClick={onImport}><FileUp /> Import file</button><button className={styles.sidebarAction} onClick={onExport}><ChevronDown /> Export current tree</button><hr /><button className={styles.sidebarFamily} onClick={onFamilyPlus}><Sparkles /> <span><strong>Heritg Family+</strong><small>Inviting other editors is coming later</small></span></button><div className={styles.sidebarProtection}><ShieldCheck /><span><strong>Secure sync</strong><small>Online with offline device cache</small></span></div></aside></div>; }
 
 function PersonPanel({ person, relatives, readOnly, onFocus, onStartOwn, onClose, onEdit, onAdd, onDelete }: { person: Person; relatives: Relatives; readOnly: boolean; onFocus: (id: string) => void; onStartOwn: () => void; onClose: () => void; onEdit: () => void; onAdd: (relation: "parent-child" | "partner", reverse?: boolean) => void; onDelete: () => void }) {
   const groups = [["Parents", relatives.parents], [relatives.partners.length > 1 ? "Partners" : "Partner", relatives.partners], ["Children", relatives.children]] as const;

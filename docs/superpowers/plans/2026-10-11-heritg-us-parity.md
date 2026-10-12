@@ -220,26 +220,26 @@
 - `model.ts`: `duplicateTree`, which gives new person and relationship ids and the name "<name> (salinan)", with unit tests
 - `Workspace.tsx`, i18n
 
-- [ ] **Head and search** (following the reference):
+- [x] **Head and search** (following the reference):
   - 304 wide, sliding in from the left;
   - the head holds the logo, "Heritg", "Arsip keluarga pribadi" and a "Tutup" close button;
   - a "Silsilah keluarga" section with a round "Silsilah baru" plus button;
   - a search box that filters the tree cards.
-- [ ] **Tree cards and actions:**
+- [x] **Tree cards and actions:**
   - Each card has a tree-icon avatar, the name, and "N orang · 11 Okt" (or "contoh" for the example).
   - The active card has `aria-current`.
   - Buttons: "Silsilah baru" (primary) and "Impor file".
   - Plus "Ekspor file", kept until Phase 5 moves export into Bagikan.
-- [ ] **Menu rows:**
+- [x] **Menu rows:**
   - Heritg Family+ (a gradient row that opens the dialog);
   - Perlindungan privasi (opens the panel);
   - Bantuan (opens the panel).
-- [ ] **Kebab "<name>: Atur Silsilah"** with `aria-expanded`. It closes on Escape or an outside click. Its popover has these items:
+- [x] **Kebab "<name>: Atur Silsilah"** with `aria-expanded`. It closes on Escape or an outside click. Its popover has these items:
   - "Bikin salinan keluarga": first embed the photos with `withEmbeddedPhotos`, then hand the copy to `addTree`. A signed-in owner therefore uploads it and its photos are queued.
   - "Ubah nama": a 430 `Dialog` with the field "Nama silsilah keluarga" (maxlength 160) and Batal / Simpan. It also replaces the `prompt()` behind the title pencil.
   - "Hapus": handled in 4.5. Until then the item is not rendered.
   - On the example tree the menu offers only "Bikin salinan keluarga" (an editable copy).
-- [ ] **Tests:**
+- [x] **Tests:**
   - the search filter;
   - duplicating creates new ids and keeps the relationships consistent;
   - renaming through the dialog;

@@ -200,3 +200,64 @@ describe("Workspace help and privacy panels", () => {
     expect(toggle.getAttribute("aria-pressed")).not.toBe(before);
   });
 });
+
+describe("Workspace sidebar", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => { cleanup(); setLanguage("id"); window.localStorage.clear(); });
+
+  const openSidebar = async () => {
+    render(<Workspace />);
+    await screen.findByText("Keluarga Joko Widodo");
+    fireEvent.click(screen.getByRole("button", { name: "Lihat kumpulan silsilah" }));
+    return screen.getByRole("complementary", { name: "Silsilah keluarga" });
+  };
+
+  it("renames the active tree through the dialog, from the title pencil", async () => {
+    await openSidebar();
+    fireEvent.click(screen.getByRole("button", { name: "Silsilah Keluarga Saya: Atur Silsilah" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Ubah nama" }));
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Ubah nama silsilah" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Nama silsilah keluarga" }), { target: { value: "Keluarga Budi" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
+    expect(screen.getByRole("heading", { name: "Keluarga Budi" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ubah nama silsilah" }));
+    const again = screen.getByRole("dialog", { name: "Ubah nama silsilah" });
+    expect(within(again).getByRole("textbox", { name: "Nama silsilah keluarga" })).toHaveValue("Keluarga Budi");
+    fireEvent.click(within(again).getByRole("button", { name: "Batal" }));
+    expect(screen.queryByRole("dialog", { name: "Ubah nama silsilah" })).not.toBeInTheDocument();
+  });
+
+  it("copies the example tree into an editable tree that becomes active", async () => {
+    await openSidebar();
+    fireEvent.click(screen.getByRole("button", { name: "Keluarga Joko Widodo: Atur Silsilah" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Bikin salinan keluarga" }));
+    expect(await screen.findByRole("heading", { name: "Keluarga Joko Widodo (salinan)" })).toBeInTheDocument();
+    expect(screen.getByText("20 orang · 31 hubungan")).toBeInTheDocument();
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    // An editable copy: the pencil and the add button are back.
+    expect(screen.getByRole("button", { name: "Ubah nama silsilah" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Lihat kumpulan silsilah" }));
+    expect(screen.getByRole("button", { name: /^Keluarga Joko Widodo \(salinan\) ?[0-9]/ })).toHaveAttribute("aria-current", "true");
+  });
+
+  it("opens Perlindungan privasi and Bantuan from the sidebar rows and closes the sidebar", async () => {
+    let aside = await openSidebar();
+    fireEvent.click(within(aside).getByRole("button", { name: /Perlindungan privasi/ }));
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Perlindungan privasi" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Lihat kumpulan silsilah" }));
+    aside = screen.getByRole("complementary", { name: "Silsilah keluarga" });
+    fireEvent.click(within(aside).getByRole("button", { name: /^Bantuan/ }));
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Bantuan" })).toBeInTheDocument();
+  });
+
+  it("opens the Family+ dialog from the gradient row", async () => {
+    const aside = await openSidebar();
+    fireEvent.click(within(aside).getByRole("button", { name: /Heritg Family\+/ }));
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(screen.getByText("Coming in the collaboration release")).toBeInTheDocument();
+  });
+});

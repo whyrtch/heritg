@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRelationship, connectorPath, displayName, normalizePerson, normalizeRelationship, emptyPerson, exportTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, relativesOf } from "./model";
+import { addRelationship, connectorPath, displayName, duplicateTree, normalizePerson, normalizeRelationship, emptyPerson, exportTree, generationCount, importTree, layoutTree, lifeDatesLong, lifespanLabel, newTree, relativesOf } from "./model";
 import { createJokowiDemoTree } from "./demoData";
 
 describe("family model", () => {
@@ -103,5 +103,29 @@ describe("portable .heritg photos", () => {
     const file = { version: 2, tree: { id: "x", name: "Foto", updatedAt: "2026-01-01T00:00:00.000Z", people: [{ id: "a", name: "A", photo: "/api/trees/other/people/a/photo?v=0123456789abcdef" }, { id: "b", name: "B", photo: "data:image/webp;base64,AAAA" }], relationships: [] } };
     const imported = importTree(JSON.stringify(file));
     expect(imported.people.map(person => person.photo)).toEqual(["", "data:image/webp;base64,AAAA"]);
+  });
+});
+
+describe("duplicateTree", () => {
+  it("gives every person and relationship a new id, remaps relationships and leaves the original untouched", () => {
+    const original = createJokowiDemoTree();
+    const snapshot = JSON.stringify(original);
+    const copy = duplicateTree(original, "Salinan");
+    expect(JSON.stringify(original)).toBe(snapshot);
+    expect(copy.name).toBe("Salinan");
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.people).toHaveLength(original.people.length);
+    expect(copy.relationships).toHaveLength(original.relationships.length);
+    const oldIds = new Set([...original.people, ...original.relationships].map(item => item.id));
+    for (const item of [...copy.people, ...copy.relationships]) expect(oldIds.has(item.id)).toBe(false);
+    const newPeople = new Set(copy.people.map(person => person.id));
+    copy.relationships.forEach((rel, index) => {
+      const source = original.relationships[index];
+      expect(rel.type).toBe(source.type);
+      expect(newPeople.has(rel.from) && newPeople.has(rel.to)).toBe(true);
+      expect(rel.from).toBe(copy.people[original.people.findIndex(person => person.id === source.from)].id);
+      expect(rel.to).toBe(copy.people[original.people.findIndex(person => person.id === source.to)].id);
+    });
+    expect(copy.people.map(person => person.name)).toEqual(original.people.map(person => person.name));
   });
 });
